@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import streamlit as st
 from components.sidebar import render_workspace_sidebar
 from components.chat_area import render_center_chat
@@ -6,7 +8,8 @@ from components.right_pane import render_right_pane
 st.set_page_config(page_title="BayCurrent風エージェントUI", layout="wide")
 
 # CSS読み込み
-with open("src/assets/styles.css","r",encoding="utf-8") as f:
+css_path = Path(__file__).resolve().parent / "assets" / "styles.css"
+with css_path.open("r", encoding="utf-8") as f:
     st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
 
 st.markdown("## BayCurrent風 AIエージェント")
