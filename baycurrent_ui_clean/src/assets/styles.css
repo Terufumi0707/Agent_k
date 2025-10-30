@@ -1,0 +1,20 @@
+:root{
+  --bc-main:#142C54;
+  --bc-accent:#2A6CC6;
+  --bc-text:#2D3A4B;
+  --bc-gray:#6E7C91;
+  --bc-bg:#FFFFFF;
+  --bc-panel:#F7F9FC;
+}
+body{background:var(--bc-bg);color:var(--bc-text);font-family:-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;}
+.block-container{padding-top:1rem;}
+h2,h3,h4,h5{color:var(--bc-main);font-weight:600;}
+[data-testid="column"]:first-child{background:var(--bc-panel);border-radius:10px;padding:1rem;border:1px solid #e5e9f2;}
+.chat-message{border-radius:8px;padding:.75rem 1rem;margin-bottom:.6rem;border:1px solid #e6eaf2;}
+.chat-message.user{background:var(--bc-accent);color:#fff;border:none;}
+.chat-message.assistant{background:var(--bc-main);color:#fff;border:none;}
+[data-testid="stChatInput"] textarea{border:1.5px solid var(--bc-gray);border-radius:10px;}
+[data-testid="column"]:last-child{background:var(--bc-panel);border-radius:10px;padding:1rem;border:1px solid #e5e9f2;}
+.output-box{background:#fff;border:1px solid #e6eaf2;border-left:4px solid var(--bc-accent);border-radius:8px;padding:1rem;}
+.stButton>button{background:var(--bc-accent);color:#fff;border:none;border-radius:6px;padding:.6rem 1.1rem;font-weight:600;}
+.stButton>button:hover{filter:brightness(0.92);}
