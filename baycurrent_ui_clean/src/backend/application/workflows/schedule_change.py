@@ -1,6 +1,7 @@
 """LangGraph を用いた日程変更ワークフロー。"""
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal, Optional, TypedDict
 
@@ -22,6 +23,15 @@ class WorkflowState(TypedDict, total=False):
     prompt: str
     classification: Literal["schedule_change", "other"]
     api_result: Optional[str]
+
+
+@dataclass(frozen=True)
+class WorkflowResult:
+    """LangGraph ワークフローの実行結果。"""
+
+    message: str
+    path: list[str]
+    classification: Literal["schedule_change", "other"]
 
 
 def _classify_intent_factory(prompts: ScheduleChangePrompts):
@@ -115,7 +125,7 @@ def run_schedule_change_workflow(
     *,
     prompts: ScheduleChangePrompts | None = None,
     gateway: ScheduleApiGateway | None = None,
-) -> str:
+) -> WorkflowResult:
     """LangGraph ワークフローを実行し、結果メッセージを生成する。"""
 
     selected_prompts = prompts or DEFAULT_SCHEDULE_CHANGE_PROMPTS
@@ -131,15 +141,24 @@ def run_schedule_change_workflow(
     initial_state: WorkflowState = {"prompt": prompt}
     final_state = app.invoke(initial_state, config=config)
 
-    if final_state.get("classification") == "schedule_change":
-        api_message = final_state.get("api_result") or "API 呼び出しに成功しました。"
-        return "日程変更のリクエストであると判断しました。\n" + api_message
+    classification: Literal["schedule_change", "other"] = final_state.get(
+        "classification", "other"
+    )
+    path = ["classify_intent"]
 
-    return "今回は日程変更のリクエストではないと判断しました。"
+    if classification == "schedule_change":
+        api_message = final_state.get("api_result") or "API 呼び出しに成功しました。"
+        message = "日程変更のリクエストであると判断しました。\n" + api_message
+        path.append("call_schedule_api")
+    else:
+        message = "今回は日程変更のリクエストではないと判断しました。"
+
+    return WorkflowResult(message=message, path=path, classification=classification)
 
 
 __all__ = [
     "build_schedule_change_app",
     "run_schedule_change_workflow",
     "WorkflowState",
+    "WorkflowResult",
 ]
