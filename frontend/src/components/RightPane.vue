@@ -10,6 +10,14 @@
       <p v-else class="section-caption">（ここに最新の応答や生成結果が表示されます）</p>
     </div>
 
+    <div v-if="pendingWorkflow" class="card" style="margin-top: 1rem; padding: 1rem; background: #fff7e6;">
+      <p class="section-caption" style="margin-bottom: 0.4rem;">提案中のワークフロー</p>
+      <strong>{{ pendingWorkflow.label }}</strong>
+      <p class="section-caption" style="margin: 0.4rem 0 0 0;">
+        {{ pendingWorkflow.description }}
+      </p>
+    </div>
+
     <hr />
 
     <div class="section-title">
@@ -31,7 +39,7 @@ import { storeToRefs } from "pinia";
 import { useChatStore } from "../stores/chat";
 
 const chatStore = useChatStore();
-const { lastOutput, recentMessages } = storeToRefs(chatStore);
+const { lastOutput, recentMessages, pendingWorkflow } = storeToRefs(chatStore);
 
 function formatMessage(text) {
   return text.replace(/\n/g, "<br />");
