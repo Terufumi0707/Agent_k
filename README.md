@@ -1,32 +1,42 @@
 # matchingApp
 
-シンプルなマッチングアプリケーションのサンプルプロジェクトです。主要な機能や開発手順を素早く把握できるよう、以下のセクションに概要をまとめています。
+フロントエンドを Streamlit から Vue.js に刷新し、FastAPI ベースのバックエンドと連携する構成に更新しました。以下の手順でローカル開発環境を立ち上げられます。
 
-## 概要
+## ディレクトリ構成
 
-- ユーザー同士のマッチングを想定したバックエンド／フロントエンド構成
-- Node.js と React を利用した SPA を想定
-- Docker を利用したローカル開発環境
+- `baycurrent_ui_clean/frontend` — Vite + Vue 3 を利用した SPA。Pinia で状態管理を行い、バックエンド API と通信します。
+- `baycurrent_ui_clean/src/backend` — LangGraph ワークフローを呼び出す FastAPI アプリケーション。`uvicorn` で起動します。
 
 ## セットアップ
 
+### Python バックエンド
+
 1. 依存関係をインストールします。
    ```bash
+   pip install -r baycurrent_ui_clean/requirements.txt
+   ```
+2. FastAPI アプリを起動します。
+   ```bash
+   uvicorn backend.api:app --app-dir baycurrent_ui_clean/src --reload
+   ```
+
+### Vue フロントエンド
+
+1. 依存関係をインストールします。
+   ```bash
+   cd baycurrent_ui_clean/frontend
    npm install
    ```
-2. 環境変数を設定します。`.env.example` を複製して `.env` を作成し、必要な値を入力してください。
-3. アプリケーションを起動します。
+2. 開発サーバーを起動します。
    ```bash
    npm run dev
    ```
+3. ブラウザで `http://localhost:5173` にアクセスすると、Vue ベースの UI が表示されます。開発サーバーは `/api` へのリクエストを FastAPI にプロキシします。
 
 ## テスト
 
-ユニットテストは以下のコマンドで実行できます。
-
-```bash
-npm test
-```
+- Python 側: 適宜 `pytest` やユニットテストを実行してください。
+- フロントエンド: Vite が提供する `npm run build` などを利用してビルド検証が可能です。
 
 ## ライセンス
 
