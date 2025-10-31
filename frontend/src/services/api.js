@@ -1,5 +1,5 @@
-export async function sendChatMessage(message) {
-  const response = await fetch("/api/chat", {
+export async function suggestWorkflow(message) {
+  const response = await fetch("/api/workflows/suggest", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -9,6 +9,22 @@ export async function sendChatMessage(message) {
 
   if (!response.ok) {
     throw new Error("Failed to fetch chat response");
+  }
+
+  return await response.json();
+}
+
+export async function submitWorkflowSelection(payload) {
+  const response = await fetch("/api/workflows/select", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(payload)
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to submit workflow selection");
   }
 
   return await response.json();

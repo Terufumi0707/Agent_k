@@ -114,9 +114,20 @@ def build_schedule_change_app(
 
 
 _DEFAULT_GATEWAY = MockScheduleApiGateway()
-_DEFAULT_APP = build_schedule_change_app(
-    DEFAULT_SCHEDULE_CHANGE_PROMPTS, _DEFAULT_GATEWAY
-)
+
+
+def classify_schedule_change_prompt(
+    prompt: str,
+    *,
+    prompts: ScheduleChangePrompts | None = None,
+) -> Literal["schedule_change", "other"]:
+    """ユーザー入力が日程変更ワークフローに該当するかを判定する。"""
+
+    selected_prompts = prompts or DEFAULT_SCHEDULE_CHANGE_PROMPTS
+    classifier = _classify_intent_factory(selected_prompts)
+    state: WorkflowState = {"prompt": prompt}
+    result = classifier(state)
+    return result.get("classification", "other")
 
 
 def run_schedule_change_workflow(
@@ -131,23 +142,13 @@ def run_schedule_change_workflow(
     selected_prompts = prompts or DEFAULT_SCHEDULE_CHANGE_PROMPTS
     selected_gateway = gateway or _DEFAULT_GATEWAY
 
-    app = (
-        _DEFAULT_APP
-        if (selected_prompts == DEFAULT_SCHEDULE_CHANGE_PROMPTS)
-        and (selected_gateway is _DEFAULT_GATEWAY)
-        else build_schedule_change_app(selected_prompts, selected_gateway)
-    )
-
-    initial_state: WorkflowState = {"prompt": prompt}
-    final_state = app.invoke(initial_state, config=config)
-
-    classification: Literal["schedule_change", "other"] = final_state.get(
-        "classification", "other"
-    )
+    classification = classify_schedule_change_prompt(prompt, prompts=selected_prompts)
     path = ["classify_intent"]
 
     if classification == "schedule_change":
-        api_message = final_state.get("api_result") or "API 呼び出しに成功しました。"
+        call_schedule_api = _call_schedule_api_factory(selected_gateway)
+        api_state = call_schedule_api({"prompt": prompt}, config=config)
+        api_message = api_state.get("api_result") or "API 呼び出しに成功しました。"
         message = "日程変更のリクエストであると判断しました。\n" + api_message
         path.append("call_schedule_api")
     else:
@@ -159,6 +160,7 @@ def run_schedule_change_workflow(
 __all__ = [
     "build_schedule_change_app",
     "run_schedule_change_workflow",
+    "classify_schedule_change_prompt",
     "WorkflowState",
     "WorkflowResult",
 ]

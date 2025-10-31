@@ -1,6 +1,6 @@
 import { computed, ref } from "vue";
 import { defineStore } from "pinia";
-import { sendChatMessage } from "../services/api";
+import { suggestWorkflow, submitWorkflowSelection } from "../services/api";
 
 export const useChatStore = defineStore("chat", () => {
   const messages = ref([
@@ -14,6 +14,9 @@ export const useChatStore = defineStore("chat", () => {
   const workflowClassification = ref("other");
   const loading = ref(false);
   const error = ref(null);
+  const pendingWorkflow = ref(null);
+  const pendingPrompt = ref("");
+  const suggestionMessage = ref("");
 
   const recentMessages = computed(() => messages.value.slice(-3));
 
@@ -28,16 +31,72 @@ export const useChatStore = defineStore("chat", () => {
     error.value = null;
 
     try {
-      const result = await sendChatMessage(trimmed);
-      messages.value.push({ role: "assistant", content: result.reply });
-      lastOutput.value = result.reply;
-      workflowPath.value = result.path;
-      workflowClassification.value = result.classification;
+      const result = await suggestWorkflow(trimmed);
+      messages.value.push({ role: "assistant", content: result.message });
+      pendingWorkflow.value = result.candidate;
+      pendingPrompt.value = trimmed;
+      suggestionMessage.value = result.message;
+      workflowPath.value = [];
+      workflowClassification.value = "other";
     } catch (err) {
       error.value = "応答の取得中に問題が発生しました。しばらくしてから再度お試しください。";
     } finally {
       loading.value = false;
     }
+  }
+
+  async function executeWorkflowSelection(decision, userMessage) {
+    if (!pendingWorkflow.value || !pendingPrompt.value || loading.value) {
+      return;
+    }
+
+    if (userMessage) {
+      messages.value.push({ role: "user", content: userMessage });
+    }
+
+    loading.value = true;
+    error.value = null;
+
+    try {
+      const result = await submitWorkflowSelection({
+        message: pendingPrompt.value,
+        workflow_id: pendingWorkflow.value.id,
+        decision
+      });
+
+      messages.value.push({ role: "assistant", content: result.reply });
+      lastOutput.value = result.reply;
+      workflowPath.value = result.path;
+      workflowClassification.value = result.classification;
+      pendingWorkflow.value = null;
+      pendingPrompt.value = "";
+      suggestionMessage.value = "";
+    } catch (err) {
+      error.value = "ワークフローの実行に失敗しました。時間を置いて再度お試しください。";
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  async function acceptSuggestedWorkflow() {
+    if (!pendingWorkflow.value) {
+      return;
+    }
+
+    const userMessage =
+      pendingWorkflow.value.id === "schedule_change"
+        ? "このワークフローで実行してください。"
+        : "その他の対応で進めてください。";
+
+    await executeWorkflowSelection("accept", userMessage);
+  }
+
+  async function declineSuggestedWorkflow() {
+    if (!pendingWorkflow.value) {
+      return;
+    }
+
+    await executeWorkflowSelection("decline", "別の選択肢を検討したいです。");
   }
 
   return {
@@ -48,6 +107,10 @@ export const useChatStore = defineStore("chat", () => {
     recentMessages,
     loading,
     error,
-    sendMessage
+    pendingWorkflow,
+    suggestionMessage,
+    sendMessage,
+    acceptSuggestedWorkflow,
+    declineSuggestedWorkflow
   };
 });
