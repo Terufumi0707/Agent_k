@@ -49,8 +49,8 @@ textarea {
 .workspace-layout {
   display: grid;
   grid-template-areas: "sidebar chat right";
-  grid-template-columns: minmax(240px, 280px) minmax(420px, 1fr) minmax(260px, 320px);
-  gap: 1.5rem;
+  grid-template-columns: minmax(260px, 320px) minmax(520px, 1fr) minmax(280px, 360px);
+  gap: 1.75rem;
   align-items: start;
 }
 
@@ -74,9 +74,9 @@ textarea {
   top: 1.5rem;
 }
 
-@media (max-width: 1280px) {
+@media (max-width: 1400px) {
   .workspace-layout {
-    grid-template-columns: minmax(240px, 280px) minmax(0, 1fr);
+    grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
     grid-template-areas:
       "sidebar chat"
       "sidebar right";
@@ -95,7 +95,7 @@ textarea {
       "sidebar"
       "chat"
       "right";
-    gap: 1.25rem;
+    gap: 1.5rem;
   }
 }
 
