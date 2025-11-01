@@ -11,10 +11,10 @@
     <div v-if="workspaceLoading && workspaces.length === 0" class="loading-placeholder">
       ワークスペースを読み込んでいます...
     </div>
-    <div class="workspace-scroll">
+    <div v-if="runningWorkspaces.length > 0" class="workspace-scroll">
       <ul class="workspace-list">
         <li
-          v-for="workspace in workspaces"
+          v-for="workspace in runningWorkspaces"
           :key="workspace.id"
           :class="['workspace-item', { active: workspace.id === activeWorkspaceId }]"
         >
@@ -42,6 +42,9 @@
         </li>
       </ul>
     </div>
+    <div v-else class="empty-workspaces">
+      実行中のワークスペースはありません。新規作成して開始してください。
+    </div>
 
     <hr />
 
@@ -55,7 +58,7 @@
 </template>
 
 <script setup>
-import { onMounted } from "vue";
+import { computed, onMounted } from "vue";
 import { storeToRefs } from "pinia";
 import WorkflowProgress from "./WorkflowProgress.vue";
 import { useWorkspaceStore } from "../stores/workspace";
@@ -65,6 +68,10 @@ const workspaceStore = useWorkspaceStore();
 const chatStore = useChatStore();
 const { workspaces, activeWorkspaceId, loading: workspaceLoading, error: workspaceError } =
   storeToRefs(workspaceStore);
+
+const runningWorkspaces = computed(() =>
+  workspaces.value.filter((workspace) => workspace.status !== "completed")
+);
 
 onMounted(() => {
   workspaceStore.loadWorkspaces();
@@ -239,5 +246,14 @@ async function handleDeleteWorkspace(id) {
   color: #c0392b;
   font-size: 0.85rem;
   margin-bottom: 0.75rem;
+}
+
+.empty-workspaces {
+  padding: 0.85rem 1rem;
+  border-radius: 12px;
+  background: #f0f4ff;
+  color: #4b587a;
+  font-size: 0.85rem;
+  text-align: center;
 }
 </style>

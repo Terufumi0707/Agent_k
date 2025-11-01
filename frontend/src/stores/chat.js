@@ -1,15 +1,23 @@
-import { computed, ref } from "vue";
-import { defineStore } from "pinia";
+import { computed, ref, watch } from "vue";
+import { defineStore, storeToRefs } from "pinia";
 import { suggestWorkflow, submitWorkflowSelection } from "../services/api";
+import { DEFAULT_GREETING_MESSAGE } from "../constants/chat";
 import { useWorkspaceStore } from "./workspace";
 
+function createChatEntry(role, content, timestamp) {
+  return {
+    role,
+    content,
+    timestamp: timestamp ? new Date(timestamp).toISOString() : new Date().toISOString()
+  };
+}
+
+function getDefaultConversation() {
+  return [createChatEntry("assistant", DEFAULT_GREETING_MESSAGE)];
+}
+
 export const useChatStore = defineStore("chat", () => {
-  const messages = ref([
-    {
-      role: "assistant",
-      content: "こんにちは。BayCurrentエージェントです。どの案件から進めますか？"
-    }
-  ]);
+  const messages = ref(getDefaultConversation());
   const lastOutput = ref("");
   const workflowPath = ref([]);
   const workflowClassification = ref("other");
@@ -18,7 +26,58 @@ export const useChatStore = defineStore("chat", () => {
   const pendingWorkflow = ref(null);
   const pendingPrompt = ref("");
   const suggestionMessage = ref("");
+
   const workspaceStore = useWorkspaceStore();
+  const { activeWorkspaceId, workspaces } = storeToRefs(workspaceStore);
+
+  let currentWorkspaceId = null;
+
+  function findActiveWorkspace() {
+    return workspaces.value.find((workspace) => workspace.id === activeWorkspaceId.value) || null;
+  }
+
+  function syncMessagesFromWorkspace(workspace) {
+    if (workspace?.transcript?.length) {
+      messages.value = workspace.transcript.map((entry) => ({ ...entry }));
+      const lastAssistant = [...workspace.transcript]
+        .reverse()
+        .find((entry) => entry.role === "assistant");
+      lastOutput.value = lastAssistant?.content ?? "";
+    } else if (workspace) {
+      messages.value = getDefaultConversation();
+      lastOutput.value = "";
+    } else {
+      messages.value = getDefaultConversation();
+      lastOutput.value = "";
+    }
+  }
+
+  function resetWorkflowState() {
+    workflowPath.value = [];
+    workflowClassification.value = "other";
+    pendingWorkflow.value = null;
+    pendingPrompt.value = "";
+    suggestionMessage.value = "";
+    loading.value = false;
+    error.value = null;
+  }
+
+  function syncActiveWorkspace(forceReset = false) {
+    const workspace = findActiveWorkspace();
+    syncMessagesFromWorkspace(workspace);
+    if (forceReset || currentWorkspaceId !== workspace?.id) {
+      resetWorkflowState();
+      currentWorkspaceId = workspace?.id ?? null;
+    }
+  }
+
+  watch(
+    [activeWorkspaceId, workspaces],
+    () => {
+      syncActiveWorkspace();
+    },
+    { immediate: true, deep: true }
+  );
 
   const recentMessages = computed(() => messages.value.slice(-3));
 
@@ -28,14 +87,24 @@ export const useChatStore = defineStore("chat", () => {
       return;
     }
 
-    messages.value.push({ role: "user", content: trimmed });
+    const workspace = findActiveWorkspace();
+    if (!workspace) {
+      error.value = "ワークスペースが選択されていません。";
+      return;
+    }
+
+    const userMessage = createChatEntry("user", trimmed);
+    messages.value.push(userMessage);
+    await workspaceStore.appendMessageToActiveWorkspace(userMessage);
     await workspaceStore.updateSummaryWithAgentInput(trimmed);
     loading.value = true;
     error.value = null;
 
     try {
       const result = await suggestWorkflow(trimmed);
-      messages.value.push({ role: "assistant", content: result.message });
+      const assistantMessage = createChatEntry("assistant", result.message);
+      messages.value.push(assistantMessage);
+      await workspaceStore.appendMessageToActiveWorkspace(assistantMessage);
       pendingWorkflow.value = result.candidate;
       pendingPrompt.value = trimmed;
       suggestionMessage.value = result.message;
@@ -53,8 +122,16 @@ export const useChatStore = defineStore("chat", () => {
       return;
     }
 
+    const workspace = findActiveWorkspace();
+    if (!workspace) {
+      error.value = "ワークスペースが選択されていません。";
+      return;
+    }
+
     if (userMessage) {
-      messages.value.push({ role: "user", content: userMessage });
+      const userEntry = createChatEntry("user", userMessage);
+      messages.value.push(userEntry);
+      await workspaceStore.appendMessageToActiveWorkspace(userEntry);
       await workspaceStore.updateSummaryWithAgentInput(userMessage);
     }
 
@@ -68,7 +145,9 @@ export const useChatStore = defineStore("chat", () => {
         decision
       });
 
-      messages.value.push({ role: "assistant", content: result.reply });
+      const assistantMessage = createChatEntry("assistant", result.reply);
+      messages.value.push(assistantMessage);
+      await workspaceStore.appendMessageToActiveWorkspace(assistantMessage);
       lastOutput.value = result.reply;
       workflowPath.value = result.path;
       workflowClassification.value = result.classification;
@@ -105,20 +184,7 @@ export const useChatStore = defineStore("chat", () => {
   }
 
   function resetSession() {
-    messages.value = [
-      {
-        role: "assistant",
-        content: "こんにちは。BayCurrentエージェントです。どの案件から進めますか？"
-      }
-    ];
-    lastOutput.value = "";
-    workflowPath.value = [];
-    workflowClassification.value = "other";
-    loading.value = false;
-    error.value = null;
-    pendingWorkflow.value = null;
-    pendingPrompt.value = "";
-    suggestionMessage.value = "";
+    syncActiveWorkspace(true);
   }
 
   return {

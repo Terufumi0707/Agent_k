@@ -6,6 +6,7 @@ import {
   fetchWorkspaces,
   updateWorkspaceRecord
 } from "../services/mockWorkspaceDb";
+import { DEFAULT_GREETING_MESSAGE } from "../constants/chat";
 
 function buildSummary(text) {
   const normalized = text.replace(/\s+/g, " ").trim();
@@ -22,6 +23,21 @@ function getDefaultTitle(count) {
   return `ワークスペース #${String(count + 1).padStart(2, "0")}`;
 }
 
+function createTranscriptEntry(role, content, timestamp) {
+  return {
+    role,
+    content,
+    timestamp: timestamp ? new Date(timestamp).toISOString() : new Date().toISOString()
+  };
+}
+
+function ensureTranscript(record) {
+  if (Array.isArray(record.transcript) && record.transcript.length > 0) {
+    return record.transcript;
+  }
+  return [createTranscriptEntry("assistant", DEFAULT_GREETING_MESSAGE, record.lastUpdatedAt)];
+}
+
 export const useWorkspaceStore = defineStore("workspace", () => {
   const workspaces = ref([]);
   const activeWorkspaceId = ref(null);
@@ -32,22 +48,43 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     workspaces.value.find((workspace) => workspace.id === activeWorkspaceId.value) || null
   );
 
+  function ensureActiveWorkspaceSelection() {
+    const current = workspaces.value.find(
+      (workspace) => workspace.id === activeWorkspaceId.value && workspace.status !== "completed"
+    );
+    if (current) {
+      activeWorkspaceId.value = current.id;
+      return;
+    }
+    const candidate = workspaces.value.find((workspace) => workspace.status !== "completed");
+    activeWorkspaceId.value = candidate?.id ?? null;
+  }
+
   function setActiveWorkspace(id) {
-    activeWorkspaceId.value = id;
+    const target = workspaces.value.find(
+      (workspace) => workspace.id === id && workspace.status !== "completed"
+    );
+    if (target) {
+      activeWorkspaceId.value = target.id;
+    } else {
+      ensureActiveWorkspaceSelection();
+    }
   }
 
   function updateWorkspaceState(updated) {
-    const index = workspaces.value.findIndex((workspace) => workspace.id === updated.id);
+    const hydrated = {
+      ...updated,
+      transcript: ensureTranscript(updated)
+    };
+    const index = workspaces.value.findIndex((workspace) => workspace.id === hydrated.id);
     if (index === -1) {
-      workspaces.value = [...workspaces.value, updated];
+      workspaces.value = [...workspaces.value, hydrated];
     } else {
       const next = [...workspaces.value];
-      next.splice(index, 1, updated);
+      next.splice(index, 1, hydrated);
       workspaces.value = next;
     }
-    if (!activeWorkspaceId.value) {
-      activeWorkspaceId.value = updated.id;
-    }
+    ensureActiveWorkspaceSelection();
   }
 
   async function loadWorkspaces() {
@@ -55,10 +92,11 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     error.value = null;
     try {
       const records = await fetchWorkspaces();
-      workspaces.value = records;
-      if (!activeWorkspaceId.value && records.length > 0) {
-        activeWorkspaceId.value = records[0].id;
-      }
+      workspaces.value = records.map((record) => ({
+        ...record,
+        transcript: ensureTranscript(record)
+      }));
+      ensureActiveWorkspaceSelection();
     } catch (err) {
       error.value = "ワークスペースの取得に失敗しました。";
     } finally {
@@ -114,6 +152,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
       status: "completed"
     });
     updateWorkspaceState(updated);
+    ensureActiveWorkspaceSelection();
     return updated;
   }
 
@@ -124,15 +163,31 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     try {
       await deleteWorkspaceRecord(id);
       workspaces.value = workspaces.value.filter((workspace) => workspace.id !== id);
-      if (activeWorkspaceId.value === id) {
-        activeWorkspaceId.value = workspaces.value[0]?.id || null;
-      }
+      ensureActiveWorkspaceSelection();
     } catch (err) {
       error.value = "ワークスペースの削除に失敗しました。";
       throw err;
     } finally {
       loading.value = false;
     }
+  }
+
+  async function appendMessageToActiveWorkspace(message) {
+    const workspace = activeWorkspace.value;
+    if (!workspace) {
+      return;
+    }
+
+    const transcript = [
+      ...ensureTranscript(workspace),
+      createTranscriptEntry(message.role, message.content, message.timestamp)
+    ];
+
+    const updated = await updateWorkspaceRecord(workspace.id, {
+      transcript
+    });
+    updateWorkspaceState(updated);
+    return updated;
   }
 
   return {
@@ -146,6 +201,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     setActiveWorkspace,
     updateSummaryWithAgentInput,
     markActiveWorkspaceCompleted,
-    deleteWorkspace
+    deleteWorkspace,
+    appendMessageToActiveWorkspace
   };
 });
