@@ -72,3 +72,22 @@ export async function updateWorkspaceRecord(id, patch) {
     }, artificialLatency);
   });
 }
+
+export async function deleteWorkspaceRecord(id) {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      const index = workspaceTable.findIndex((item) => item.id === id);
+      if (index === -1) {
+        reject(new Error("workspace not found"));
+        return;
+      }
+
+      workspaceTable = [
+        ...workspaceTable.slice(0, index),
+        ...workspaceTable.slice(index + 1)
+      ];
+
+      resolve();
+    }, artificialLatency);
+  });
+}
