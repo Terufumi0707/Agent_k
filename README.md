@@ -21,6 +21,11 @@
    ```bash
    uvicorn backend.api:app --reload
    ```
+3. バックエンドのログは `backend/logs/backend.log` にローテーション付きで保存されます。
+   別ターミナルで以下を実行するとリアルタイムに確認できます。
+   ```bash
+   tail -f backend/logs/backend.log
+   ```
 
 ### Vue フロントエンド
 
