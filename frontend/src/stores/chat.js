@@ -4,6 +4,9 @@ import { suggestWorkflow, submitWorkflowSelection } from "../services/api";
 import { DEFAULT_GREETING_MESSAGE } from "../constants/chat";
 import { useWorkspaceStore } from "./workspace";
 
+export const COMPLETION_PROMPT_MESSAGE =
+  "一連のタスクが完了しました。実行完了一覧に移動してもよろしいですか？";
+
 function createChatEntry(role, content, timestamp) {
   return {
     role,
@@ -26,6 +29,7 @@ export const useChatStore = defineStore("chat", () => {
   const pendingWorkflow = ref(null);
   const pendingPrompt = ref("");
   const suggestionMessage = ref("");
+  const completionPromptVisible = ref(false);
 
   const workspaceStore = useWorkspaceStore();
   const { activeWorkspaceId, workspaces } = storeToRefs(workspaceStore);
@@ -60,6 +64,10 @@ export const useChatStore = defineStore("chat", () => {
     suggestionMessage.value = "";
     loading.value = false;
     error.value = null;
+  }
+
+  function dismissCompletionPrompt() {
+    completionPromptVisible.value = false;
   }
 
   function syncActiveWorkspace(forceReset = false) {
@@ -154,6 +162,13 @@ export const useChatStore = defineStore("chat", () => {
       pendingWorkflow.value = null;
       pendingPrompt.value = "";
       suggestionMessage.value = "";
+      const completionPromptEntry = createChatEntry(
+        "assistant",
+        COMPLETION_PROMPT_MESSAGE
+      );
+      messages.value.push(completionPromptEntry);
+      await workspaceStore.appendMessageToActiveWorkspace(completionPromptEntry);
+      completionPromptVisible.value = true;
       await workspaceStore.markActiveWorkspaceCompleted();
     } catch (err) {
       error.value = "ワークフローの実行に失敗しました。時間を置いて再度お試しください。";
@@ -184,6 +199,7 @@ export const useChatStore = defineStore("chat", () => {
   }
 
   function resetSession() {
+    dismissCompletionPrompt();
     syncActiveWorkspace(true);
   }
 
@@ -197,9 +213,11 @@ export const useChatStore = defineStore("chat", () => {
     error,
     pendingWorkflow,
     suggestionMessage,
+    completionPromptVisible,
     sendMessage,
     acceptSuggestedWorkflow,
     declineSuggestedWorkflow,
+    dismissCompletionPrompt,
     resetSession
   };
 });
