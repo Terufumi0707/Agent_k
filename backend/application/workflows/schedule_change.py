@@ -42,7 +42,17 @@ class WorkflowResult:
     classification: Literal["schedule_change", "other"]
 
 
-ENTRY_ID_PATTERN = re.compile(r"\b(\d{4})\b")
+#
+# NOTE:
+#   `\b` does not recognise a boundary between ASCII digits and Japanese
+#   characters because both are treated as "word" characters in the Unicode
+#   aware regular expression engine.  As a result, inputs such as
+#   "1111日程変更したい" failed to expose the entry id even though the request
+#   clearly contains a 4-digit identifier.  Instead of relying on word
+#   boundaries we detect a 4-digit sequence that is not surrounded by other
+#   digits.  This keeps the strict "exactly four digits" requirement while
+#   handling Japanese text without spaces.
+ENTRY_ID_PATTERN = re.compile(r"(?<!\d)(\d{4})(?!\d)")
 SCHEDULE_CHANGE_KEYWORDS_JA = (
     "日程変更",
     "予定変更",

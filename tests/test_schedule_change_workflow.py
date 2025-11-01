@@ -101,6 +101,14 @@ class ClassifyScheduleChangePromptTests(unittest.TestCase):
         self.assertEqual(result, "schedule_change")
         self.mock_classifier.assert_called_once()
 
+    def test_prompt_with_entry_id_without_spacing_triggers_workflow(self) -> None:
+        prompt = "1111日程変更したい"
+
+        result = classify_schedule_change_prompt(prompt)
+
+        self.assertEqual(result, "schedule_change")
+        self.mock_classifier.assert_called_once()
+
     def test_prompt_without_entry_id_is_not_schedule_change(self) -> None:
         prompt = "エントリIDが不明ですが日程変更をしたいです。"
 
