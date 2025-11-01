@@ -1,6 +1,7 @@
 import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 import { suggestWorkflow, submitWorkflowSelection } from "../services/api";
+import { useWorkspaceStore } from "./workspace";
 
 export const useChatStore = defineStore("chat", () => {
   const messages = ref([
@@ -17,6 +18,7 @@ export const useChatStore = defineStore("chat", () => {
   const pendingWorkflow = ref(null);
   const pendingPrompt = ref("");
   const suggestionMessage = ref("");
+  const workspaceStore = useWorkspaceStore();
 
   const recentMessages = computed(() => messages.value.slice(-3));
 
@@ -27,6 +29,7 @@ export const useChatStore = defineStore("chat", () => {
     }
 
     messages.value.push({ role: "user", content: trimmed });
+    await workspaceStore.updateSummaryWithAgentInput(trimmed);
     loading.value = true;
     error.value = null;
 
@@ -52,6 +55,7 @@ export const useChatStore = defineStore("chat", () => {
 
     if (userMessage) {
       messages.value.push({ role: "user", content: userMessage });
+      await workspaceStore.updateSummaryWithAgentInput(userMessage);
     }
 
     loading.value = true;
@@ -71,6 +75,7 @@ export const useChatStore = defineStore("chat", () => {
       pendingWorkflow.value = null;
       pendingPrompt.value = "";
       suggestionMessage.value = "";
+      await workspaceStore.markActiveWorkspaceCompleted();
     } catch (err) {
       error.value = "ワークフローの実行に失敗しました。時間を置いて再度お試しください。";
     } finally {
@@ -99,6 +104,23 @@ export const useChatStore = defineStore("chat", () => {
     await executeWorkflowSelection("decline", "別の選択肢を検討したいです。");
   }
 
+  function resetSession() {
+    messages.value = [
+      {
+        role: "assistant",
+        content: "こんにちは。BayCurrentエージェントです。どの案件から進めますか？"
+      }
+    ];
+    lastOutput.value = "";
+    workflowPath.value = [];
+    workflowClassification.value = "other";
+    loading.value = false;
+    error.value = null;
+    pendingWorkflow.value = null;
+    pendingPrompt.value = "";
+    suggestionMessage.value = "";
+  }
+
   return {
     messages,
     lastOutput,
@@ -111,6 +133,7 @@ export const useChatStore = defineStore("chat", () => {
     suggestionMessage,
     sendMessage,
     acceptSuggestedWorkflow,
-    declineSuggestedWorkflow
+    declineSuggestedWorkflow,
+    resetSession
   };
 });
