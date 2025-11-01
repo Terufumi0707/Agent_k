@@ -3,12 +3,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Literal, Optional, TypedDict
+from typing import Literal, Optional, TypedDict, cast
 
 from langgraph.graph import END, START, StateGraph
 
 from ...domain.schedule_change.entities import ScheduleChangeRequest
 from ...domain.workflow.config import WorkflowConfig
+from ...infrastructure.llm import (
+    GeminiConfigurationError,
+    GeminiInvocationError,
+    classify_with_gemini,
+)
 from ...infrastructure.schedule_change.mock_api import MockScheduleApiGateway
 from ...infrastructure.schedule_change.typing import ScheduleApiGateway
 from ...prompts.schedule_change import (
@@ -44,21 +49,25 @@ def _classify_intent_factory(prompts: ScheduleChangePrompts):
 
         prompt = state["prompt"]
 
-        # --- モック LLM 部分 ---------------------------------------------------
         classification: Literal["schedule_change", "other"] = "schedule_change"
 
-        # # 実運用時の LLM 呼び出し例（API キー設定後にコメントアウトを外す）:
-        # from langchain_openai import ChatOpenAI
-        #
-        # llm = ChatOpenAI(model="gpt-4o", temperature=0)
-        # response = llm.invoke(
-        #     [
-        #         ("system", prompts.system),
-        #         ("human", prompts.human_template.format(prompt=prompt)),
-        #     ]
-        # )
-        # classification = response.content.strip()
-        # ------------------------------------------------------------------
+        try:
+            response = classify_with_gemini(
+                prompts.system,
+                prompts.human_template.format(prompt=prompt),
+            )
+        except GeminiConfigurationError:
+            # Gemini が利用できない環境ではモック分類を継続する。
+            response = ""
+        except GeminiInvocationError:
+            response = ""
+
+        if response:
+            cleaned = response.strip().lower()
+            if cleaned in {"schedule_change", "other"}:
+                classification = cast(
+                    Literal["schedule_change", "other"], cleaned
+                )
 
         return {"classification": classification}
 
