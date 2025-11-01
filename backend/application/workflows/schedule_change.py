@@ -5,6 +5,8 @@ from dataclasses import dataclass
 import re
 from typing import Literal, Optional, TypedDict, cast
 
+from mock_api.schedule_change_data import get_schedule_scenario
+
 from langgraph.graph import END, START, StateGraph
 
 from ...domain.schedule_change.entities import ScheduleChangeRequest
@@ -39,6 +41,15 @@ class WorkflowResult:
     message: str
     path: list[str]
     classification: Literal["schedule_change", "other"]
+
+
+@dataclass(frozen=True)
+class SchedulePreview:
+    """エントリIDに紐づく現在の登録情報を表現する。"""
+
+    entry_id: str
+    message: str
+    found: bool
 
 
 #
@@ -80,6 +91,30 @@ def _extract_entry_id(prompt: str) -> Optional[str]:
     if match:
         return match.group(1)
     return None
+
+
+def extract_schedule_entry_id(prompt: str) -> Optional[str]:
+    """外部モジュールがエントリID抽出ロジックを再利用できるよう公開する。"""
+
+    return _extract_entry_id(prompt)
+
+
+def build_schedule_preview(entry_id: str) -> SchedulePreview:
+    """エントリIDに紐づく現在の登録情報を取得してメッセージ化する。"""
+
+    scenario = get_schedule_scenario(entry_id)
+
+    if scenario is None:
+        message = f"エントリID {entry_id} に関する日程情報を確認できませんでした。"
+        return SchedulePreview(entry_id=entry_id, message=message, found=False)
+
+    formatted = scenario.registered_slot.strftime("%Y年%m月%d日 %H:%M")
+    message = (
+        "現在登録されている日程: "
+        f"{scenario.location}での{scenario.sport}を"
+        f"{formatted}に実施予定です。"
+    )
+    return SchedulePreview(entry_id=entry_id, message=message, found=True)
 
 
 def _contains_schedule_change_request(prompt: str) -> bool:
@@ -259,8 +294,11 @@ def run_schedule_change_workflow(
 
 __all__ = [
     "build_schedule_change_app",
+    "build_schedule_preview",
     "run_schedule_change_workflow",
     "classify_schedule_change_prompt",
+    "extract_schedule_entry_id",
+    "SchedulePreview",
     "WorkflowState",
     "WorkflowResult",
 ]

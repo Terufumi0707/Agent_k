@@ -9,7 +9,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from . import WorkflowResult, run_schedule_change_workflow
-from .application.workflows.schedule_change import classify_schedule_change_prompt
+from .application.workflows.schedule_change import (
+    build_schedule_preview,
+    classify_schedule_change_prompt,
+    extract_schedule_entry_id,
+)
 from .infrastructure.logging import configure_logging
 
 configure_logging()
@@ -95,7 +99,17 @@ def suggest_workflow(payload: SuggestWorkflowRequest) -> SuggestWorkflowResponse
             label="日程変更ワークフロー",
             description="社内日程調整システムと連携して予定変更を実施します。",
         )
-        reply = "入力内容から「日程変更」ワークフローが適切と判断しました。"
+        reply_lines = ["入力内容から「日程変更」ワークフローが適切と判断しました。"]
+        entry_id = extract_schedule_entry_id(message)
+
+        if entry_id:
+            preview = build_schedule_preview(entry_id)
+            reply_lines.append(preview.message)
+
+            if not preview.found:
+                reply_lines.append("現在登録状況を担当チームに確認しながら進めます。")
+
+        reply = "\n".join(reply_lines)
     else:
         candidate = WorkflowCandidate(
             id="other",

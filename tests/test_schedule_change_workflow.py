@@ -82,8 +82,14 @@ from backend.infrastructure.schedule_change.scenarios import (  # noqa: E402  py
     SCHEDULE_SCENARIOS,
 )
 from backend.application.workflows.schedule_change import (  # noqa: E402  pylint: disable=C0413
+    build_schedule_preview,
     classify_schedule_change_prompt,
+    extract_schedule_entry_id,
     run_schedule_change_workflow,
+)
+from mock_api.schedule_change_data import (  # noqa: E402  pylint: disable=C0413
+    get_schedule_scenario,
+    list_schedule_scenarios,
 )
 
 
@@ -188,6 +194,54 @@ class RunScheduleChangeWorkflowTests(unittest.TestCase):
         self.assertIn("2024年07月21日 15:30", result.message)
         self.assertIn("理由: 社内調整のため", result.message)
 
+
+class SchedulePreviewTests(unittest.TestCase):
+    """Ensure helper utilities expose the registered schedule details."""
+
+    def test_build_preview_includes_registered_schedule_details(self) -> None:
+        scenario = next(s for s in list_schedule_scenarios() if not s.is_iw)
+
+        preview = build_schedule_preview(scenario.entry_id)
+
+        self.assertTrue(preview.found)
+        self.assertIn("現在登録されている日程", preview.message)
+        self.assertIn(scenario.location, preview.message)
+        self.assertIn(scenario.sport, preview.message)
+        self.assertIn(
+            scenario.registered_slot.strftime("%Y年%m月%d日 %H:%M"), preview.message
+        )
+
+    def test_build_preview_handles_unknown_entry(self) -> None:
+        preview = build_schedule_preview("9999")
+
+        self.assertFalse(preview.found)
+        self.assertIn("9999", preview.message)
+
+    def test_extract_schedule_entry_id_returns_first_match(self) -> None:
+        scenario = get_schedule_scenario("0001")
+        assert scenario is not None
+        prompt = f"至急エントリID {scenario.entry_id} の日程変更をお願いします。"
+
+        extracted = extract_schedule_entry_id(prompt)
+
+        self.assertEqual(extracted, scenario.entry_id)
+
+
+class SuggestWorkflowPreviewTests(unittest.TestCase):
+    """Validate that the flow suggestion includes the current schedule."""
+
+    def test_schedule_change_suggestion_appends_preview(self) -> None:
+        scenario = next(s for s in list_schedule_scenarios() if not s.is_iw)
+        prompt = f"エントリID {scenario.entry_id} の日程変更をお願いします。"
+
+        with patch("backend.api.classify_schedule_change_prompt", return_value="schedule_change"):
+            from backend.api import SuggestWorkflowRequest, suggest_workflow  # noqa: E402
+
+            response = suggest_workflow(SuggestWorkflowRequest(message=prompt))
+
+        self.assertIn("現在登録されている日程", response.message)
+        self.assertIn(scenario.location, response.message)
+        self.assertIn(scenario.sport, response.message)
 
 if __name__ == "__main__":  # pragma: no cover - manual execution helper
     unittest.main()
