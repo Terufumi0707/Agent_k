@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 from typing import Optional
 
 
@@ -11,8 +10,8 @@ class ScheduleChangeRequest:
     """日程変更 API に送信する入力データ。"""
 
     entry_id: str
-    requester: str
-    requested_date: datetime
+    prompt: str
+    requester: Optional[str] = None
     reason: Optional[str] = None
 
 

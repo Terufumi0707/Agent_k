@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 import re
 from typing import Literal, Optional, TypedDict, cast
 
@@ -156,8 +155,8 @@ def _call_schedule_api_factory(gateway: ScheduleApiGateway):
 
         payload = ScheduleChangeRequest(
             entry_id=entry_id,
+            prompt=state["prompt"],
             requester=config.requester_name,
-            requested_date=config.desired_date or datetime.now(),
             reason=config.reason,
         )
         response = gateway(payload)

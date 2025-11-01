@@ -176,6 +176,18 @@ class RunScheduleChangeWorkflowTests(unittest.TestCase):
         self.assertIn("現在登録されている日程", result.message)
         self.assertIn("call_schedule_api", result.path)
 
+    def test_requested_datetime_is_parsed_from_prompt(self) -> None:
+        prompt = (
+            f"エントリID {self.non_iw_entry} の日程変更をお願いします。"
+            "2024年07月21日 15:30に変更希望です。理由: 社内調整のため。"
+        )
+
+        result = run_schedule_change_workflow(prompt)
+
+        self.assertEqual(result.classification, "schedule_change")
+        self.assertIn("2024年07月21日 15:30", result.message)
+        self.assertIn("理由: 社内調整のため", result.message)
+
 
 if __name__ == "__main__":  # pragma: no cover - manual execution helper
     unittest.main()
