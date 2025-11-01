@@ -1,6 +1,7 @@
 """FastAPI application exposing workflow endpoints for the Vue frontend."""
 from __future__ import annotations
 
+import logging
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException
@@ -9,6 +10,10 @@ from pydantic import BaseModel
 
 from . import WorkflowResult, run_schedule_change_workflow
 from .application.workflows.schedule_change import classify_schedule_change_prompt
+from .infrastructure.logging import configure_logging
+
+configure_logging()
+logger = logging.getLogger(__name__)
 
 app = FastAPI(title="BayCurrent Workflow API", version="1.1.0")
 
@@ -81,6 +86,9 @@ def suggest_workflow(payload: SuggestWorkflowRequest) -> SuggestWorkflowResponse
     message = _validate_prompt(payload.message)
 
     classification = classify_schedule_change_prompt(message)
+    logger.info(
+        "workflow_suggestion classification=%s message=%s", classification, message
+    )
     if classification == "schedule_change":
         candidate = WorkflowCandidate(
             id="schedule_change",
@@ -106,12 +114,22 @@ def select_workflow(payload: WorkflowSelectionRequest) -> ChatResponse:
     message = _validate_prompt(payload.message)
 
     if payload.decision == "decline":
+        logger.info(
+            "workflow_declined workflow_id=%s decision=%s",
+            payload.workflow_id,
+            payload.decision,
+        )
         reply = "別の選択肢は現在ご用意できません。担当者へ引き継ぎます。"
         path = ["classify_intent"]
         classification = "other"
         return ChatResponse(reply=reply, path=path, classification=classification)
 
     if payload.workflow_id == "schedule_change":
+        logger.info(
+            "workflow_selected workflow_id=%s decision=%s",
+            payload.workflow_id,
+            payload.decision,
+        )
         result: WorkflowResult = run_schedule_change_workflow(message)
         return ChatResponse(
             reply=result.message,
@@ -119,6 +137,11 @@ def select_workflow(payload: WorkflowSelectionRequest) -> ChatResponse:
             classification=result.classification,
         )
 
+    logger.info(
+        "workflow_fallback workflow_id=%s decision=%s",
+        payload.workflow_id,
+        payload.decision,
+    )
     reply = "今回の内容は手動対応が必要です。担当者に共有しておきます。"
     path = ["classify_intent"]
     classification = "other"
