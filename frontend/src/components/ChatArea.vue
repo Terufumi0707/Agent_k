@@ -54,13 +54,13 @@
         id="messageInput"
         v-model="draft"
         placeholder="こちらにメッセージを入力してください"
-        :disabled="loading || !!pendingWorkflow"
+        :disabled="loading || !!pendingWorkflow || !activeWorkspace"
         @keydown.enter.exact.prevent="handleSubmit"
         @keydown.enter.shift.exact.stop
       ></textarea>
       <button
         type="submit"
-        :disabled="draft.trim().length === 0 || loading || !!pendingWorkflow"
+        :disabled="draft.trim().length === 0 || loading || !!pendingWorkflow || !activeWorkspace"
       >
         {{ loading ? "送信中..." : "送信" }}
       </button>
@@ -72,8 +72,11 @@
 import { nextTick, onMounted, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { useChatStore } from "../stores/chat";
+import { useWorkspaceStore } from "../stores/workspace";
 
 const chatStore = useChatStore();
+const workspaceStore = useWorkspaceStore();
+const { activeWorkspace } = storeToRefs(workspaceStore);
 const { messages, loading, error, pendingWorkflow } = storeToRefs(chatStore);
 const draft = ref("");
 const chatLog = ref(null);
@@ -83,7 +86,12 @@ function formatMessage(text) {
 }
 
 async function handleSubmit() {
-  if (draft.value.trim().length === 0 || loading.value || pendingWorkflow.value) {
+  if (
+    draft.value.trim().length === 0 ||
+    loading.value ||
+    pendingWorkflow.value ||
+    !activeWorkspace.value
+  ) {
     return;
   }
 
@@ -97,6 +105,10 @@ async function handleSubmit() {
 }
 
 async function handleAccept() {
+  if (!activeWorkspace.value) {
+    return;
+  }
+
   await chatStore.acceptSuggestedWorkflow();
   await nextTick();
   if (chatLog.value) {
@@ -105,6 +117,10 @@ async function handleAccept() {
 }
 
 async function handleDecline() {
+  if (!activeWorkspace.value) {
+    return;
+  }
+
   await chatStore.declineSuggestedWorkflow();
   await nextTick();
   if (chatLog.value) {

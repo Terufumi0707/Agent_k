@@ -13,9 +13,26 @@
       <li v-for="workspace in completedWorkspaces" :key="workspace.id" class="completed-item">
         <div class="header">
           <strong class="title">{{ workspace.title }}</strong>
-          <span class="timestamp">{{ formatDate(workspace.lastUpdatedAt) }}</span>
+          <span class="timestamp">{{ formatDateTime(workspace.lastUpdatedAt) }}</span>
         </div>
         <p class="summary">{{ workspace.summary || "要約は登録されていません" }}</p>
+        <div class="log-actions">
+          <button type="button" class="log-toggle" @click="toggleLog(workspace.id)">
+            {{ isExpanded(workspace.id) ? "チャットログを閉じる" : "チャットログを表示" }}
+          </button>
+        </div>
+        <div v-if="isExpanded(workspace.id)" class="transcript">
+          <div v-if="workspace.transcript?.length" class="transcript-list">
+            <div v-for="(entry, index) in workspace.transcript" :key="index" class="transcript-entry">
+              <div class="entry-meta">
+                <span class="speaker">{{ entry.role === "assistant" ? "AI" : "あなた" }}</span>
+                <span class="entry-time">{{ formatDateTime(entry.timestamp) }}</span>
+              </div>
+              <p class="entry-message" v-html="formatMessage(entry.content)"></p>
+            </div>
+          </div>
+          <p v-else class="transcript-empty">チャットログは登録されていません。</p>
+        </div>
       </li>
     </ul>
 
@@ -28,7 +45,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { storeToRefs } from "pinia";
 import { useRouter } from "vue-router";
 import { useWorkspaceStore } from "../stores/workspace";
@@ -36,6 +53,8 @@ import { useWorkspaceStore } from "../stores/workspace";
 const workspaceStore = useWorkspaceStore();
 const { workspaces } = storeToRefs(workspaceStore);
 const router = useRouter();
+
+const expandedLogId = ref(null);
 
 onMounted(() => {
   if (workspaces.value.length === 0) {
@@ -49,7 +68,15 @@ const completedWorkspaces = computed(() =>
     .sort((a, b) => new Date(b.lastUpdatedAt) - new Date(a.lastUpdatedAt))
 );
 
-function formatDate(timestamp) {
+function toggleLog(id) {
+  expandedLogId.value = expandedLogId.value === id ? null : id;
+}
+
+function isExpanded(id) {
+  return expandedLogId.value === id;
+}
+
+function formatDateTime(timestamp) {
   if (!timestamp) {
     return "";
   }
@@ -59,6 +86,10 @@ function formatDate(timestamp) {
   ).padStart(2, "0")} ${String(date.getHours()).padStart(2, "0")}:${String(
     date.getMinutes()
   ).padStart(2, "0")}`;
+}
+
+function formatMessage(text) {
+  return text.replace(/\n/g, "<br />");
 }
 </script>
 
@@ -109,6 +140,70 @@ function formatDate(timestamp) {
   color: #4b587a;
   font-size: 0.9rem;
   line-height: 1.4;
+}
+
+.log-actions {
+  margin-top: 0.75rem;
+}
+
+.log-toggle {
+  border: none;
+  background: none;
+  color: #1f4fa3;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.log-toggle:focus-visible {
+  outline: 3px solid rgba(31, 79, 163, 0.35);
+  outline-offset: 3px;
+}
+
+.transcript {
+  margin-top: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  border-radius: 12px;
+  background: #f7f9ff;
+  border: 1px solid rgba(212, 223, 245, 0.7);
+}
+
+.transcript-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.transcript-entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.entry-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: #7b879c;
+}
+
+.speaker {
+  font-weight: 600;
+  color: #1f3d6d;
+}
+
+.entry-message {
+  margin: 0;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: #394563;
+}
+
+.transcript-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #4b587a;
 }
 
 .empty-state {
