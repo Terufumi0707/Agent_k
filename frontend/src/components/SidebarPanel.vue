@@ -11,35 +11,37 @@
     <div v-if="workspaceLoading && workspaces.length === 0" class="loading-placeholder">
       ワークスペースを読み込んでいます...
     </div>
-    <ul class="workspace-list">
-      <li
-        v-for="workspace in workspaces"
-        :key="workspace.id"
-        :class="['workspace-item', { active: workspace.id === activeWorkspaceId }]"
-      >
-        <div class="workspace-row">
-          <button type="button" class="workspace-button" @click="selectWorkspace(workspace.id)">
-            <div class="workspace-header">
-              <span class="workspace-title">{{ workspace.title }}</span>
-              <span class="status" :class="workspace.status">
-                {{ workspace.status === "running" ? "実行中" : "実行完了" }}
-              </span>
-            </div>
-            <p class="workspace-summary">
-              {{ workspace.summary || "エージェント入力の要約がまだありません" }}
-            </p>
-          </button>
-          <button
-            type="button"
-            class="delete-button"
-            :disabled="workspaceLoading"
-            @click.stop="handleDeleteWorkspace(workspace.id)"
-          >
-            削除
-          </button>
-        </div>
-      </li>
-    </ul>
+    <div class="workspace-scroll">
+      <ul class="workspace-list">
+        <li
+          v-for="workspace in workspaces"
+          :key="workspace.id"
+          :class="['workspace-item', { active: workspace.id === activeWorkspaceId }]"
+        >
+          <div class="workspace-row">
+            <button type="button" class="workspace-button" @click="selectWorkspace(workspace.id)">
+              <div class="workspace-header">
+                <span class="workspace-title">{{ workspace.title }}</span>
+                <span class="status" :class="workspace.status">
+                  {{ workspace.status === "running" ? "実行中" : "実行完了" }}
+                </span>
+              </div>
+              <p class="workspace-summary">
+                {{ workspace.summary || "エージェント入力の要約がまだありません" }}
+              </p>
+            </button>
+            <button
+              type="button"
+              class="delete-button"
+              :disabled="workspaceLoading"
+              @click.stop="handleDeleteWorkspace(workspace.id)"
+            >
+              削除
+            </button>
+          </div>
+        </li>
+      </ul>
+    </div>
 
     <hr />
 
@@ -106,12 +108,23 @@ async function handleDeleteWorkspace(id) {
   color: #ffffff;
   font-weight: 600;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, opacity 0.2s ease;
+  box-shadow: 0 14px 28px rgba(31, 79, 163, 0.2);
 }
 
 .new-workspace:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+}
+
+.new-workspace:not(:disabled):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 18px 34px rgba(31, 79, 163, 0.28);
+}
+
+.new-workspace:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
 }
 
 .workspace-list {
@@ -126,17 +139,20 @@ async function handleDeleteWorkspace(id) {
 .workspace-item {
   border-radius: 14px;
   background: #f7f9ff;
+  border: 1px solid rgba(212, 223, 245, 0.8);
   transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
 .workspace-item.active {
   background: #ecf2ff;
+  border-color: #b8c9f3;
   box-shadow: 0 8px 20px rgba(67, 105, 198, 0.15);
 }
 
 .workspace-row {
   display: flex;
   align-items: stretch;
+  gap: 0.4rem;
 }
 
 .workspace-button {
@@ -146,6 +162,16 @@ async function handleDeleteWorkspace(id) {
   text-align: left;
   padding: 0.85rem 1rem;
   cursor: pointer;
+  border-radius: 14px;
+}
+
+.workspace-button:hover {
+  background: rgba(236, 242, 255, 0.6);
+}
+
+.workspace-button:focus-visible {
+  outline: 3px solid rgba(42, 108, 198, 0.35);
+  outline-offset: 2px;
 }
 
 .workspace-header {
@@ -183,11 +209,11 @@ async function handleDeleteWorkspace(id) {
 
 .delete-button {
   flex: 0 0 auto;
-  margin: 0.5rem;
-  padding: 0.35rem 0.75rem;
+  margin: 0.5rem 0.4rem 0.5rem 0;
+  padding: 0.4rem 0.85rem;
   border: none;
-  border-radius: 8px;
-  background: #ffe9e6;
+  border-radius: 10px;
+  background: rgba(255, 105, 97, 0.12);
   color: #c0392b;
   font-size: 0.8rem;
   font-weight: 600;
