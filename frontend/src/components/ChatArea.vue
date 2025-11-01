@@ -5,7 +5,7 @@
     </div>
     <p class="section-caption">最新の会話が下部に表示されます</p>
 
-    <div class="chat-log" ref="chatLog">
+    <div class="chat-log" ref="chatLog" aria-live="polite">
       <div
         v-for="(message, index) in messages"
         :key="index"
@@ -16,12 +16,12 @@
       </div>
     </div>
 
-    <div v-if="pendingWorkflow" class="workflow-suggestion card">
-      <p class="section-caption" style="margin-bottom: 0.5rem;">
+    <div v-if="pendingWorkflow" class="workflow-suggestion info-block info-surface">
+      <p class="section-caption suggestion-label">
         提案されたワークフロー候補
       </p>
-      <h4 style="margin: 0 0 0.5rem 0;">{{ pendingWorkflow.label }}</h4>
-      <p class="section-caption" style="margin-bottom: 1rem;">
+      <h4 class="suggestion-title">{{ pendingWorkflow.label }}</h4>
+      <p class="section-caption suggestion-description">
         {{ pendingWorkflow.description }}
       </p>
       <div class="suggestion-actions">
@@ -44,10 +44,10 @@
       </div>
     </div>
 
-    <div v-if="error" class="error-banner">{{ error }}</div>
+    <div v-if="error" class="error-banner" role="alert">{{ error }}</div>
 
     <form class="message-form" @submit.prevent="handleSubmit">
-      <label class="section-caption" for="messageInput">
+      <label class="section-caption message-hint" for="messageInput">
         Enter キーで送信 / Shift + Enter で改行できます
       </label>
       <textarea
@@ -121,8 +121,7 @@ onMounted(() => {
 
 <style scoped>
 .workflow-suggestion {
-  margin-top: 1rem;
-  background: #f7f9ff;
+  margin-top: 0.5rem;
 }
 
 .suggestion-actions {
@@ -137,7 +136,7 @@ onMounted(() => {
   padding: 0.65rem 1.25rem;
   font-size: 0.9rem;
   cursor: pointer;
-  transition: opacity 0.2s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease;
 }
 
 .suggestion-actions button.primary {
@@ -149,6 +148,16 @@ onMounted(() => {
 .suggestion-actions button.secondary {
   background: #e8efff;
   color: #1f3d6d;
+}
+
+.suggestion-actions button:focus-visible {
+  outline: 3px solid rgba(31, 79, 163, 0.25);
+  outline-offset: 2px;
+}
+
+.suggestion-actions button:not(:disabled):hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 28px rgba(31, 79, 163, 0.24);
 }
 
 .suggestion-actions button:disabled {

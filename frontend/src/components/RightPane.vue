@@ -5,15 +5,17 @@
     </div>
     <p class="section-caption">最新の生成結果</p>
 
-    <div class="card" style="padding: 1rem; background: #f7f9ff;">
-      <p v-if="lastOutput" v-html="formatMessage(lastOutput)"></p>
-      <p v-else class="section-caption">（ここに最新の応答や生成結果が表示されます）</p>
+    <div class="info-block info-surface">
+      <p v-if="lastOutput" class="info-text" v-html="formatMessage(lastOutput)"></p>
+      <p v-else class="section-caption info-placeholder">
+        （ここに最新の応答や生成結果が表示されます）
+      </p>
     </div>
 
-    <div v-if="pendingWorkflow" class="card" style="margin-top: 1rem; padding: 1rem; background: #fff7e6;">
-      <p class="section-caption" style="margin-bottom: 0.4rem;">提案中のワークフロー</p>
-      <strong>{{ pendingWorkflow.label }}</strong>
-      <p class="section-caption" style="margin: 0.4rem 0 0 0;">
+    <div v-if="pendingWorkflow" class="info-block info-warning">
+      <p class="section-caption info-caption">提案中のワークフロー</p>
+      <strong class="info-title">{{ pendingWorkflow.label }}</strong>
+      <p class="section-caption info-description">
         {{ pendingWorkflow.description }}
       </p>
     </div>
@@ -25,10 +27,10 @@
     </div>
     <p class="section-caption">直近 3 件の会話を確認できます</p>
 
-    <div class="card" style="padding: 1rem; background: #f7f9ff;">
-      <div v-for="(message, index) in recentMessages" :key="index" style="margin-bottom: 0.75rem;">
-        <strong>{{ message.role === "assistant" ? "AI" : "あなた" }}</strong>
-        <p class="section-caption" v-html="formatMessage(message.content)"></p>
+    <div class="info-block info-surface">
+      <div v-for="(message, index) in recentMessages" :key="index" class="log-entry">
+        <strong class="log-speaker">{{ message.role === "assistant" ? "AI" : "あなた" }}</strong>
+        <p class="section-caption log-message" v-html="formatMessage(message.content)"></p>
       </div>
     </div>
   </aside>

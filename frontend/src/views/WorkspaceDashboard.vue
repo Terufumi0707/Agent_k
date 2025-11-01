@@ -1,8 +1,8 @@
 <template>
-  <div class="app-content">
-    <SidebarPanel />
-    <ChatArea />
-    <RightPane />
+  <div class="workspace-layout">
+    <SidebarPanel class="layout-sidebar" />
+    <ChatArea class="layout-chat" />
+    <RightPane class="layout-right" />
   </div>
 </template>
 

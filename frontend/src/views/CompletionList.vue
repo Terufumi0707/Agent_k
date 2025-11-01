@@ -64,10 +64,12 @@ function formatDate(timestamp) {
 
 <style scoped>
 .completion-page {
-  padding: 1.5rem;
+  padding: 1.75rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
+  max-width: 820px;
+  margin: 0 auto;
 }
 
 .completed-list {
@@ -80,9 +82,10 @@ function formatDate(timestamp) {
 }
 
 .completed-item {
-  padding: 1rem;
-  border-radius: 12px;
-  background: #f7f9ff;
+  padding: 1.1rem 1.25rem;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(245, 248, 255, 0.95), rgba(255, 255, 255, 0.95));
+  border: 1px solid rgba(212, 223, 245, 0.8);
 }
 
 .completed-item .header {
@@ -120,6 +123,7 @@ function formatDate(timestamp) {
   margin-top: auto;
   display: flex;
   justify-content: flex-end;
+  gap: 0.75rem;
 }
 
 .actions .primary {
@@ -130,5 +134,30 @@ function formatDate(timestamp) {
   background: linear-gradient(135deg, #1f4fa3, #4369c6);
   color: #ffffff;
   cursor: pointer;
+}
+
+.actions .primary:focus-visible {
+  outline: 3px solid rgba(31, 79, 163, 0.35);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .completion-page {
+    padding: 1.25rem;
+  }
+
+  .completed-item .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+  }
+
+  .actions {
+    justify-content: center;
+  }
+
+  .actions .primary {
+    width: 100%;
+  }
 }
 </style>
