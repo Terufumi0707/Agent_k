@@ -147,7 +147,8 @@ async function handleDecline() {
   }
 }
 
-function handleNavigateToCompletion() {
+async function handleNavigateToCompletion() {
+  await workspaceStore.markActiveWorkspaceCompleted();
   chatStore.dismissCompletionPrompt();
   router.push({ name: "completed-workspaces" });
 }
