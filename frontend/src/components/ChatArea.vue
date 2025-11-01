@@ -48,15 +48,13 @@
 
     <form class="message-form" @submit.prevent="handleSubmit">
       <label class="section-caption message-hint" for="messageInput">
-        Enter キーで送信 / Shift + Enter で改行できます
+        メッセージを入力後、送信ボタンを押してください
       </label>
       <textarea
         id="messageInput"
         v-model="draft"
         placeholder="こちらにメッセージを入力してください"
         :disabled="loading || !!pendingWorkflow || !activeWorkspace"
-        @keydown.enter.exact.prevent="handleSubmit"
-        @keydown.enter.shift.exact.stop
       ></textarea>
       <button
         type="submit"
