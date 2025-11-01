@@ -2,6 +2,7 @@ import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 import {
   createWorkspaceRecord,
+  deleteWorkspaceRecord,
   fetchWorkspaces,
   updateWorkspaceRecord
 } from "../services/mockWorkspaceDb";
@@ -113,6 +114,25 @@ export const useWorkspaceStore = defineStore("workspace", () => {
       status: "completed"
     });
     updateWorkspaceState(updated);
+    return updated;
+  }
+
+  async function deleteWorkspace(id) {
+    loading.value = true;
+    error.value = null;
+
+    try {
+      await deleteWorkspaceRecord(id);
+      workspaces.value = workspaces.value.filter((workspace) => workspace.id !== id);
+      if (activeWorkspaceId.value === id) {
+        activeWorkspaceId.value = workspaces.value[0]?.id || null;
+      }
+    } catch (err) {
+      error.value = "ワークスペースの削除に失敗しました。";
+      throw err;
+    } finally {
+      loading.value = false;
+    }
   }
 
   return {
@@ -125,6 +145,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     createWorkspace,
     setActiveWorkspace,
     updateSummaryWithAgentInput,
-    markActiveWorkspaceCompleted
+    markActiveWorkspaceCompleted,
+    deleteWorkspace
   };
 });

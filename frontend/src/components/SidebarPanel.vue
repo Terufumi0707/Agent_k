@@ -5,7 +5,7 @@
       <span class="badge">LangGraph</span>
     </div>
     <button class="new-workspace" type="button" @click="handleCreateWorkspace" :disabled="workspaceLoading">
-      {{ workspaceLoading ? "作成中..." : "新規ワークスペース" }}
+      {{ workspaceLoading ? "処理中..." : "新規ワークスペース" }}
     </button>
     <p v-if="workspaceError" class="error-text">{{ workspaceError }}</p>
     <div v-if="workspaceLoading && workspaces.length === 0" class="loading-placeholder">
@@ -17,17 +17,27 @@
         :key="workspace.id"
         :class="['workspace-item', { active: workspace.id === activeWorkspaceId }]"
       >
-        <button type="button" class="workspace-button" @click="selectWorkspace(workspace.id)">
-          <div class="workspace-header">
-            <span class="workspace-title">{{ workspace.title }}</span>
-            <span class="status" :class="workspace.status">
-              {{ workspace.status === "running" ? "実行中" : "実行完了" }}
-            </span>
-          </div>
-          <p class="workspace-summary">
-            {{ workspace.summary || "エージェント入力の要約がまだありません" }}
-          </p>
-        </button>
+        <div class="workspace-row">
+          <button type="button" class="workspace-button" @click="selectWorkspace(workspace.id)">
+            <div class="workspace-header">
+              <span class="workspace-title">{{ workspace.title }}</span>
+              <span class="status" :class="workspace.status">
+                {{ workspace.status === "running" ? "実行中" : "実行完了" }}
+              </span>
+            </div>
+            <p class="workspace-summary">
+              {{ workspace.summary || "エージェント入力の要約がまだありません" }}
+            </p>
+          </button>
+          <button
+            type="button"
+            class="delete-button"
+            :disabled="workspaceLoading"
+            @click.stop="handleDeleteWorkspace(workspace.id)"
+          >
+            削除
+          </button>
+        </div>
       </li>
     </ul>
 
@@ -71,6 +81,18 @@ function selectWorkspace(id) {
   workspaceStore.setActiveWorkspace(id);
   chatStore.resetSession();
 }
+
+async function handleDeleteWorkspace(id) {
+  try {
+    const wasActive = id === activeWorkspaceId.value;
+    await workspaceStore.deleteWorkspace(id);
+    if (wasActive) {
+      chatStore.resetSession();
+    }
+  } catch (err) {
+    // error handled via store state
+  }
+}
 </script>
 
 <style scoped>
@@ -112,8 +134,13 @@ function selectWorkspace(id) {
   box-shadow: 0 8px 20px rgba(67, 105, 198, 0.15);
 }
 
+.workspace-row {
+  display: flex;
+  align-items: stretch;
+}
+
 .workspace-button {
-  width: 100%;
+  flex: 1 1 auto;
   background: transparent;
   border: none;
   text-align: left;
@@ -152,6 +179,26 @@ function selectWorkspace(id) {
   color: #4b587a;
   font-size: 0.85rem;
   line-height: 1.4;
+}
+
+.delete-button {
+  flex: 0 0 auto;
+  margin: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border: none;
+  border-radius: 8px;
+  background: #ffe9e6;
+  color: #c0392b;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  height: fit-content;
+  align-self: flex-start;
+}
+
+.delete-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }
 
 .loading-placeholder {
