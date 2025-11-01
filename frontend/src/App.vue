@@ -42,12 +42,10 @@ import { RouterLink, RouterView } from "vue-router";
 }
 
 .content-wrapper {
-  margin: 0 auto;
   width: 100%;
-  max-width: 1280px;
   display: flex;
   flex-direction: column;
-  gap: 1.5rem;
+  gap: 1.75rem;
 }
 
 .header-nav {
@@ -83,7 +81,7 @@ import { RouterLink, RouterView } from "vue-router";
   }
 
   .content-wrapper {
-    gap: 1.25rem;
+    gap: 1.5rem;
   }
 
   .header-nav {
