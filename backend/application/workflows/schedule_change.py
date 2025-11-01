@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime
+import re
 from typing import Literal, Optional, TypedDict, cast
 
 from langgraph.graph import END, START, StateGraph
@@ -27,7 +28,9 @@ class WorkflowState(TypedDict, total=False):
 
     prompt: str
     classification: Literal["schedule_change", "other"]
+    entry_id: str
     api_result: Optional[str]
+    api_status: Optional[str]
 
 
 @dataclass(frozen=True)
@@ -39,6 +42,47 @@ class WorkflowResult:
     classification: Literal["schedule_change", "other"]
 
 
+ENTRY_ID_PATTERN = re.compile(r"\b(\d{4})\b")
+SCHEDULE_CHANGE_KEYWORDS_JA = (
+    "日程変更",
+    "予定変更",
+    "スケジュール変更",
+    "リスケジュール",
+    "リスケ",
+)
+SCHEDULE_CHANGE_KEYWORDS_EN = (
+    "reschedule",
+    "re-schedule",
+    "change schedule",
+    "schedule change",
+)
+
+
+def _contains_entry_id(prompt: str) -> bool:
+    """Return True when the prompt includes a 4 digit entry id."""
+
+    return _extract_entry_id(prompt) is not None
+
+
+def _extract_entry_id(prompt: str) -> Optional[str]:
+    """Extract the first four digit entry id from the prompt if present."""
+
+    match = ENTRY_ID_PATTERN.search(prompt)
+    if match:
+        return match.group(1)
+    return None
+
+
+def _contains_schedule_change_request(prompt: str) -> bool:
+    """Return True when the prompt explicitly asks for a schedule change."""
+
+    if any(keyword in prompt for keyword in SCHEDULE_CHANGE_KEYWORDS_JA):
+        return True
+
+    lowered = prompt.casefold()
+    return any(keyword in lowered for keyword in SCHEDULE_CHANGE_KEYWORDS_EN)
+
+
 def _classify_intent_factory(prompts: ScheduleChangePrompts):
     """分類ノードを生成するファクトリー。"""
 
@@ -48,6 +92,11 @@ def _classify_intent_factory(prompts: ScheduleChangePrompts):
         """ユーザー入力が日程変更かどうかを判定する。"""
 
         prompt = state["prompt"]
+
+        entry_id = _extract_entry_id(prompt)
+
+        if entry_id is None or not _contains_schedule_change_request(prompt):
+            return {"classification": "other"}
 
         classification: Literal["schedule_change", "other"] = "schedule_change"
 
@@ -69,7 +118,12 @@ def _classify_intent_factory(prompts: ScheduleChangePrompts):
                     Literal["schedule_change", "other"], cleaned
                 )
 
-        return {"classification": classification}
+        result: WorkflowState = {"classification": classification}
+
+        if classification == "schedule_change":
+            result["entry_id"] = entry_id
+
+        return result
 
     return classify_intent
 
@@ -85,13 +139,19 @@ def _call_schedule_api_factory(gateway: ScheduleApiGateway):
         if config is None:
             config = WorkflowConfig()
 
+        entry_id = state.get("entry_id")
+
+        if entry_id is None:
+            raise ValueError("entry_id is required to call the schedule API")
+
         payload = ScheduleChangeRequest(
+            entry_id=entry_id,
             requester=config.requester_name,
             requested_date=config.desired_date or datetime.now(),
             reason=config.reason,
         )
         response = gateway(payload)
-        return {"api_result": response.message}
+        return {"api_result": response.message, "api_status": response.status}
 
     return call_schedule_api
 
@@ -151,14 +211,32 @@ def run_schedule_change_workflow(
     selected_prompts = prompts or DEFAULT_SCHEDULE_CHANGE_PROMPTS
     selected_gateway = gateway or _DEFAULT_GATEWAY
 
-    classification = classify_schedule_change_prompt(prompt, prompts=selected_prompts)
+    classifier = _classify_intent_factory(selected_prompts)
+    state: WorkflowState = {"prompt": prompt}
+    classification_state = classifier(state)
+    classification = classification_state.get("classification", "other")
     path = ["classify_intent"]
 
     if classification == "schedule_change":
+        entry_id = classification_state.get("entry_id") or _extract_entry_id(prompt)
         call_schedule_api = _call_schedule_api_factory(selected_gateway)
-        api_state = call_schedule_api({"prompt": prompt}, config=config)
-        api_message = api_state.get("api_result") or "API 呼び出しに成功しました。"
-        message = "日程変更のリクエストであると判断しました。\n" + api_message
+
+        if not entry_id:
+            api_message = "エントリIDを特定できなかったため処理を中断しました。"
+            api_status: Optional[str] = None
+        else:
+            api_state = call_schedule_api(
+                {"prompt": prompt, "entry_id": entry_id},
+                config=config,
+            )
+            api_message = api_state.get("api_result") or "API 呼び出しに成功しました。"
+            api_status = api_state.get("api_status")
+
+        if api_status == "iw":
+            message = "日程変更のリクエストであると判断しました。\nまだ実装中です。"
+        else:
+            message = "日程変更のリクエストであると判断しました。\n" + api_message
+
         path.append("call_schedule_api")
     else:
         message = "今回は日程変更のリクエストではないと判断しました。"
