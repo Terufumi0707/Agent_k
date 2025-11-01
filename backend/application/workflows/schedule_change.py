@@ -242,10 +242,14 @@ def run_schedule_change_workflow(
             api_message = api_state.get("api_result") or "API 呼び出しに成功しました。"
             api_status = api_state.get("api_status")
 
-        if api_status == "iw":
-            message = "日程変更のリクエストであると判断しました。\nまだ実装中です。"
+        base_message = "日程変更のリクエストであると判断しました。"
+
+        if api_message:
+            message = f"{base_message}\n{api_message}"
+        elif api_status == "iw":
+            message = f"{base_message}\nまだ実装中です。"
         else:
-            message = "日程変更のリクエストであると判断しました。\n" + api_message
+            message = f"{base_message}\nAPI 呼び出しに成功しました。"
 
         path.append("call_schedule_api")
     else:

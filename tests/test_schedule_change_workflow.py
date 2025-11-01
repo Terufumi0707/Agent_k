@@ -1,10 +1,13 @@
 """Tests for the schedule change workflow classification logic."""
 from __future__ import annotations
 
+import os
 import sys
 import types
 import unittest
 from unittest.mock import patch
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 
 def _install_stubs() -> None:
@@ -75,6 +78,9 @@ def _install_stubs() -> None:
 
 _install_stubs()
 
+from backend.infrastructure.schedule_change.scenarios import (  # noqa: E402  pylint: disable=C0413
+    SCHEDULE_SCENARIOS,
+)
 from backend.application.workflows.schedule_change import (  # noqa: E402  pylint: disable=C0413
     classify_schedule_change_prompt,
     run_schedule_change_workflow,
@@ -146,31 +152,31 @@ class RunScheduleChangeWorkflowTests(unittest.TestCase):
         self.mock_classifier = patcher.start()
         self.mock_classifier.return_value = "schedule_change"
 
-        patcher = patch(
-            "backend.infrastructure.schedule_change.mock_api._is_iw_entry",
-            autospec=True,
+        scenarios = list(SCHEDULE_SCENARIOS.values())
+        self.iw_entry = next(s.entry_id for s in scenarios if s.is_iw)
+        self.non_iw_entry = next(s.entry_id for s in scenarios if not s.is_iw)
+
+    def test_returns_detailed_message_when_iw_entry(self) -> None:
+        result = run_schedule_change_workflow(
+            f"エントリID {self.iw_entry} の日程変更をお願いします。"
         )
-        self.addCleanup(patcher.stop)
-        self.mock_iw_checker = patcher.start()
-
-    def test_returns_placeholder_message_when_iw_entry(self) -> None:
-        self.mock_iw_checker.return_value = True
-
-        result = run_schedule_change_workflow("エントリID 5678 の日程変更をお願いします。")
 
         self.assertEqual(result.classification, "schedule_change")
-        self.assertIn("まだ実装中です", result.message)
+        self.assertIn("IW対象", result.message)
+        self.assertIn("変更候補", result.message)
         self.assertIn("call_schedule_api", result.path)
 
-    def test_executes_schedule_change_when_non_iw_entry(self) -> None:
-        self.mock_iw_checker.return_value = False
-
-        result = run_schedule_change_workflow("エントリID 9012 の日程変更をお願いします。")
+    def test_returns_acknowledgement_when_non_iw_entry(self) -> None:
+        result = run_schedule_change_workflow(
+            f"エントリID {self.non_iw_entry} の日程変更をお願いします。"
+        )
 
         self.assertEqual(result.classification, "schedule_change")
-        self.assertIn("変更しました", result.message)
+        self.assertIn("受け付けました", result.message)
+        self.assertIn("現在登録されている日程", result.message)
         self.assertIn("call_schedule_api", result.path)
 
 
 if __name__ == "__main__":  # pragma: no cover - manual execution helper
     unittest.main()
+
