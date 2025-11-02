@@ -5,7 +5,7 @@ import {
   deleteWorkspaceRecord,
   fetchWorkspaces,
   updateWorkspaceRecord
-} from "../services/mockWorkspaceDb";
+} from "../services/workspaces";
 import { DEFAULT_GREETING_MESSAGE } from "../constants/chat";
 
 function buildSummary(text) {

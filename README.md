@@ -4,10 +4,10 @@
 
 ## ディレクトリ構成
 
-- `frontend/` — Vite + Vue 3 を利用した SPA。Pinia で状態管理を行い、バックエンド API と通信します。
-- `backend/` — LangGraph ワークフローを呼び出す FastAPI アプリケーション。`uvicorn` で起動します。
+- `frontend/` — Vite + Vue 3 を利用した SPA。Pinia で状態管理を行い、**すべてのデータ取得はバックエンド API 経由で行います**。
+- `backend/` — LangGraph ワークフローを呼び出す FastAPI アプリケーション。`uvicorn` で起動し、フロントエンドからの `/api` リクエストを受け付けます。
 - `mcp/` — MCP（Model Context Protocol）関連のコードを配置する予定の領域。今後の実装をここに追加します。
-- `mock-api/` — フロントエンドとの疎通確認用に利用できるモック API 実装を配置します。
+- `mock_api/` — バックエンドが外部サービスと連携する際のスタブ実装をまとめています。バックエンド内部からのみ参照します。
 
 ## セットアップ
 
@@ -19,13 +19,14 @@
    ```
 2. FastAPI アプリを起動します。
    ```bash
-   uvicorn backend.api:app --reload
+   python3 -m uvicorn backend.api:app --reload
    ```
 3. バックエンドのログは `backend/logs/backend.log` にローテーション付きで保存されます。
    別ターミナルで以下を実行するとリアルタイムに確認できます。
    ```bash
    tail -f backend/logs/backend.log
    ```
+4. ワークスペース一覧など UI で利用するデータはバックエンドの `/api/workspaces` 系エンドポイントが提供します。フロントエンドはバックエンド以外のサービスへ直接アクセスしません。
 
 ### Vue フロントエンド
 
@@ -42,7 +43,18 @@
 
 ### モック API
 
-- `mock-api/mock_backend_chat.py` には、フロントエンドと組み合わせて動作確認を行う際に利用できる簡易レスポンス生成ロジックが含まれています。必要に応じて FastAPI 等のサーバー実装を追加してください。
+- `mock_api/mock_backend_chat.py` には、バックエンドから呼び出す簡易レスポンス生成ロジックが含まれています。フロントエンドは直接利用せず、必ずバックエンド経由で通信します。
+
+### Backend API (モック)
+
+バックエンドのワークフローからモック API を呼び出す場合は、`mock_api` 配下の FastAPI サーバーを起動してください。
+
+```bash
+pip install -r mock_api/requirements.txt  # まだインストールしていない場合
+PYTHONPATH=. python3 -m uvicorn mock_api.server:app --reload --port 8001
+```
+
+> **Note:** `PYTHONPATH=.` を指定できない環境では、リポジトリルートを `sys.path` に追加するなどして `backend` モジュールを解決できるようにしてください。
 
 ## テスト
 
