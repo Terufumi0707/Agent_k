@@ -1,4 +1,4 @@
-"""Application service that exposes workspace CRUD operations."""
+"""ワークスペースの CRUD 処理を提供するアプリケーションサービス。"""
 from __future__ import annotations
 
 from datetime import datetime
@@ -12,22 +12,22 @@ from ...infrastructure.workspaces import (
 
 
 class WorkspaceServiceError(Exception):
-    """Base error for workspace service operations."""
+    """ワークスペースサービスで発生し得る例外の基底クラス。"""
 
 
 class WorkspaceNotFound(WorkspaceServiceError):
-    """Raised when attempting to access a non-existent workspace."""
+    """対象のワークスペースが存在しない場合に送出する例外。"""
 
 
 def list_workspaces() -> list[Workspace]:
-    """Return all workspaces currently registered in the repository."""
+    """リポジトリに登録されているすべてのワークスペースを取得する。"""
 
     repository = get_workspace_repository()
     return repository.list()
 
 
 def create_workspace(title: Optional[str] = None) -> Workspace:
-    """Create a new workspace and return the resulting entity."""
+    """新しいワークスペースを作成し、生成されたエンティティを返す。"""
 
     repository = get_workspace_repository()
     return repository.create(title)
@@ -42,7 +42,7 @@ def update_workspace(
     transcript: Optional[Iterable[TranscriptEntry]] = None,
     last_updated_at: Optional[datetime] = None,
 ) -> Workspace:
-    """Update fields of a workspace by delegating to the repository."""
+    """リポジトリ層へ処理を委譲してワークスペースの各項目を更新する。"""
 
     repository = get_workspace_repository()
     try:
@@ -59,7 +59,7 @@ def update_workspace(
 
 
 def delete_workspace(workspace_id: str) -> None:
-    """Remove a workspace from the repository."""
+    """リポジトリから指定 ID のワークスペースを削除する。"""
 
     repository = get_workspace_repository()
     try:

@@ -1,4 +1,4 @@
-"""Thread-safe in-memory repository for workspace records."""
+"""ワークスペース情報を保持するスレッドセーフなインメモリリポジトリ。"""
 from __future__ import annotations
 
 from copy import deepcopy
@@ -12,11 +12,11 @@ DEFAULT_GREETING_MESSAGE = "こんにちは。BayCurrentエージェントです
 
 
 class WorkspaceNotFoundError(Exception):
-    """Raised when attempting to mutate a workspace that does not exist."""
+    """存在しないワークスペースを操作しようとした際に送出する例外。"""
 
 
 class WorkspaceRepository:
-    """Thread-safe in-memory storage for workspace records."""
+    """ワークスペースレコードを扱うスレッドセーフなインメモリリポジトリ。"""
 
     def __init__(self) -> None:
         self._lock = Lock()
@@ -25,7 +25,7 @@ class WorkspaceRepository:
         self._bootstrap()
 
     def _bootstrap(self) -> None:
-        """Seed the repository with mock data mirroring the previous frontend store."""
+        """旧フロントエンドの状態を模したモックデータで初期化する。"""
 
         def create_transcript_entry(
             role: Literal["assistant", "user"],
@@ -93,13 +93,13 @@ class WorkspaceRepository:
         self._sequence = len(self._workspaces) + 1
 
     def list(self) -> List[Workspace]:
-        """Return a deep copy of all workspace records."""
+        """全ワークスペースレコードのディープコピーを返す。"""
 
         with self._lock:
             return [deepcopy(workspace) for workspace in self._workspaces.values()]
 
     def create(self, title: Optional[str] = None) -> Workspace:
-        """Create a new workspace and return a deep copy of the record."""
+        """新しいワークスペースを生成し、レコードのディープコピーを返す。"""
 
         with self._lock:
             workspace_id = f"ws-{self._sequence:03d}"
@@ -129,7 +129,7 @@ class WorkspaceRepository:
         transcript: Optional[Iterable[TranscriptEntry]] = None,
         last_updated_at: Optional[datetime] = None,
     ) -> Workspace:
-        """Update a workspace and return a deep copy of the new state."""
+        """ワークスペースを更新し、新しい状態のディープコピーを返す。"""
 
         with self._lock:
             try:
@@ -149,7 +149,7 @@ class WorkspaceRepository:
             return deepcopy(workspace)
 
     def delete(self, workspace_id: str) -> None:
-        """Remove a workspace from the repository."""
+        """リポジトリからワークスペースを削除する。"""
 
         with self._lock:
             if workspace_id not in self._workspaces:
@@ -164,6 +164,6 @@ _repository = WorkspaceRepository()
 
 
 def get_workspace_repository() -> WorkspaceRepository:
-    """Return the singleton repository instance used across the app."""
+    """アプリ全体で共有するシングルトンのリポジトリを返す。"""
 
     return _repository

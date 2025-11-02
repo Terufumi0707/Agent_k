@@ -1,4 +1,4 @@
-"""LangGraph を用いた日程変更ワークフロー。"""
+"""LangGraph を用いて日程変更ワークフローを実装したモジュール。"""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -25,7 +25,7 @@ from ...prompts.schedule_change import (
 
 
 class WorkflowState(TypedDict, total=False):
-    """ワークフロー間で共有される状態を管理する型。"""
+    """ノード間で共有する実行状態を保持する辞書型。"""
 
     prompt: str
     classification: Literal["schedule_change", "other"]
@@ -36,7 +36,7 @@ class WorkflowState(TypedDict, total=False):
 
 @dataclass(frozen=True)
 class WorkflowResult:
-    """LangGraph ワークフローの実行結果。"""
+    """LangGraph ワークフローを実行した際の最終結果。"""
 
     message: str
     path: list[str]
@@ -45,7 +45,7 @@ class WorkflowResult:
 
 @dataclass(frozen=True)
 class SchedulePreview:
-    """エントリIDに紐づく現在の登録情報を表現する。"""
+    """エントリIDに紐づく現在の登録情報を表現する値オブジェクト。"""
 
     entry_id: str
     message: str
@@ -53,15 +53,12 @@ class SchedulePreview:
 
 
 #
-# NOTE:
-#   `\b` does not recognise a boundary between ASCII digits and Japanese
-#   characters because both are treated as "word" characters in the Unicode
-#   aware regular expression engine.  As a result, inputs such as
-#   "1111日程変更したい" failed to expose the entry id even though the request
-#   clearly contains a 4-digit identifier.  Instead of relying on word
-#   boundaries we detect a 4-digit sequence that is not surrounded by other
-#   digits.  This keeps the strict "exactly four digits" requirement while
-#   handling Japanese text without spaces.
+# 注意:
+#   `\b` は Unicode 対応正規表現では ASCII 数字と日本語の境界を認識できない。
+#   そのため「1111日程変更したい」のように 4 桁の数字が含まれていても、
+#   単語境界を基準とするとエントリ ID を検出できなかった。
+#   そこで数字の前後に別の数字が現れない 4 桁連続のパターンを検出することで、
+#   厳密に 4 桁のみを拾いつつ、空白がない日本語文にも対応している。
 ENTRY_ID_PATTERN = re.compile(r"(?<!\d)(\d{4})(?!\d)")
 SCHEDULE_CHANGE_KEYWORDS_JA = (
     "日程変更",
@@ -79,13 +76,13 @@ SCHEDULE_CHANGE_KEYWORDS_EN = (
 
 
 def _contains_entry_id(prompt: str) -> bool:
-    """Return True when the prompt includes a 4 digit entry id."""
+    """プロンプト内に 4 桁のエントリ ID が含まれている場合 True を返す。"""
 
     return _extract_entry_id(prompt) is not None
 
 
 def _extract_entry_id(prompt: str) -> Optional[str]:
-    """Extract the first four digit entry id from the prompt if present."""
+    """プロンプトから最初に一致した 4 桁のエントリ ID を抽出して返す。"""
 
     match = ENTRY_ID_PATTERN.search(prompt)
     if match:
@@ -118,7 +115,7 @@ def build_schedule_preview(entry_id: str) -> SchedulePreview:
 
 
 def _contains_schedule_change_request(prompt: str) -> bool:
-    """Return True when the prompt explicitly asks for a schedule change."""
+    """入力文が日程変更を明示的に依頼している場合に True を返す。"""
 
     if any(keyword in prompt for keyword in SCHEDULE_CHANGE_KEYWORDS_JA):
         return True
@@ -128,12 +125,12 @@ def _contains_schedule_change_request(prompt: str) -> bool:
 
 
 def _classify_intent_factory(prompts: ScheduleChangePrompts):
-    """分類ノードを生成するファクトリー。"""
+    """分類ノードを生成するためのファクトリー関数。"""
 
     def classify_intent(
         state: WorkflowState, config: WorkflowConfig | None = None
     ) -> WorkflowState:
-        """ユーザー入力が日程変更かどうかを判定する。"""
+        """ユーザー入力が日程変更かどうかを判定して状態を返す。"""
 
         prompt = state["prompt"]
 
@@ -173,12 +170,12 @@ def _classify_intent_factory(prompts: ScheduleChangePrompts):
 
 
 def _call_schedule_api_factory(gateway: ScheduleApiGateway):
-    """日程変更 API を呼び出すノードを生成する。"""
+    """日程変更 API を呼び出すノードを生成するファクトリー。"""
 
     def call_schedule_api(
         state: WorkflowState, config: WorkflowConfig | None = None
     ) -> WorkflowState:
-        """ゲートウェイを利用して日程変更 API をコールする。"""
+        """ゲートウェイを利用して日程変更 API を呼び出し結果を状態に格納する。"""
 
         if config is None:
             config = WorkflowConfig()
@@ -186,7 +183,7 @@ def _call_schedule_api_factory(gateway: ScheduleApiGateway):
         entry_id = state.get("entry_id")
 
         if entry_id is None:
-            raise ValueError("entry_id is required to call the schedule API")
+            raise ValueError("日程変更 API を呼び出すには entry_id が必要です")
 
         payload = ScheduleChangeRequest(
             entry_id=entry_id,
@@ -201,7 +198,7 @@ def _call_schedule_api_factory(gateway: ScheduleApiGateway):
 
 
 def should_call_schedule_api(state: WorkflowState) -> bool:
-    """分類結果に応じて API 呼び出しが必要かどうかを返す。"""
+    """分類結果に応じて API 呼び出しが必要かを判定する。"""
 
     return state.get("classification") == "schedule_change"
 
@@ -209,7 +206,7 @@ def should_call_schedule_api(state: WorkflowState) -> bool:
 def build_schedule_change_app(
     prompts: ScheduleChangePrompts, gateway: ScheduleApiGateway
 ):
-    """LangGraph アプリケーションを構築する。"""
+    """LangGraph アプリケーションを構築して状態遷移を定義する。"""
 
     workflow = StateGraph(WorkflowState)
     workflow.add_node("classify_intent", _classify_intent_factory(prompts))

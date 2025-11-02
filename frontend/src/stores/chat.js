@@ -1,12 +1,15 @@
+// チャットやワークフロー提案の状態を管理するストア
 import { computed, ref, watch } from "vue";
 import { defineStore, storeToRefs } from "pinia";
 import { suggestWorkflow, submitWorkflowSelection } from "../services/api";
 import { DEFAULT_GREETING_MESSAGE } from "../constants/chat";
 import { useWorkspaceStore } from "./workspace";
 
+// タスク完了時に案内するメッセージ
 export const COMPLETION_PROMPT_MESSAGE =
   "一連のタスクが完了しました。実行完了一覧に移動してもよろしいですか？";
 
+// チャット用のメッセージオブジェクトを生成
 function createChatEntry(role, content, timestamp) {
   return {
     role,
@@ -15,6 +18,7 @@ function createChatEntry(role, content, timestamp) {
   };
 }
 
+// 初期表示の会話（AIからの挨拶）を返す
 function getDefaultConversation() {
   return [createChatEntry("assistant", DEFAULT_GREETING_MESSAGE)];
 }
@@ -36,10 +40,12 @@ export const useChatStore = defineStore("chat", () => {
 
   let currentWorkspaceId = null;
 
+  // 現在のアクティブワークスペースを取得
   function findActiveWorkspace() {
     return workspaces.value.find((workspace) => workspace.id === activeWorkspaceId.value) || null;
   }
 
+  // ワークスペースに保存されたチャットログを同期
   function syncMessagesFromWorkspace(workspace) {
     if (workspace?.transcript?.length) {
       messages.value = workspace.transcript.map((entry) => ({ ...entry }));
@@ -56,6 +62,7 @@ export const useChatStore = defineStore("chat", () => {
     }
   }
 
+  // ワークフローに関する状態を初期化
   function resetWorkflowState() {
     workflowPath.value = [];
     workflowClassification.value = "other";
@@ -66,10 +73,12 @@ export const useChatStore = defineStore("chat", () => {
     error.value = null;
   }
 
+  // 完了案内を閉じる
   function dismissCompletionPrompt() {
     completionPromptVisible.value = false;
   }
 
+  // ワークスペースの選択が変わったときにメッセージを同期
   function syncActiveWorkspace(forceReset = false) {
     const workspace = findActiveWorkspace();
     syncMessagesFromWorkspace(workspace);
@@ -79,6 +88,7 @@ export const useChatStore = defineStore("chat", () => {
     }
   }
 
+  // ワークスペースの変更を監視して同期処理を呼ぶ
   watch(
     [activeWorkspaceId, workspaces],
     () => {
@@ -87,8 +97,10 @@ export const useChatStore = defineStore("chat", () => {
     { immediate: true, deep: true }
   );
 
+  // 直近3件のメッセージだけを抽出
   const recentMessages = computed(() => messages.value.slice(-3));
 
+  // ユーザーがメッセージを送信したときの処理
   async function sendMessage(text) {
     const trimmed = text.trim();
     if (!trimmed || loading.value) {
@@ -125,6 +137,7 @@ export const useChatStore = defineStore("chat", () => {
     }
   }
 
+  // ワークフローの選択結果をAPIへ送信し、レスポンスを反映
   async function executeWorkflowSelection(decision, userMessage) {
     if (!pendingWorkflow.value || !pendingPrompt.value || loading.value) {
       return;
@@ -176,6 +189,7 @@ export const useChatStore = defineStore("chat", () => {
     }
   }
 
+  // 提案されたワークフローを受け入れる
   async function acceptSuggestedWorkflow() {
     if (!pendingWorkflow.value) {
       return;
@@ -189,6 +203,7 @@ export const useChatStore = defineStore("chat", () => {
     await executeWorkflowSelection("accept", userMessage);
   }
 
+  // 提案されたワークフローを辞退する
   async function declineSuggestedWorkflow() {
     if (!pendingWorkflow.value) {
       return;
@@ -197,6 +212,7 @@ export const useChatStore = defineStore("chat", () => {
     await executeWorkflowSelection("decline", "別の選択肢を検討したいです。");
   }
 
+  // ストア全体を初期状態に戻す
   function resetSession() {
     dismissCompletionPrompt();
     syncActiveWorkspace(true);

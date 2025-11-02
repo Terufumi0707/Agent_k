@@ -1,3 +1,4 @@
+// ワークスペース状態を管理するPiniaストア
 import { computed, ref } from "vue";
 import { defineStore } from "pinia";
 import {
@@ -8,6 +9,7 @@ import {
 } from "../services/workspaces";
 import { DEFAULT_GREETING_MESSAGE } from "../constants/chat";
 
+// エージェントの入力を60文字程度に整形して要約に利用
 function buildSummary(text) {
   const normalized = text.replace(/\s+/g, " ").trim();
   if (!normalized) {
@@ -19,10 +21,12 @@ function buildSummary(text) {
   return `${normalized.slice(0, 57)}...`;
 }
 
+// ワークスペースのデフォルト名称を生成
 function getDefaultTitle(count) {
   return `ワークスペース #${String(count + 1).padStart(2, "0")}`;
 }
 
+// チャットログ用のエントリーデータを組み立て
 function createTranscriptEntry(role, content, timestamp) {
   return {
     role,
@@ -31,6 +35,7 @@ function createTranscriptEntry(role, content, timestamp) {
   };
 }
 
+// トランスクリプトが無い場合は初期挨拶を差し込む
 function ensureTranscript(record) {
   if (Array.isArray(record.transcript) && record.transcript.length > 0) {
     return record.transcript;
@@ -44,10 +49,12 @@ export const useWorkspaceStore = defineStore("workspace", () => {
   const loading = ref(false);
   const error = ref(null);
 
+  // 現在選択されているワークスペースを取得
   const activeWorkspace = computed(() =>
     workspaces.value.find((workspace) => workspace.id === activeWorkspaceId.value) || null
   );
 
+  // アクティブなワークスペースが存在しない場合のフォールバックを決定
   function ensureActiveWorkspaceSelection() {
     const current = workspaces.value.find(
       (workspace) => workspace.id === activeWorkspaceId.value && workspace.status !== "completed"
@@ -60,6 +67,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     activeWorkspaceId.value = candidate?.id ?? null;
   }
 
+  // ワークスペースを手動で切り替える
   function setActiveWorkspace(id) {
     const target = workspaces.value.find(
       (workspace) => workspace.id === id && workspace.status !== "completed"
@@ -71,6 +79,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     }
   }
 
+  // APIから返ってきたワークスペース情報をストアに反映
   function updateWorkspaceState(updated) {
     const hydrated = {
       ...updated,
@@ -87,6 +96,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     ensureActiveWorkspaceSelection();
   }
 
+  // ワークスペース一覧を取得
   async function loadWorkspaces() {
     loading.value = true;
     error.value = null;
@@ -104,6 +114,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     }
   }
 
+  // 新しいワークスペースを作成
   async function createWorkspace() {
     loading.value = true;
     error.value = null;
@@ -122,6 +133,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     }
   }
 
+  // エージェントの入力を要約して現在のワークスペースに保存
   async function updateSummaryWithAgentInput(text) {
     if (!text) {
       return;
@@ -139,6 +151,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     updateWorkspaceState(updated);
   }
 
+  // アクティブなワークスペースを完了状態に更新
   async function markActiveWorkspaceCompleted() {
     const workspace = activeWorkspace.value;
     if (!workspace) {
@@ -156,6 +169,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     return updated;
   }
 
+  // ワークスペースを削除し、必要なら選択状態を更新
   async function deleteWorkspace(id) {
     loading.value = true;
     error.value = null;
@@ -172,6 +186,7 @@ export const useWorkspaceStore = defineStore("workspace", () => {
     }
   }
 
+  // アクティブなワークスペースのチャットログにメッセージを追加
   async function appendMessageToActiveWorkspace(message) {
     const workspace = activeWorkspace.value;
     if (!workspace) {

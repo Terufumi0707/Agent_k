@@ -1,4 +1,4 @@
-"""日程変更判定で利用するプロンプト群。"""
+"""日程変更ワークフロー向けのプロンプト定義。"""
 from __future__ import annotations
 
 from dataclasses import dataclass

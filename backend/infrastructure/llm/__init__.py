@@ -1,4 +1,4 @@
-"""LLM client integrations for the backend infrastructure layer."""
+"""バックエンドのインフラ層で利用する LLM クライアントをまとめたパッケージ。"""
 
 from .gemini import (
     GeminiConfigurationError,

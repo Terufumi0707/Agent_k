@@ -1,4 +1,4 @@
-"""Utilities for configuring backend logging output."""
+"""バックエンドのログ出力を設定するためのユーティリティ。"""
 from __future__ import annotations
 
 import logging
@@ -14,7 +14,7 @@ BACKUP_COUNT = 3
 
 
 def _has_handler(handlers: Iterable[logging.Handler], log_path: Path) -> bool:
-    """Return ``True`` when a matching file handler is already registered."""
+    """指定したパスのハンドラーが既に登録済みなら ``True`` を返す。"""
 
     for handler in handlers:
         if isinstance(handler, RotatingFileHandler) and getattr(
@@ -25,24 +25,23 @@ def _has_handler(handlers: Iterable[logging.Handler], log_path: Path) -> bool:
 
 
 def configure_logging(level: int = logging.INFO) -> Path:
-    """Configure application wide logging.
+    """アプリ全体のロギング設定を初期化してログファイルを生成する。
 
-    The backend writes structured log entries to ``backend/logs/backend.log`` while
-    still emitting records to standard output via uvicorn's default configuration.
-    ``uvicorn`` loggers are configured to propagate so that the same handler setup
-    applies to access and application logs.
+    バックエンドの構造化ログを ``backend/logs/backend.log`` へ出力しつつ、
+    uvicorn 標準の標準出力ログも維持する。uvicorn 系のロガーには
+    propagate を有効化し、アクセスログとアプリログの両方が同じ
+    ハンドラー設定に従うようにする。
 
     Parameters
     ----------
     level:
-        The log level to apply to the root logger. ``logging.INFO`` is the default
-        as it provides actionable signals without being too verbose.
+        ルートロガーへ適用するログレベル。デフォルトは ``logging.INFO`` で、
+        過度に冗長にならず実用的な情報を得られる設定。
 
     Returns
     -------
     Path
-        The path to the log file. This enables callers to surface the location in
-        documentation or during startup.
+        生成したログファイルのパス。呼び出し側で起動ログなどに表示できる。
     """
 
     log_dir = Path(__file__).resolve().parent.parent / "logs"
@@ -59,8 +58,8 @@ def configure_logging(level: int = logging.INFO) -> Path:
         file_handler.setFormatter(logging.Formatter(LOG_FORMAT))
         root_logger.addHandler(file_handler)
 
-    # Forward uvicorn logs (both application and access logs) to the root logger so
-    # the rotating file handler receives them as well.
+    # uvicorn 系ロガーのログもルートロガーへ伝播させ、
+    # ローテーションするファイルハンドラーでまとめて出力できるようにする。
     for logger_name in ("uvicorn", "uvicorn.error", "uvicorn.access", "fastapi"):
         logging.getLogger(logger_name).propagate = True
 

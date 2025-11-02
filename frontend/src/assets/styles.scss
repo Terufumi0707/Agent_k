@@ -1,6 +1,8 @@
+/* 日本語表示向けフォントをGoogle Fontsから読み込む */
 @import url("https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap");
 
 :root {
+  /* 画面全体の基本フォントと配色 */
   font-family: "Noto Sans JP", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #142c54;
   background-color: #f5f7fb;
@@ -13,6 +15,7 @@
 body,
 html,
 #app {
+  /* ページ全体を余白なしで表示し、高さを100%に保つ */
   margin: 0;
   padding: 0;
   height: 100%;
@@ -32,6 +35,7 @@ textarea {
 }
 
 .app-shell {
+  /* アプリ全体の背景と縦並びレイアウト */
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -39,6 +43,7 @@ textarea {
 }
 
 .card {
+  /* 共通のカードレイアウト。白背景と影を付与 */
   background-color: #ffffff;
   border-radius: 16px;
   box-shadow: 0 18px 40px rgba(12, 46, 125, 0.08);
@@ -47,6 +52,7 @@ textarea {
 }
 
 .workspace-layout {
+  /* サイドバー・チャット・右ペインの3カラム構成 */
   display: grid;
   grid-template-areas: "sidebar chat right";
   grid-template-columns: minmax(260px, 320px) minmax(520px, 1fr) minmax(280px, 360px);
@@ -75,6 +81,7 @@ textarea {
 }
 
 @media (max-width: 1400px) {
+  /* 横幅が中程度のときは2カラムに切り替え */
   .workspace-layout {
     grid-template-columns: minmax(240px, 300px) minmax(0, 1fr);
     grid-template-areas:
@@ -89,6 +96,7 @@ textarea {
 }
 
 @media (max-width: 900px) {
+  /* モバイルサイズでは縦並びにする */
   .workspace-layout {
     grid-template-columns: 1fr;
     grid-template-areas:
@@ -100,6 +108,7 @@ textarea {
 }
 
 .section-title {
+  /* セクション見出しの横並び調整 */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -112,18 +121,21 @@ textarea {
 }
 
 .section-caption {
+  /* 見出し下の補足テキスト */
   margin: 0;
   font-size: 0.85rem;
   color: #4b587a;
 }
 
 hr {
+  /* 区切り線 */
   border: none;
   border-top: 1px solid #e3e9f7;
   margin: 1.5rem 0;
 }
 
 .chat-container {
+  /* チャットエリア全体の縦並び */
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -131,6 +143,7 @@ hr {
 }
 
 .chat-log {
+  /* メッセージ履歴のスクロール領域 */
   flex: 1;
   overflow-y: auto;
   display: flex;
@@ -143,6 +156,7 @@ hr {
 }
 
 .chat-bubble {
+  /* メッセージ表示用の吹き出し */
   padding: 0.9rem 1.1rem;
   border-radius: 16px;
   max-width: min(80%, 540px);
@@ -152,12 +166,14 @@ hr {
 }
 
 .chat-bubble.assistant {
+  /* AIからのメッセージ色 */
   align-self: flex-start;
   background: linear-gradient(135deg, #142c54, #1f4fa3);
   color: #ffffff;
 }
 
 .chat-bubble.user {
+  /* ユーザー送信メッセージ色 */
   align-self: flex-end;
   background: #e8efff;
   color: #142c54;
@@ -170,6 +186,7 @@ hr {
 }
 
 .message-form {
+  /* 入力フォームを縦に配置 */
   margin-top: 1.5rem;
   display: flex;
   flex-direction: column;
@@ -181,6 +198,7 @@ hr {
 }
 
 .message-form textarea {
+  /* 入力欄の見た目と操作感 */
   width: 100%;
   border: 1px solid #d5def3;
   border-radius: 12px;
@@ -199,6 +217,7 @@ hr {
 }
 
 .message-form button {
+  /* 送信ボタンの装飾 */
   align-self: flex-end;
   background: #2a6cc6;
   color: #ffffff;

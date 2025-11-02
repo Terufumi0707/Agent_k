@@ -1,4 +1,4 @@
-"""Compatibility layer that proxies to the mock API scenario data."""
+"""モック API のシナリオデータへアクセスする互換レイヤー。"""
 
 from __future__ import annotations
 
@@ -12,13 +12,13 @@ from mock_api.schedule_change_data import (
 
 
 def get_schedule_scenario(entry_id: str) -> ScheduleScenario | None:
-    """Return the predefined scenario for the given entry id if available."""
+    """指定したエントリ ID のシナリオが存在すれば返す。"""
 
     return _get_schedule_scenario(entry_id)
 
 
 def _build_lookup() -> Dict[str, ScheduleScenario]:
-    """Expose a dictionary style view for backwards compatibility."""
+    """後方互換のために辞書形式のビューを生成する。"""
 
     return {scenario.entry_id: scenario for scenario in list_schedule_scenarios()}
 

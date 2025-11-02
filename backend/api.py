@@ -1,4 +1,4 @@
-"""FastAPI application exposing workflow endpoints for the Vue frontend."""
+"""Vue フロントエンド向けにワークフロー API を提供する FastAPI アプリ。"""
 from __future__ import annotations
 
 import logging
@@ -40,13 +40,13 @@ app.add_middleware(
 
 
 class SuggestWorkflowRequest(BaseModel):
-    """Payload for requesting a workflow suggestion based on user input."""
+    """ユーザー入力からワークフロー候補を推測するためのリクエストボディ。"""
 
     message: str
 
 
 class WorkflowCandidate(BaseModel):
-    """Metadata describing a workflow option suggested to the user."""
+    """ユーザーに提示するワークフロー候補のメタデータ。"""
 
     id: Literal["schedule_change", "other"]
     label: str
@@ -54,14 +54,14 @@ class WorkflowCandidate(BaseModel):
 
 
 class SuggestWorkflowResponse(BaseModel):
-    """Response returned after classifying the prompt into a workflow."""
+    """プロンプト分類後に返すレスポンス。候補情報と案内文を含める。"""
 
     message: str
     candidate: WorkflowCandidate
 
 
 class WorkflowSelectionRequest(BaseModel):
-    """Payload sent when the user accepts or declines the proposed workflow."""
+    """提示したワークフローを採用するか否かの結果を送るリクエストボディ。"""
 
     message: str
     workflow_id: Literal["schedule_change", "other"]
@@ -69,7 +69,7 @@ class WorkflowSelectionRequest(BaseModel):
 
 
 class ChatResponse(BaseModel):
-    """Response returned to the frontend after executing a workflow."""
+    """ワークフロー実行後にフロントエンドへ返却する応答。"""
 
     reply: str
     path: list[str]
@@ -77,7 +77,7 @@ class ChatResponse(BaseModel):
 
 
 class TranscriptEntryModel(BaseModel):
-    """Schema describing a transcript log entry returned to the frontend."""
+    """フロントエンドに返す発話ログの 1 レコードを表すスキーマ。"""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -87,7 +87,7 @@ class TranscriptEntryModel(BaseModel):
 
 
 class WorkspaceModel(BaseModel):
-    """Representation of a workspace used in API responses."""
+    """API レスポンスで利用するワークスペース情報の構造。"""
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
@@ -100,13 +100,13 @@ class WorkspaceModel(BaseModel):
 
 
 class WorkspaceCreateRequest(BaseModel):
-    """Request body for creating a new workspace."""
+    """新規ワークスペース作成時のリクエストボディ。"""
 
     title: Optional[str] = None
 
 
 class WorkspaceUpdateRequest(BaseModel):
-    """Request body for updating workspace fields."""
+    """ワークスペース情報を更新するときのリクエストボディ。"""
 
     model_config = ConfigDict(populate_by_name=True)
 
@@ -119,7 +119,7 @@ class WorkspaceUpdateRequest(BaseModel):
 
 @app.get("/api/health")
 def healthcheck() -> dict[str, str]:
-    """Simple health-check endpoint."""
+    """稼働確認のためのシンプルなエンドポイント。"""
 
     return {"status": "ok"}
 
@@ -135,10 +135,11 @@ def _validate_prompt(message: str) -> str:
 
 @app.post("/api/workflows/suggest", response_model=SuggestWorkflowResponse)
 def suggest_workflow(payload: SuggestWorkflowRequest) -> SuggestWorkflowResponse:
-    """Classify the user prompt and suggest a workflow to execute."""
+    """ユーザー入力を分類し、実行すべきワークフロー候補を返す。"""
 
     message = _validate_prompt(payload.message)
 
+    # LLM/正規表現を用いた分類ロジックで入力文を解析する。
     classification = classify_schedule_change_prompt(message)
     logger.info(
         "workflow_suggestion classification=%s message=%s", classification, message
@@ -173,7 +174,7 @@ def suggest_workflow(payload: SuggestWorkflowRequest) -> SuggestWorkflowResponse
 
 @app.post("/api/workflows/select", response_model=ChatResponse)
 def select_workflow(payload: WorkflowSelectionRequest) -> ChatResponse:
-    """Execute the selected workflow or handle the decline decision."""
+    """採用決定されたワークフローを実行し、結果を返す。"""
 
     message = _validate_prompt(payload.message)
 
@@ -194,6 +195,7 @@ def select_workflow(payload: WorkflowSelectionRequest) -> ChatResponse:
             payload.workflow_id,
             payload.decision,
         )
+        # 日程変更ワークフローを実行し、応答と辿ったパスを取得する。
         result: WorkflowResult = run_schedule_change_workflow(message)
         return ChatResponse(
             reply=result.message,
@@ -213,7 +215,7 @@ def select_workflow(payload: WorkflowSelectionRequest) -> ChatResponse:
 
 
 def _to_workspace_response(workspace: Workspace) -> WorkspaceModel:
-    """Convert a workspace entity to a response model."""
+    """ドメインエンティティを API レスポンス用モデルに変換する。"""
 
     return WorkspaceModel.model_validate(workspace, from_attributes=True)
 
@@ -221,7 +223,7 @@ def _to_workspace_response(workspace: Workspace) -> WorkspaceModel:
 def _to_transcript_entries(
     entries: list[TranscriptEntryModel] | None,
 ) -> list[TranscriptEntry] | None:
-    """Convert transcript payload items into domain entities."""
+    """リクエストボディの発話ログをドメインエンティティへ変換する。"""
 
     if entries is None:
         return None
@@ -233,7 +235,7 @@ def _to_transcript_entries(
 
 @app.get("/api/workspaces", response_model=list[WorkspaceModel])
 def get_workspaces() -> list[WorkspaceModel]:
-    """Return all available workspaces for the frontend dashboard."""
+    """ダッシュボードで表示する全ワークスペース一覧を返す。"""
 
     workspaces = list_workspaces()
     return [_to_workspace_response(workspace) for workspace in workspaces]
@@ -241,7 +243,7 @@ def get_workspaces() -> list[WorkspaceModel]:
 
 @app.post("/api/workspaces", response_model=WorkspaceModel, status_code=201)
 def post_workspace(payload: WorkspaceCreateRequest) -> WorkspaceModel:
-    """Create a new workspace and return the persisted record."""
+    """新規ワークスペースを作成して登録結果を返す。"""
 
     workspace = create_workspace(payload.title)
     return _to_workspace_response(workspace)
@@ -251,7 +253,7 @@ def post_workspace(payload: WorkspaceCreateRequest) -> WorkspaceModel:
 def patch_workspace(
     workspace_id: str, payload: WorkspaceUpdateRequest
 ) -> WorkspaceModel:
-    """Update workspace fields based on the payload."""
+    """リクエスト内容に従ってワークスペース情報を更新する。"""
 
     entries = _to_transcript_entries(payload.transcript)
     try:
@@ -270,7 +272,7 @@ def patch_workspace(
 
 @app.delete("/api/workspaces/{workspace_id}", status_code=204)
 def delete_workspace_record(workspace_id: str) -> None:
-    """Remove a workspace from the repository."""
+    """リポジトリからワークスペースを削除する。"""
 
     try:
         delete_workspace(workspace_id)
