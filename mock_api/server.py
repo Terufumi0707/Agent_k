@@ -1,4 +1,14 @@
-"""FastAPI application exposing the mock API endpoints used in development."""
+"""開発時に利用するモックAPIを提供するFastAPIアプリケーション。
+
+エンドポイント一覧
+-------------------
+GET /healthz
+    サービスの稼働状態を示すヘルスチェック結果を返す。
+POST /chat
+    ``message`` を受け取り、決定論的な返信を返すチャットAPIのモック。
+POST /schedule-change
+    スケジュール変更リクエストを受け取り、モックサービスによる判定結果を返す。
+"""
 from __future__ import annotations
 
 from typing import Optional
@@ -13,19 +23,19 @@ from .schedule_change_service import handle_schedule_change_request
 
 
 class ChatRequest(BaseModel):
-    """Request payload for the chat mock endpoint."""
+    """チャットモックAPIが受け取るリクエストボディ。"""
 
     message: str
 
 
 class ChatResponse(BaseModel):
-    """Response payload returned from the chat mock endpoint."""
+    """チャットモックAPIが返却するレスポンスボディ。"""
 
     reply: str
 
 
 class ScheduleChangePayload(BaseModel):
-    """Request payload accepted by the schedule change mock endpoint."""
+    """スケジュール変更モックAPIが受け取るリクエストボディ。"""
 
     entry_id: str
     prompt: str
@@ -34,32 +44,35 @@ class ScheduleChangePayload(BaseModel):
 
 
 class ScheduleChangeResult(BaseModel):
-    """Response payload produced by the schedule change mock endpoint."""
+    """スケジュール変更モックAPIが返却するレスポンスボディ。"""
 
     status: str
     message: str
 
 
 def create_app() -> FastAPI:
-    """Create and configure the FastAPI application instance."""
+    """FastAPIアプリケーションインスタンスを生成して設定する。"""
 
     app = FastAPI(title="Mock Backend API", version="0.1.0")
 
+    # ヘルスチェックAPI: サービスが稼働しているかを判定するために利用する。
     @app.get("/healthz")
     def healthcheck() -> dict[str, str]:
-        """Simple health-check endpoint for readiness probes."""
+        """稼働状態を示すシンプルなヘルスチェックエンドポイント。"""
 
         return {"status": "ok"}
 
+    # チャットAPI: 指定されたメッセージに対して決定論的な返信を返す。
     @app.post("/chat", response_model=ChatResponse)
     def chat(payload: ChatRequest) -> ChatResponse:
-        """Echo back a deterministic reply for UI development."""
+        """UI開発向けに決定論的な返信を返すチャットモック。"""
 
         return ChatResponse(reply=mock_reply(payload.message))
 
+    # スケジュール変更API: モックサービスに処理を委譲して判定結果を返す。
     @app.post("/schedule-change", response_model=ScheduleChangeResult)
     def schedule_change(payload: ScheduleChangePayload) -> ScheduleChangeResult:
-        """Forward schedule change requests to the deterministic mock service."""
+        """スケジュール変更リクエストをモックサービスに転送して判定結果を返す。"""
 
         request = ScheduleChangeRequest(
             entry_id=payload.entry_id,
