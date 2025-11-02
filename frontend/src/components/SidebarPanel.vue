@@ -1,5 +1,6 @@
 <template>
   <aside class="card">
+    <!-- ワークスペース一覧と作成ボタン -->
     <div class="section-title">
       <h3>ワークスペース</h3>
       <span class="badge">LangGraph</span>
@@ -11,6 +12,7 @@
     <div v-if="workspaceLoading && workspaces.length === 0" class="loading-placeholder">
       ワークスペースを読み込んでいます...
     </div>
+    <!-- 実行中ワークスペースのリスト表示 -->
     <div v-if="runningWorkspaces.length > 0" class="workspace-scroll">
       <ul class="workspace-list">
         <li
@@ -48,6 +50,7 @@
 
     <hr />
 
+    <!-- タスク進行状況の表示 -->
     <div class="section-title">
       <h3>タスク状況</h3>
     </div>
@@ -58,39 +61,50 @@
 </template>
 
 <script setup>
+// 計算プロパティとライフサイクルフックを利用
 import { computed, onMounted } from "vue";
+// Piniaストアの状態をリアクティブに取り出すための関数
 import { storeToRefs } from "pinia";
+// ワークフローの進捗コンポーネント
 import WorkflowProgress from "./WorkflowProgress.vue";
+// ワークスペース情報を扱うストア
 import { useWorkspaceStore } from "../stores/workspace";
+// チャットセッションを扱うストア
 import { useChatStore } from "../stores/chat";
 
+// ストアを初期化
 const workspaceStore = useWorkspaceStore();
 const chatStore = useChatStore();
 const { workspaces, activeWorkspaceId, loading: workspaceLoading, error: workspaceError } =
   storeToRefs(workspaceStore);
 
+// 実行中もしくは未完了のワークスペースだけを一覧に表示
 const runningWorkspaces = computed(() =>
   workspaces.value.filter((workspace) => workspace.status !== "completed")
 );
 
+// 初回表示時にワークスペース一覧を取得
 onMounted(() => {
   workspaceStore.loadWorkspaces();
 });
 
+// 新規ワークスペース作成後はチャット状態をリセット
 async function handleCreateWorkspace() {
   try {
     await workspaceStore.createWorkspace();
     chatStore.resetSession();
   } catch (err) {
-    // error message handled by store state
+    // エラーはストア側で管理しているためここでは握りつぶす
   }
 }
 
+// ワークスペースを切り替えたらチャットもクリア
 function selectWorkspace(id) {
   workspaceStore.setActiveWorkspace(id);
   chatStore.resetSession();
 }
 
+// ワークスペース削除時に、対象が選択中ならチャットをリセット
 async function handleDeleteWorkspace(id) {
   try {
     const wasActive = id === activeWorkspaceId.value;
@@ -99,12 +113,13 @@ async function handleDeleteWorkspace(id) {
       chatStore.resetSession();
     }
   } catch (err) {
-    // error handled via store state
+    // エラー表示はストアが担当する
   }
 }
 </script>
 
 <style scoped>
+/* 新規ワークスペース作成ボタンの見た目 */
 .new-workspace {
   width: 100%;
   margin: 0.75rem 0 1rem 0;
@@ -134,6 +149,7 @@ async function handleDeleteWorkspace(id) {
   outline-offset: 2px;
 }
 
+/* ワークスペース一覧の基本設定 */
 .workspace-list {
   list-style: none;
   margin: 0;
@@ -156,6 +172,7 @@ async function handleDeleteWorkspace(id) {
   box-shadow: 0 8px 20px rgba(67, 105, 198, 0.15);
 }
 
+/* ワークスペース行のレイアウト */
 .workspace-row {
   display: flex;
   align-items: stretch;
@@ -181,6 +198,7 @@ async function handleDeleteWorkspace(id) {
   outline-offset: 2px;
 }
 
+/* タイトルとステータス表示 */
 .workspace-header {
   display: flex;
   align-items: center;
@@ -214,6 +232,7 @@ async function handleDeleteWorkspace(id) {
   line-height: 1.4;
 }
 
+/* 削除ボタンのスタイル */
 .delete-button {
   flex: 0 0 auto;
   margin: 0.5rem 0.4rem 0.5rem 0;
@@ -234,6 +253,7 @@ async function handleDeleteWorkspace(id) {
   cursor: not-allowed;
 }
 
+/* 読み込み中のメッセージ表示 */
 .loading-placeholder {
   padding: 0.85rem 1rem;
   border-radius: 12px;
@@ -242,12 +262,14 @@ async function handleDeleteWorkspace(id) {
   font-size: 0.85rem;
 }
 
+/* エラーテキストの見た目 */
 .error-text {
   color: #c0392b;
   font-size: 0.85rem;
   margin-bottom: 0.75rem;
 }
 
+/* ワークスペースがないときの案内 */
 .empty-workspaces {
   padding: 0.85rem 1rem;
   border-radius: 12px;

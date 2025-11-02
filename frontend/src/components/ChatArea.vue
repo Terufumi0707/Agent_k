@@ -1,10 +1,12 @@
 <template>
   <section class="card chat-container">
+    <!-- チャットエリアのタイトルと説明 -->
     <div class="section-title">
       <h3>BayCurrentエージェントとのチャット</h3>
     </div>
     <p class="section-caption">最新の会話が下部に表示されます</p>
 
+    <!-- 送受信したメッセージの一覧。スクロール表示される -->
     <div class="chat-log" ref="chatLog" aria-live="polite">
       <div
         v-for="(message, index) in messages"
@@ -16,6 +18,7 @@
       </div>
     </div>
 
+    <!-- AIからワークフローの提案があった場合に表示するブロック -->
     <div v-if="pendingWorkflow" class="workflow-suggestion info-block info-surface">
       <p class="section-caption suggestion-label">
         提案されたワークフロー候補
@@ -44,6 +47,7 @@
       </div>
     </div>
 
+    <!-- タスク完了時の案内メッセージ -->
     <div
       v-if="completionPromptVisible"
       class="completion-prompt info-block info-surface"
@@ -61,8 +65,10 @@
       </div>
     </div>
 
+    <!-- エラーメッセージの表示領域 -->
     <div v-if="error" class="error-banner" role="alert">{{ error }}</div>
 
+    <!-- ユーザーからメッセージを送信するフォーム -->
     <form class="message-form" @submit.prevent="handleSubmit">
       <label class="section-caption message-hint" for="messageInput">
         メッセージを入力後、送信ボタンを押してください
@@ -84,26 +90,38 @@
 </template>
 
 <script setup>
+// Vue本体から必要な関数を読み込み
 import { nextTick, onMounted, ref } from "vue";
+// Piniaのstoreをreactiveに参照するための関数
 import { storeToRefs } from "pinia";
+// 完了画面へ遷移するためにルーターを利用
 import { useRouter } from "vue-router";
+// チャット関連の定数とストアを読み込み
 import { COMPLETION_PROMPT_MESSAGE, useChatStore } from "../stores/chat";
+// ワークスペースの状態管理を扱うストア
 import { useWorkspaceStore } from "../stores/workspace";
 
+// チャットとワークスペースのストアを初期化
 const chatStore = useChatStore();
 const workspaceStore = useWorkspaceStore();
 const router = useRouter();
+// ストアのリアクティブな値を取得
 const { activeWorkspace } = storeToRefs(workspaceStore);
 const { messages, loading, error, pendingWorkflow, completionPromptVisible } =
   storeToRefs(chatStore);
+// 入力中のメッセージを保持
 const draft = ref("");
+// チャットログDOMを参照してスクロール制御に使う
 const chatLog = ref(null);
+// 完了案内の文言を定数から利用
 const completionPromptMessage = COMPLETION_PROMPT_MESSAGE;
 
+// 改行コードをHTMLの改行タグに置き換えるヘルパー
 function formatMessage(text) {
   return text.replace(/\n/g, "<br />");
 }
 
+// メッセージ送信処理。送信前に条件をチェックする
 async function handleSubmit() {
   if (
     draft.value.trim().length === 0 ||
@@ -123,6 +141,7 @@ async function handleSubmit() {
   }
 }
 
+// 提案されたワークフローを受け入れる処理
 async function handleAccept() {
   if (!activeWorkspace.value) {
     return;
@@ -135,6 +154,7 @@ async function handleAccept() {
   }
 }
 
+// 提案を断る処理。チャットログを最新に保つ
 async function handleDecline() {
   if (!activeWorkspace.value) {
     return;
@@ -147,16 +167,19 @@ async function handleDecline() {
   }
 }
 
+// 完了一覧画面へ移動する処理
 async function handleNavigateToCompletion() {
   await workspaceStore.markActiveWorkspaceCompleted();
   chatStore.dismissCompletionPrompt();
   router.push({ name: "completed-workspaces" });
 }
 
+// 完了メッセージを閉じて現在の画面に留まる
 function handleStayOnWorkspace() {
   chatStore.dismissCompletionPrompt();
 }
 
+// 初回表示時にスクロール位置を一番下にする
 onMounted(() => {
   if (chatLog.value) {
     chatLog.value.scrollTop = chatLog.value.scrollHeight;
@@ -165,16 +188,19 @@ onMounted(() => {
 </script>
 
 <style scoped>
+/* ワークフロー提案ブロックの余白調整 */
 .workflow-suggestion {
   margin-top: 0.5rem;
 }
 
+/* 完了案内メッセージの装飾 */
 .completion-prompt {
   margin-top: 1rem;
   border: 1px solid rgba(31, 79, 163, 0.18);
   background: linear-gradient(135deg, rgba(31, 79, 163, 0.04), rgba(67, 105, 198, 0.08));
 }
 
+/* 完了案内ラベルの強調 */
 .prompt-label {
   font-weight: 600;
   color: #1f3d6d;
@@ -186,12 +212,14 @@ onMounted(() => {
   line-height: 1.5;
 }
 
+/* 完了案内のボタンを横並びにする */
 .prompt-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
 }
 
+/* 完了案内のボタン共通スタイル */
 .prompt-actions button {
   border: none;
   border-radius: 12px;
@@ -201,33 +229,39 @@ onMounted(() => {
   transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease;
 }
 
+/* 完了案内のメインボタン */
 .prompt-actions button.primary {
   background: #1f4fa3;
   color: #ffffff;
   box-shadow: 0 10px 24px rgba(31, 79, 163, 0.2);
 }
 
+/* 完了案内のサブボタン */
 .prompt-actions button.secondary {
   background: #e8efff;
   color: #1f3d6d;
 }
 
+/* キーボード操作時のフォーカス枠 */
 .prompt-actions button:focus-visible {
   outline: 3px solid rgba(31, 79, 163, 0.25);
   outline-offset: 2px;
 }
 
+/* ホバー時のアニメーション */
 .prompt-actions button:not(:disabled):hover {
   transform: translateY(-1px);
   box-shadow: 0 14px 28px rgba(31, 79, 163, 0.24);
 }
 
+/* 非活性化したボタンの見た目 */
 .prompt-actions button:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   box-shadow: none;
 }
 
+/* ワークフロー提案ボタンの並びと見た目 */
 .suggestion-actions {
   display: flex;
   flex-wrap: wrap;
@@ -243,12 +277,14 @@ onMounted(() => {
   transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease;
 }
 
+/* ワークフロー提案のメインボタン */
 .suggestion-actions button.primary {
   background: #1f4fa3;
   color: #ffffff;
   box-shadow: 0 10px 24px rgba(31, 79, 163, 0.2);
 }
 
+/* ワークフロー提案のサブボタン */
 .suggestion-actions button.secondary {
   background: #e8efff;
   color: #1f3d6d;

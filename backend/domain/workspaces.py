@@ -1,4 +1,4 @@
-"""Domain models representing workspace records and transcripts."""
+"""ワークスペースとその会話履歴を表すドメインモデル群。"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -11,7 +11,7 @@ TranscriptRole = Literal["assistant", "user"]
 
 @dataclass
 class TranscriptEntry:
-    """Conversation log entry stored for each workspace."""
+    """ワークスペースごとの会話ログを保持するエンティティ。"""
 
     role: TranscriptRole
     content: str
@@ -20,7 +20,7 @@ class TranscriptEntry:
 
 @dataclass
 class Workspace:
-    """Workspace entity used by the backend application layer."""
+    """バックエンドのアプリケーション層で利用するワークスペースエンティティ。"""
 
     id: str
     title: str

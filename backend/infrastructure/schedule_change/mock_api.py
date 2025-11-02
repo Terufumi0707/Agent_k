@@ -1,4 +1,4 @@
-"""日程変更 API へのモック実装。"""
+"""日程変更用モック API との連携をカプセル化するモジュール。"""
 from __future__ import annotations
 
 from .typing import ScheduleApiGateway

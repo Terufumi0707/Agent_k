@@ -1,4 +1,4 @@
-"""インフラ層で利用する型定義。"""
+"""日程変更 API への依存を抽象化するための型定義モジュール。"""
 from __future__ import annotations
 
 from typing import Protocol

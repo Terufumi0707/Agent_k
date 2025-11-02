@@ -1,4 +1,4 @@
-"""Utilities for calling the Google Gemini models via LangChain."""
+"""LangChain 経由で Google Gemini モデルを呼び出すためのユーティリティ。"""
 from __future__ import annotations
 
 import os
@@ -17,15 +17,15 @@ __all__ = [
 
 
 class GeminiConfigurationError(RuntimeError):
-    """Raised when the Gemini client cannot be configured properly."""
+    """Gemini クライアントの設定に失敗したときに送出する例外。"""
 
 
 class GeminiInvocationError(RuntimeError):
-    """Raised when the Gemini model invocation fails."""
+    """Gemini モデル呼び出しが失敗した場合に送出する例外。"""
 
 
 def _require_api_key() -> str:
-    """Return the Gemini API key from the environment or raise an error."""
+    """環境変数から Gemini の API キーを取得し、未設定なら例外を送出する。"""
 
     api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
@@ -37,7 +37,7 @@ def _require_api_key() -> str:
 
 @lru_cache(maxsize=1)
 def _build_chat_model() -> ChatGoogleGenerativeAI:
-    """Initialise and cache the Gemini chat model client."""
+    """Gemini のチャットモデルクライアントを初期化しキャッシュする。"""
 
     api_key = _require_api_key()
     genai.configure(api_key=api_key)
@@ -49,7 +49,7 @@ def _build_chat_model() -> ChatGoogleGenerativeAI:
 
 
 def _normalise_response_content(content: object) -> str:
-    """Convert various response payload shapes into a clean string."""
+    """レスポンスの形に応じて文字列へ正規化し、扱いやすい形に整える。"""
 
     if isinstance(content, str):
         return content.strip()
@@ -70,7 +70,7 @@ def _normalise_response_content(content: object) -> str:
 
 
 def classify_with_gemini(system_prompt: str, human_prompt: str) -> str:
-    """Send classification prompts to Gemini and return the raw response text."""
+    """Gemini に分類用プロンプトを送信し、生のレスポンステキストを返す。"""
 
     try:
         chat_model = _build_chat_model()

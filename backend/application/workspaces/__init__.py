@@ -1,4 +1,4 @@
-"""Exports for workspace application services."""
+"""ワークスペース関連アプリケーションサービスの公開モジュール。"""
 from .service import (
     WorkspaceNotFound,
     WorkspaceServiceError,

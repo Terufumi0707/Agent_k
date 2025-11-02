@@ -1,4 +1,4 @@
-"""Workspace infrastructure exports."""
+"""ワークスペース関連インフラの公開モジュール。"""
 from .repository import (
     DEFAULT_GREETING_MESSAGE,
     WorkspaceNotFoundError,

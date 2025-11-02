@@ -1,14 +1,17 @@
 <template>
   <div class="completion-page card">
+    <!-- 完了ワークスペースの見出しと説明 -->
     <div class="section-title">
       <h3>実行完了一覧</h3>
     </div>
     <p class="section-caption">完了したワークスペースの履歴です</p>
 
+    <!-- 完了データがない場合のメッセージ -->
     <div v-if="completedWorkspaces.length === 0" class="empty-state">
       実行完了したワークスペースはまだありません。
     </div>
 
+    <!-- 完了済みワークスペースのリスト表示 -->
     <ul v-else class="completed-list">
       <li v-for="workspace in completedWorkspaces" :key="workspace.id" class="completed-item">
         <div class="header">
@@ -36,6 +39,7 @@
       </li>
     </ul>
 
+    <!-- 一覧画面へ戻る操作ボタン -->
     <div class="actions">
       <button type="button" class="primary" @click="router.push({ name: 'workspace-dashboard' })">
         ワークスペース一覧に戻る
@@ -45,8 +49,11 @@
 </template>
 
 <script setup>
+// 完了一覧表示に必要なリアクティブ変数を利用
 import { computed, onMounted, ref } from "vue";
+// Piniaストアからワークスペース状態を取得
 import { storeToRefs } from "pinia";
+// 画面遷移に利用するVue Router
 import { useRouter } from "vue-router";
 import { useWorkspaceStore } from "../stores/workspace";
 
@@ -56,26 +63,31 @@ const router = useRouter();
 
 const expandedLogId = ref(null);
 
+// 初回表示時にデータがなければ取得する
 onMounted(() => {
   if (workspaces.value.length === 0) {
     workspaceStore.loadWorkspaces();
   }
 });
 
+// 完了済みワークスペースのみを抽出し、更新日時でソート
 const completedWorkspaces = computed(() =>
   workspaces.value
     .filter((workspace) => workspace.status === "completed")
     .sort((a, b) => new Date(b.lastUpdatedAt) - new Date(a.lastUpdatedAt))
 );
 
+// 展開するログをトグルする
 function toggleLog(id) {
   expandedLogId.value = expandedLogId.value === id ? null : id;
 }
 
+// 指定IDが展開中かどうかを返す
 function isExpanded(id) {
   return expandedLogId.value === id;
 }
 
+// 日時文字列をYYYY-MM-DD HH:mm形式で整形
 function formatDateTime(timestamp) {
   if (!timestamp) {
     return "";
@@ -88,6 +100,7 @@ function formatDateTime(timestamp) {
   ).padStart(2, "0")}`;
 }
 
+// 改行をHTMLに変換して表示に使う
 function formatMessage(text) {
   return text.replace(/\n/g, "<br />");
 }
@@ -95,6 +108,7 @@ function formatMessage(text) {
 
 <style scoped>
 .completion-page {
+  /* 完了一覧カードのレイアウト */
   padding: 1.75rem;
   display: flex;
   flex-direction: column;
@@ -104,6 +118,7 @@ function formatMessage(text) {
 }
 
 .completed-list {
+  /* 完了ワークスペースのリスト */
   list-style: none;
   margin: 0;
   padding: 0;
@@ -113,6 +128,7 @@ function formatMessage(text) {
 }
 
 .completed-item {
+  /* 各完了ワークスペースカード */
   padding: 1.1rem 1.25rem;
   border-radius: 14px;
   background: linear-gradient(180deg, rgba(245, 248, 255, 0.95), rgba(255, 255, 255, 0.95));
@@ -120,6 +136,7 @@ function formatMessage(text) {
 }
 
 .completed-item .header {
+  /* タイトルと更新日時の行 */
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -143,6 +160,7 @@ function formatMessage(text) {
 }
 
 .log-actions {
+  /* ログ表示切り替えボタンの位置調整 */
   margin-top: 0.75rem;
 }
 
@@ -162,6 +180,7 @@ function formatMessage(text) {
 }
 
 .transcript {
+  /* チャットログ全体の枠 */
   margin-top: 0.75rem;
   padding: 0.75rem 0.85rem;
   border-radius: 12px;
@@ -170,18 +189,21 @@ function formatMessage(text) {
 }
 
 .transcript-list {
+  /* 各チャットの配列 */
   display: flex;
   flex-direction: column;
   gap: 0.65rem;
 }
 
 .transcript-entry {
+  /* 1件のチャット内容 */
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
 }
 
 .entry-meta {
+  /* 発言者と時刻 */
   display: flex;
   justify-content: space-between;
   font-size: 0.75rem;
@@ -207,6 +229,7 @@ function formatMessage(text) {
 }
 
 .empty-state {
+  /* 完了データがない場合の案内 */
   padding: 1rem;
   text-align: center;
   color: #4b587a;
@@ -215,6 +238,7 @@ function formatMessage(text) {
 }
 
 .actions {
+  /* 画面下部のボタン行 */
   margin-top: auto;
   display: flex;
   justify-content: flex-end;
@@ -238,10 +262,12 @@ function formatMessage(text) {
 
 @media (max-width: 600px) {
   .completion-page {
+    /* モバイル時は余白を調整 */
     padding: 1.25rem;
   }
 
   .completed-item .header {
+    /* スマホでは縦並びにする */
     flex-direction: column;
     align-items: flex-start;
     gap: 0.25rem;
