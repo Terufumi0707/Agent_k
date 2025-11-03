@@ -1,0 +1,50 @@
+[
+  {
+    "id": "mock-ws-001",
+    "title": "デモ案件の要件整理",
+    "summary": "提案資料作成に向けた現状整理を実施中。",
+    "status": "running",
+    "lastUpdatedAt": "2025-01-12T09:42:10.000Z",
+    "transcript": [
+      {
+        "role": "assistant",
+        "content": "こんにちは。BayCurrentエージェントです。どの案件から進めますか？",
+        "timestamp": "2025-01-12T09:00:00.000Z"
+      },
+      {
+        "role": "user",
+        "content": "デモ案件の要件整理を一緒に進めてください。",
+        "timestamp": "2025-01-12T09:05:00.000Z"
+      },
+      {
+        "role": "assistant",
+        "content": "承知しました。現状の課題と期待する成果を順に確認していきましょう。",
+        "timestamp": "2025-01-12T09:06:30.000Z"
+      }
+    ]
+  },
+  {
+    "id": "mock-ws-002",
+    "title": "定例会議アジェンダ作成",
+    "summary": "アジェンダ案を共有済み。担当者からのフィードバック待ち。",
+    "status": "completed",
+    "lastUpdatedAt": "2024-12-03T12:15:00.000Z",
+    "transcript": [
+      {
+        "role": "assistant",
+        "content": "定例会議の準備を開始します。議題の優先度を確認させてください。",
+        "timestamp": "2024-12-03T11:50:00.000Z"
+      },
+      {
+        "role": "user",
+        "content": "アジェンダ案をまとめて、最後に宿題の整理もお願いします。",
+        "timestamp": "2024-12-03T11:55:00.000Z"
+      },
+      {
+        "role": "assistant",
+        "content": "アジェンダ案と宿題リストを作成しました。担当者に共有しておきます。",
+        "timestamp": "2024-12-03T12:10:00.000Z"
+      }
+    ]
+  }
+]
