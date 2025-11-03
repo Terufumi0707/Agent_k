@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from datetime import datetime
 from typing import Literal, Optional
 
@@ -24,9 +25,23 @@ from .application.workspaces import (
 )
 from .domain.workspaces import TranscriptEntry, Workspace
 from .infrastructure.logging import configure_logging
+from .infrastructure.schedule_change.typing import ScheduleApiGateway
 
 configure_logging()
 logger = logging.getLogger(__name__)
+
+USE_MCP = os.getenv("USE_MCP") == "1"
+
+if USE_MCP:
+    from .infrastructure.schedule_change.mcp_gateway import MCPScheduleApiGateway
+
+    _SCHEDULE_GATEWAY: ScheduleApiGateway = MCPScheduleApiGateway()
+    logger.info("using MCPScheduleApiGateway")
+else:
+    from .infrastructure.schedule_change.mock_api import MockScheduleApiGateway
+
+    _SCHEDULE_GATEWAY = MockScheduleApiGateway()
+    logger.info("using MockScheduleApiGateway")
 
 app = FastAPI(title="BayCurrent Workflow API", version="1.1.0")
 
@@ -196,7 +211,9 @@ def select_workflow(payload: WorkflowSelectionRequest) -> ChatResponse:
             payload.decision,
         )
         # 日程変更ワークフローを実行し、応答と辿ったパスを取得する。
-        result: WorkflowResult = run_schedule_change_workflow(message)
+        result: WorkflowResult = run_schedule_change_workflow(
+            message, gateway=_SCHEDULE_GATEWAY
+        )
         return ChatResponse(
             reply=result.message,
             path=result.path,
