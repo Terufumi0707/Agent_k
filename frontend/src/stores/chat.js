@@ -181,6 +181,7 @@ export const useChatStore = defineStore("chat", () => {
       );
       messages.value.push(completionPromptEntry);
       await workspaceStore.appendMessageToActiveWorkspace(completionPromptEntry);
+      await workspaceStore.markActiveWorkspaceCompleted();
       completionPromptVisible.value = true;
     } catch (err) {
       error.value = "ワークフローの実行に失敗しました。時間を置いて再度お試しください。";
