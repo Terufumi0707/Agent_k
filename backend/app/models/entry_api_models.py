@@ -3,9 +3,14 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 
+class EntryPayloadItem(BaseModel):
+    work_type: str | None = None
+    work_date: str | None = None
+
+
 class EntryRequest(BaseModel):
     entry_id: str | None = Field(default=None, description="Aナンバー")
-    payload: list[dict] = Field(default_factory=list)
+    payload: list[EntryPayloadItem] = Field(default_factory=list)
 
 
 class EntryResponse(BaseModel):
