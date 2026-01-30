@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Literal, Optional
+from typing import Dict, List, Literal, Optional
 
 from pydantic import BaseModel, Field
 
@@ -76,3 +76,20 @@ class IntakeResponse(BaseModel):
     questions: List[str]
     order_info: Optional[OrderInfo] = None
     assistant_message: Optional[str] = None
+
+
+class AutonomousStartRequest(BaseModel):
+    message: Optional[str] = None
+
+
+class AutonomousNextRequest(BaseModel):
+    session_id: str
+    message: str
+
+
+class AutonomousResponse(BaseModel):
+    session_id: str
+    status: Literal["need_more_info", "completed", "invalid_request"]
+    message: str
+    question: Optional[str] = None
+    result: Optional[Dict[str, object]] = None
