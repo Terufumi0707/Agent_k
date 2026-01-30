@@ -1,4 +1,13 @@
 services:
+  frontend:
+    build:
+      context: ./frontend
+    ports:
+      - "5173:5173"
+    environment:
+      VITE_BACKEND_BASE_URL: http://backend:8000
+    depends_on:
+      - backend
   api:
     build:
       context: ./api
