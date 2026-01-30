@@ -15,9 +15,9 @@ def build_order_info() -> OrderInfo:
         main_a_number="A-12345",
         backup_a_number="A-67890",
         main_work_types=["メイン回線_開通"],
-        main_work_date="2026-02-01",
+        main_work_date=["2026-02-01"],
         backup_work_types=["バックアップ回線_撤去"],
-        backup_work_date="2026-02-05",
+        backup_work_date=["2026-02-05"],
     )
 
 
