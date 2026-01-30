@@ -19,6 +19,7 @@ from app.autonomous_agent import AutonomousAgent
 from app.autonomous_session import autonomous_session_store, save_autonomous_session
 from app.work_parser import parse_work_request
 from app.session import save_session_state, session_store
+from app.controllers import agent_router
 
 app = FastAPI()
 
@@ -29,6 +30,8 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.include_router(agent_router, prefix="/api")
 
 graph = build_graph()
 
