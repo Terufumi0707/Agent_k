@@ -14,6 +14,7 @@ def save_session_state(state: IntakeState) -> None:
 def merge_session_state(state: IntakeState, incoming: dict) -> IntakeState:
     message = incoming.get("message")
     if message:
+        state.last_user_message = message
         parsed = parse_message(message)
         for key, value in parsed.items():
             if incoming.get(key) is None:

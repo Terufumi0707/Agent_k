@@ -7,8 +7,7 @@ from app.llm_client import parse_message_with_gemini
 from app.llm_prompts import gemini_extract_prompt
 from app.models import WorkChange
 
-A_NUMBER_PATTERN = re.compile(r"A-\d+", re.IGNORECASE)
-ENTRY_ID_PATTERN = re.compile(r"ENT-\w+", re.IGNORECASE)
+IDENTIFIER_PATTERN = re.compile(r"[A-Z]{2}\d{10}", re.IGNORECASE)
 WORK_CHANGE_PATTERN = re.compile(
     r"(?:工事種別|work_type)[:：]\s*(?P<work_type>[^,\n]+?)\s*"
     r"(?:,|\n| )+"
@@ -23,13 +22,13 @@ def parse_message(message: Optional[str]) -> Dict:
 
     parsed: Dict[str, object] = {}
 
-    a_match = A_NUMBER_PATTERN.search(message)
-    if a_match:
-        parsed["a_number"] = a_match.group(0)
-
-    entry_match = ENTRY_ID_PATTERN.search(message)
-    if entry_match:
-        parsed["entry_id"] = entry_match.group(0)
+    id_match = IDENTIFIER_PATTERN.search(message)
+    if id_match:
+        identifier = id_match.group(0)
+        if re.search(r"(A番号|a番号)", message, re.IGNORECASE):
+            parsed["a_number"] = identifier
+        elif re.search(r"(エントリ|entry)", message, re.IGNORECASE):
+            parsed["entry_id"] = identifier
 
     work_changes: List[WorkChange] = []
     for match in WORK_CHANGE_PATTERN.finditer(message):
