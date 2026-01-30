@@ -3,6 +3,8 @@ from __future__ import annotations
 import re
 from typing import Dict, List, Optional
 
+from app.llm_client import parse_message_with_gemini
+from app.llm_prompts import gemini_extract_prompt
 from app.models import WorkChange
 
 A_NUMBER_PATTERN = re.compile(r"A-\d+", re.IGNORECASE)
@@ -41,4 +43,23 @@ def parse_message(message: Optional[str]) -> Dict:
     if work_changes:
         parsed["work_changes"] = work_changes
 
+    needs_llm = not parsed.get("a_number") and not parsed.get("entry_id")
+    needs_llm = needs_llm or not parsed.get("work_changes")
+    if needs_llm:
+        llm_parsed = parse_message_with_llm(message)
+        parsed = merge_parsed_results(parsed, llm_parsed)
+
     return parsed
+
+
+def parse_message_with_llm(message: str) -> Dict[str, object]:
+    prompt = gemini_extract_prompt(message)
+    return parse_message_with_gemini(prompt)
+
+
+def merge_parsed_results(primary: Dict[str, object], secondary: Dict[str, object]) -> Dict[str, object]:
+    merged = dict(primary)
+    for key, value in secondary.items():
+        if key not in merged or not merged[key]:
+            merged[key] = value
+    return merged
