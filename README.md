@@ -37,7 +37,7 @@ $env:GEMINI_MODEL="gemini-2.5-flash"
 
 ### 1. 業務システム（api） + AIエージェント（backend）
 
-Docker を使って api / backend を起動します。
+Docker を使って api / backend を起動します。Docker Compose では `docker-compose.yml` に直接 API キーを記載する運用にしているため、`GEMINI_API_KEY` を実値に更新してから起動してください。
 
 ```
 docker compose up --build
