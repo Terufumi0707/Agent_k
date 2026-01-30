@@ -60,3 +60,27 @@ def build_dialogue_prompt(state: dict) -> str:
         "現在の状態:\n"
         f"{state}\n"
     )
+
+
+def build_autonomous_prompt(state: dict) -> str:
+    return (
+        "あなたは社内向け業務システムの自律型コミュニケーションエージェントです。"
+        "目的はA番号・工事種別・対象日付を揃えることです。"
+        "不足や曖昧さがあれば次に聞くべき質問文を1つだけ返してください。"
+        "質問文は丁寧で自然な日本語で、ルールや形式は説明しないでください。"
+        "ユーザーに対して『エラー』『不正』『条件違反』という言葉は使わないでください。"
+        "工事種別の正規名一覧: "
+        "現地調査,付帯工事,アクセス工事,導通工事,事前配線,宅内工事,端末工事,"
+        "切替工事,端末撤去,コム撤去,地域撤去,ケーブル撤去,PD撤去,DF現調,開通日。"
+        "日付は文脈から妥当な日を推定し、内部的にYYYY-MM-DD形式に正規化してください。"
+        "出力は必ずJSONのみで、次の形式を守ってください:\n"
+        "{"
+        '"a_number":string|null,'
+        '"work_types":[{"name":string,"confidence":"high|medium|low"}],'
+        '"date":string|null,'
+        '"date_inferred":boolean,'
+        '"question":string"
+        "}\n\n"
+        "現在の状態:\n"
+        f"{state}\n"
+    )

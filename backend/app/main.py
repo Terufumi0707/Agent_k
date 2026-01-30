@@ -9,9 +9,14 @@ from app.models import (
     IntakeResponse,
     IntakeStartRequest,
     IntakeState,
+    AutonomousNextRequest,
+    AutonomousResponse,
+    AutonomousStartRequest,
     WorkParseRequest,
     WorkParseResponse,
 )
+from app.autonomous_agent import AutonomousAgent
+from app.autonomous_session import autonomous_session_store, save_autonomous_session
 from app.work_parser import parse_work_request
 from app.session import save_session_state, session_store
 
@@ -96,3 +101,57 @@ def next_intake(request: IntakeNextRequest) -> IntakeResponse:
 def parse_work(request: WorkParseRequest) -> WorkParseResponse:
     parsed = parse_work_request(request.message)
     return WorkParseResponse(**parsed)
+
+
+@app.post("/autonomous/start", response_model=AutonomousResponse)
+def start_autonomous(request: AutonomousStartRequest) -> AutonomousResponse:
+    session_id = str(uuid.uuid4())
+    agent = AutonomousAgent()
+    if request.message:
+        result = agent.handle_user_input(request.message)
+    else:
+        question = agent.initial_prompt()
+        result = {"status": "need_more_info", "question": question}
+    save_autonomous_session(session_id, agent)
+    if result["status"] == "completed":
+        return AutonomousResponse(
+            session_id=session_id,
+            status="completed",
+            message="内容を確認しました。",
+            result=result.get("result"),
+        )
+    question = result.get("question") or "追加の情報を確認させてください。"
+    return AutonomousResponse(
+        session_id=session_id,
+        status="need_more_info",
+        message=question,
+        question=question,
+    )
+
+
+@app.post("/autonomous/next", response_model=AutonomousResponse)
+def next_autonomous(request: AutonomousNextRequest) -> AutonomousResponse:
+    agent = autonomous_session_store.get(request.session_id)
+    if not agent:
+        return AutonomousResponse(
+            session_id=request.session_id,
+            status="invalid_request",
+            message="セッションが確認できませんでした。状況を教えてもらえますか？",
+            question="セッションが確認できませんでした。状況を教えてもらえますか？",
+        )
+    result = agent.handle_user_input(request.message)
+    save_autonomous_session(request.session_id, agent)
+    if result["status"] == "completed":
+        return AutonomousResponse(
+            session_id=request.session_id,
+            status="completed",
+            message="内容を確認しました。",
+            result=result.get("result"),
+        )
+    question = result.get("question") or "追加の情報を確認させてください。"
+    return AutonomousResponse(
+        session_id=request.session_id,
+        status="need_more_info",
+        message=question,
+        question=question,
+    )
