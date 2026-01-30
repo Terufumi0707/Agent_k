@@ -80,14 +80,7 @@
 <script setup>
 import { computed, ref } from "vue";
 
-const resolveBackendBaseUrl = () => {
-  const envBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL;
-  if (envBaseUrl) return envBaseUrl.replace(/\/$/, "");
-  if (import.meta.env.DEV) return "http://localhost:8000";
-  return window.location.origin;
-};
-
-const backendBaseUrl = resolveBackendBaseUrl();
+const backendBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL || window.location.origin;
 
 const message = ref("");
 const sentMessages = ref([]);
