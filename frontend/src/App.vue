@@ -1,83 +1,170 @@
 <template>
-  <div>
-    <h1>日程変更の受付AIエージェント（初期フェーズ）</h1>
-
-    <div class="card">
-      <h2>自然言語で入力</h2>
-      <p class="helper">
-        A番号またはエントリID、工事種別、変更希望日を自然な文章で入力してください。
-        例:「A-12345 工事種別: メイン回線_開通 希望日: 2026-02-10」
-      </p>
-      <textarea
-        v-model="message"
-        rows="5"
-        placeholder="例: ENT-001 工事種別: バックアップ回線_撤去 希望日: 2026-02-12"
-      ></textarea>
-      <div class="form-row">
-        <label>
-          <span>変更前オーダー情報を取得</span>
-          <input v-model="fetchCurrentOrder" type="checkbox" />
-        </label>
+  <div class="app-shell">
+    <header class="agent-header">
+      <div>
+        <p class="system-label">NDB 内部業務AI</p>
+        <h1>日程変更エージェント</h1>
+        <p class="tagline">AIが意図を読み取り、状況を整理し、次の一手を一緒に考えます。</p>
       </div>
-
-      <div class="form-row">
-        <button type="button" :disabled="isSubmitting" @click="submit">
-          {{ sessionId ? "追加入力を送信" : "受付を開始" }}
-        </button>
-        <button class="secondary" type="button" @click="resetForm">リセット</button>
+      <div class="header-status">
+        <span class="status-pill">AIと協働する運用モード</span>
       </div>
+    </header>
 
-      <div v-if="status" class="status-box">
-        <strong>ステータス:</strong> {{ status }}
-        <p v-if="messageText">{{ messageText }}</p>
-      </div>
+    <main class="layout-grid">
+      <section class="panel agent-chat-panel">
+        <div class="panel-header">
+          <div>
+            <h2>対話パネル</h2>
+            <p class="subtle">AIの理解・解釈・提案を構造化して確認できます。</p>
+          </div>
+          <div class="confidence-indicator" :data-confidence="confidenceLevel">
+            <span>確信度</span>
+            <strong>{{ confidenceLabel }}</strong>
+          </div>
+        </div>
 
-      <div v-if="questions.length" class="notice">
-        <strong>追加で必要な情報</strong>
-        <p>以下の項目を自然文で教えてください。</p>
-        <ul class="questions">
-          <li v-for="(question, index) in questions" :key="index">{{ question }}</li>
-        </ul>
-      </div>
+        <div class="ai-state">
+          <div v-for="(stage, index) in aiStages" :key="stage" class="ai-stage" :data-active="index <= activeStage">
+            <span class="stage-dot"></span>
+            <span>{{ stage }}</span>
+          </div>
+        </div>
 
-      <div v-if="orderInfo" class="order-info">
-        <div>
-          <strong>主回線 A番号</strong>
-          <p>{{ orderInfo.main_a_number }}</p>
+        <div class="nonblocking-feedback">
+          <span class="pulse"></span>
+          <p>{{ feedbackMessage }}</p>
         </div>
-        <div>
-          <strong>バックアップ A番号</strong>
-          <p>{{ orderInfo.backup_a_number || "-" }}</p>
-        </div>
-        <div>
-          <strong>主回線 工事種別</strong>
-          <p>{{ orderInfo.main_work_types.join(" / ") }}</p>
-        </div>
-        <div>
-          <strong>主回線 工事日</strong>
-          <p>{{ orderInfo.main_work_date || "-" }}</p>
-        </div>
-        <div>
-          <strong>バックアップ 工事種別</strong>
-          <p>{{ orderInfo.backup_work_types.join(" / ") }}</p>
-        </div>
-        <div>
-          <strong>バックアップ 工事日</strong>
-          <p>{{ orderInfo.backup_work_date || "-" }}</p>
-        </div>
-      </div>
-    </div>
 
-    <div class="card">
-      <h2>セッション情報</h2>
-      <p>session_id: {{ sessionId || "未発行" }}</p>
-      <p>不足項目: {{ missingFields.join(", ") || "なし" }}</p>
-    </div>
+        <div class="chat-stream">
+          <div class="chat-card user">
+            <div class="card-label">あなたの依頼</div>
+            <p>{{ message || "日程変更の依頼を入力すると、AIが意図を整理してご案内します。" }}</p>
+          </div>
+
+          <div class="chat-card ai">
+            <div class="card-label">AIの解釈</div>
+            <p>{{ interpretationText }}</p>
+            <div v-if="questions.length" class="info-badges">
+              <span v-for="(question, index) in questions" :key="index" class="badge">{{ question }}</span>
+            </div>
+          </div>
+
+          <div class="chat-card ai">
+            <div class="card-label">AIからの提案</div>
+            <p>{{ proposalText }}</p>
+            <div class="proposal-actions">
+              <button type="button" :disabled="isSubmitting" @click="submit">
+                {{ sessionId ? "追加の背景を伝える" : "AIに相談を始める" }}
+              </button>
+              <button class="secondary" type="button" @click="resetForm">入力をクリア</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="input-panel">
+          <label class="input-label" for="message">依頼内容</label>
+          <textarea
+            id="message"
+            v-model="message"
+            rows="4"
+            placeholder="例: A-12345 工事種別: メイン回線_開通 希望日: 2026-02-10"
+          ></textarea>
+          <div class="form-row">
+            <label class="toggle">
+              <input v-model="fetchCurrentOrder" type="checkbox" />
+              <span>AIが変更前オーダーの文脈を確認する</span>
+            </label>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel stack">
+        <details class="panel reasoning-panel">
+          <summary>
+            <div>
+              <h3>AIの思考ステップ</h3>
+              <p class="subtle">要約を表示し、必要に応じて詳細を確認できます。</p>
+            </div>
+            <span class="summary-chip">{{ reasoningSummary }}</span>
+          </summary>
+          <div class="reasoning-steps">
+            <div v-for="(step, index) in reasoningSteps" :key="step.title" class="reasoning-step">
+              <div class="step-index">0{{ index + 1 }}</div>
+              <div>
+                <strong>{{ step.title }}</strong>
+                <p>{{ step.description }}</p>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <div class="panel decision-panel">
+          <div class="panel-header">
+            <div>
+              <h3>判断サマリー</h3>
+              <p class="subtle">抽出された要素と次の行動を整理しています。</p>
+            </div>
+            <div class="confidence-indicator" :data-confidence="confidenceLevel">
+              <span>確信度</span>
+              <strong>{{ confidenceLabel }}</strong>
+            </div>
+          </div>
+
+          <div class="entity-grid">
+            <div>
+              <span>主回線 A番号</span>
+              <strong>{{ orderInfo?.main_a_number || "未確定" }}</strong>
+            </div>
+            <div>
+              <span>バックアップ A番号</span>
+              <strong>{{ orderInfo?.backup_a_number || "未確定" }}</strong>
+            </div>
+            <div>
+              <span>主回線 工事種別</span>
+              <strong>{{ orderInfo?.main_work_types?.join(" / ") || "未確定" }}</strong>
+            </div>
+            <div>
+              <span>主回線 工事日</span>
+              <strong>{{ orderInfo?.main_work_date || "未確定" }}</strong>
+            </div>
+            <div>
+              <span>バックアップ 工事種別</span>
+              <strong>{{ orderInfo?.backup_work_types?.join(" / ") || "未確定" }}</strong>
+            </div>
+            <div>
+              <span>バックアップ 工事日</span>
+              <strong>{{ orderInfo?.backup_work_date || "未確定" }}</strong>
+            </div>
+          </div>
+
+          <div class="next-action">
+            <p>{{ nextActionText }}</p>
+          </div>
+        </div>
+
+        <div class="panel session-panel">
+          <h3>セッション状況</h3>
+          <div class="session-row">
+            <span>session_id</span>
+            <strong>{{ sessionId || "未発行" }}</strong>
+          </div>
+          <div class="session-row">
+            <span>不足項目</span>
+            <strong>{{ missingFields.join(", ") || "なし" }}</strong>
+          </div>
+          <div v-if="status" class="status-box">
+            <p><strong>最新ステータス:</strong> {{ status }}</p>
+            <p v-if="messageText">{{ messageText }}</p>
+          </div>
+        </div>
+      </section>
+    </main>
   </div>
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 
 const backendBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL || "http://localhost:8000";
 
@@ -90,6 +177,95 @@ const questions = ref([]);
 const missingFields = ref([]);
 const orderInfo = ref(null);
 const isSubmitting = ref(false);
+
+const aiStages = ["理解", "推論", "判断", "提案"];
+
+const normalizedStatus = computed(() => (status.value || "").toLowerCase());
+
+const activeStage = computed(() => {
+  if (normalizedStatus.value.includes("propos")) return 3;
+  if (normalizedStatus.value.includes("decid")) return 2;
+  if (normalizedStatus.value.includes("reason")) return 1;
+  if (sessionId.value) return 0;
+  return 0;
+});
+
+const confidenceLevel = computed(() => {
+  if (questions.value.length > 2 || missingFields.value.length > 2) return "low";
+  if (questions.value.length || missingFields.value.length) return "medium";
+  if (status.value === "error") return "low";
+  return "high";
+});
+
+const confidenceLabel = computed(() => {
+  if (confidenceLevel.value === "low") return "低";
+  if (confidenceLevel.value === "medium") return "中";
+  return "高";
+});
+
+const feedbackMessage = computed(() => {
+  if (isSubmitting.value) return "AIが最新の内容を整理しています…";
+  if (questions.value.length) return "AIが不明点を整理し、確認の準備をしています。";
+  if (sessionId.value) return "AIが提案を磨く準備ができています。";
+  return "AIが依頼内容の入力を待っています。";
+});
+
+const interpretationText = computed(() => {
+  if (messageText.value) return `AIは次のように解釈しました: ${messageText.value}`;
+  return "AIは意図・主要要素・曖昧さを要約して提示します。";
+});
+
+const proposalText = computed(() => {
+  if (questions.value.length) {
+    return "AI: 追加で教えてほしい内容があります。上の確認事項を共有いただけると、確定案に進めます。";
+  }
+  if (orderInfo.value) {
+    return "AI: 必要な要素を整理できました。次は確定に向けた確認をご一緒します。";
+  }
+  return "AI: 依頼内容を入力いただければ、次の行動案をまとめてご案内します。";
+});
+
+const reasoningSummary = computed(() => {
+  if (questions.value.length) return "確認事項あり";
+  if (orderInfo.value) return "主要要素を抽出済み";
+  return "依頼待ち";
+});
+
+const reasoningSteps = computed(() => [
+  {
+    title: "理解",
+    description: message.value
+      ? "AIが依頼の目的と希望日程を捉えています。"
+      : "AIが依頼内容の入力を待っています。"
+  },
+  {
+    title: "推論",
+    description: "AIが工事種別と日程の整合性を静かに確認しています。"
+  },
+  {
+    title: "判断",
+    description: questions.value.length
+      ? "AIが不足要素の確認を優先しています。"
+      : "AIが最適な日程変更案を選定しています。"
+  },
+  {
+    title: "提案",
+    description: "AIが次に進むための提案を整えています。"
+  }
+]);
+
+const nextActionText = computed(() => {
+  if (status.value === "error") {
+    return "AI: 接続状況の確認が必要です。再度状況を共有いただけると助かります。";
+  }
+  if (questions.value.length) {
+    return "AI: 不明点を確認できると、日程変更案を確定できます。";
+  }
+  if (sessionId.value) {
+    return "AI: このまま確定に進む準備が整っています。必要なら追加の背景も教えてください。";
+  }
+  return "AI: 依頼内容を入力いただければ、次の行動案を提示します。";
+});
 
 const resetForm = () => {
   message.value = "";
@@ -130,7 +306,7 @@ const submit = async () => {
     message.value = "";
   } catch (error) {
     status.value = "error";
-    messageText.value = "通信に失敗しました";
+    messageText.value = "通信が不安定なため、もう一度状況を教えてください。";
   } finally {
     isSubmitting.value = false;
   }
