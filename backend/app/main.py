@@ -47,13 +47,17 @@ def start_intake(request: IntakeStartRequest) -> IntakeResponse:
     incoming = request.model_dump()
     state = run_graph(state, incoming)
     save_session_state(state)
+    assistant_message = state.assistant_message or (
+        "内容を確認しました。" if state.status == "completed" else "追加の情報を確認させてください。"
+    )
     return IntakeResponse(
         session_id=state.session_id,
         status=state.status,
-        message="受付完了しました" if state.status == "completed" else "追加情報が必要です",
+        message=assistant_message,
         missing_fields=state.missing_fields,
         questions=state.questions,
         order_info=state.order_info,
+        assistant_message=assistant_message,
     )
 
 
@@ -64,22 +68,27 @@ def next_intake(request: IntakeNextRequest) -> IntakeResponse:
         return IntakeResponse(
             session_id=request.session_id,
             status="invalid_request",
-            message="invalid_request",
+            message="セッションが確認できませんでした。状況を教えてもらえますか？",
             missing_fields=[],
             questions=[],
             order_info=None,
+            assistant_message="セッションが確認できませんでした。状況を教えてもらえますか？",
         )
 
     incoming = request.model_dump()
     state = run_graph(state, incoming)
     save_session_state(state)
+    assistant_message = state.assistant_message or (
+        "内容を確認しました。" if state.status == "completed" else "追加の情報を確認させてください。"
+    )
     return IntakeResponse(
         session_id=state.session_id,
         status=state.status,
-        message="受付完了しました" if state.status == "completed" else "追加情報が必要です",
+        message=assistant_message,
         missing_fields=state.missing_fields,
         questions=state.questions,
         order_info=state.order_info,
+        assistant_message=assistant_message,
     )
 
 

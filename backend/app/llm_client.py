@@ -73,6 +73,35 @@ def parse_work_message_with_gemini(prompt: str) -> Dict[str, object]:
         return {}
 
 
+def parse_dialogue_decision(prompt: str) -> Dict[str, object]:
+    api_key = get_gemini_api_key()
+    if not api_key:
+        return {}
+
+    url = f"{get_gemini_api_base_url().rstrip('/')}/models/{get_gemini_model()}:generateContent"
+    payload = {
+        "contents": [
+            {
+                "role": "user",
+                "parts": [{"text": prompt}],
+            }
+        ],
+        "generationConfig": {"temperature": 0},
+    }
+    try:
+        response = httpx.post(
+            url,
+            params={"key": api_key},
+            json=payload,
+            timeout=get_gemini_timeout_seconds(),
+        )
+        response.raise_for_status()
+        content = response.json()["candidates"][0]["content"]["parts"][0]["text"]
+        return normalize_dialogue_output(content)
+    except (httpx.HTTPError, KeyError, ValueError, json.JSONDecodeError):
+        return {}
+
+
 def normalize_llm_output(content: str) -> Dict[str, object]:
     trimmed = content.strip()
     if trimmed.startswith("```"):
@@ -97,6 +126,28 @@ def normalize_llm_output(content: str) -> Dict[str, object]:
             )
         if work_changes:
             output["work_changes"] = work_changes
+    return output
+
+
+def normalize_dialogue_output(content: str) -> Dict[str, object]:
+    trimmed = content.strip()
+    if trimmed.startswith("```"):
+        trimmed = re.sub(r"^```(?:json)?", "", trimmed).strip()
+        trimmed = re.sub(r"```$", "", trimmed).strip()
+    raw = json.loads(trimmed)
+    if not isinstance(raw, dict):
+        return {}
+    output: Dict[str, object] = {}
+    if raw.get("status") in {"need_more_info", "completed"}:
+        output["status"] = raw.get("status")
+    missing_fields = raw.get("missing_fields")
+    if isinstance(missing_fields, list):
+        output["missing_fields"] = [str(item) for item in missing_fields if item]
+    questions = raw.get("questions")
+    if isinstance(questions, list):
+        output["questions"] = [str(item) for item in questions if item]
+    if raw.get("assistant_message"):
+        output["assistant_message"] = raw.get("assistant_message")
     return output
 
 

@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime
 from typing import Dict, List, Optional, TypedDict
 
 import httpx
 from langgraph.graph import END, StateGraph
 
+from app.llm_client import parse_dialogue_decision
+from app.llm_prompts import build_dialogue_prompt
 from app.models import IntakeState, OrderInfo, WorkChange
 from app.settings import get_http_timeout_seconds, get_system_api_base_url
 from app.session import merge_session_state
@@ -23,6 +24,8 @@ class IntakeGraphState(TypedDict):
     status: str
     logs: List[str]
     incoming: Dict
+    last_user_message: Optional[str]
+    assistant_message: Optional[str]
 
 
 def build_graph():
@@ -52,6 +55,8 @@ def state_to_graph(state: IntakeState, incoming: Dict) -> IntakeGraphState:
         status=state.status,
         logs=state.logs,
         incoming=incoming,
+        last_user_message=state.last_user_message,
+        assistant_message=state.assistant_message,
     )
 
 
@@ -67,6 +72,8 @@ def graph_to_state(graph_state: IntakeGraphState) -> IntakeState:
         questions=graph_state.get("questions", []),
         status=graph_state.get("status", "need_more_info"),
         logs=graph_state.get("logs", []),
+        last_user_message=graph_state.get("last_user_message"),
+        assistant_message=graph_state.get("assistant_message"),
     )
 
 
@@ -81,39 +88,11 @@ def merge_inputs_to_state(state: IntakeGraphState) -> IntakeGraphState:
 
 def validate_and_detect_missing(state: IntakeGraphState) -> IntakeGraphState:
     intake_state = graph_to_state(state)
-    missing_fields: List[str] = []
-    questions: List[str] = []
-
-    if not intake_state.a_number and not intake_state.entry_id:
-        missing_fields.append("identifier")
-        questions.append("A番号またはエントリIDを入力してください。")
-
-    if not intake_state.work_changes:
-        missing_fields.append("work_changes")
-        questions.append("変更対象の工事を1件以上入力してください。")
-    else:
-        for index, work_change in enumerate(intake_state.work_changes):
-            if not work_change.work_type:
-                missing_fields.append(f"work_changes[{index}].work_type")
-                questions.append(f"工事{index + 1}の工事種別を入力してください。")
-            if not work_change.desired_date:
-                missing_fields.append(f"work_changes[{index}].desired_date")
-                questions.append(
-                    f"工事{index + 1}の変更希望日をYYYY-MM-DD形式で入力してください。"
-                )
-            elif not is_valid_date(work_change.desired_date):
-                missing_fields.append(f"work_changes[{index}].desired_date")
-                questions.append(
-                    f"工事{index + 1}の変更希望日をYYYY-MM-DD形式で入力してください。"
-                )
-
-    intake_state.missing_fields = missing_fields
-    intake_state.questions = questions
-    if missing_fields:
-        intake_state.status = "need_more_info"
-    else:
-        intake_state.status = "completed"
-
+    decision = decide_next_action(intake_state)
+    intake_state.missing_fields = decision.get("missing_fields", [])
+    intake_state.questions = decision.get("questions", [])
+    intake_state.status = decision.get("status", "need_more_info")
+    intake_state.assistant_message = decision.get("assistant_message")
     intake_state.logs.append("validate_and_detect_missing")
     return state_to_graph(intake_state, {})
 
@@ -145,9 +124,29 @@ def finalize(state: IntakeGraphState) -> IntakeGraphState:
     return state_to_graph(intake_state, {})
 
 
-def is_valid_date(value: str) -> bool:
-    try:
-        datetime.strptime(value, "%Y-%m-%d")
-        return True
-    except ValueError:
-        return False
+def format_work_changes(work_changes: List[WorkChange]) -> List[Dict[str, Optional[str]]]:
+    return [
+        {"work_type": change.work_type, "desired_date": change.desired_date}
+        for change in work_changes
+    ]
+
+
+def decide_next_action(state: IntakeState) -> Dict[str, object]:
+    payload = {
+        "last_user_message": state.last_user_message,
+        "a_number": state.a_number,
+        "work_changes": format_work_changes(state.work_changes),
+        "assistant_message": state.assistant_message,
+    }
+    prompt = build_dialogue_prompt(payload)
+    response = parse_dialogue_decision(prompt)
+    return response or fallback_decision(state)
+
+
+def fallback_decision(state: IntakeState) -> Dict[str, object]:
+    return {
+        "status": "need_more_info",
+        "missing_fields": ["pending"],
+        "questions": ["内容を整理するため、もう少し状況を教えてもらえますか？"],
+        "assistant_message": "追加の確認が必要です。",
+    }

@@ -64,6 +64,8 @@ class IntakeState(BaseModel):
     questions: List[str] = Field(default_factory=list)
     status: Literal["need_more_info", "completed", "invalid_request"] = "need_more_info"
     logs: List[str] = Field(default_factory=list)
+    last_user_message: Optional[str] = None
+    assistant_message: Optional[str] = None
 
 
 class IntakeResponse(BaseModel):
@@ -73,3 +75,4 @@ class IntakeResponse(BaseModel):
     missing_fields: List[str]
     questions: List[str]
     order_info: Optional[OrderInfo] = None
+    assistant_message: Optional[str] = None
