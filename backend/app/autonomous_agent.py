@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Tuple
 
 from app.llm_client import generate_autonomous_question
 from app.llm_prompts import build_autonomous_prompt
+from app.orchestrator import AutonomousDependencies, AutonomousOrchestrator
 
 WORK_TYPE_CANONICAL = [
     "現地調査",
@@ -80,6 +81,8 @@ class AutonomousAgent:
         # 対話状態はセッション単位で保持する。
         self.state = DialogueState()
         self.validator = RuleBasedValidator()
+        # 役割分担のため、処理順序を担うオーケストレーターを用意する。
+        self.orchestrator = AutonomousOrchestrator()
 
     def initial_prompt(self) -> str:
         return (
@@ -88,37 +91,13 @@ class AutonomousAgent:
         )
 
     def handle_user_input(self, message: str, base_date: Optional[date] = None) -> Dict[str, object]:
-        # ①ユーザー入力の記録と抽出
-        self.state.record_turn("user", message)
-        self._extract_from_message(message, base_date)
+        # オーケストレーターに処理順序を委譲し、状態管理を統一する。
+        dependencies = AutonomousDependencies(state=self.state, validator=self.validator)
+        return self.orchestrator.run(self, dependencies, message, base_date)
 
-        # ②不足項目がある場合は質問を生成
-        if not self._has_all_fields():
-            question = self._generate_question(message)
-            self.state.record_turn("assistant", question)
-            return {"status": "need_more_info", "question": question}
-
-        # ③必要項目が揃ったらルールベース検証
-        is_valid, errors = self.validator.validate(self.state)
-        if is_valid:
-            # ④問題なければ最終出力を返す
-            self.state.overall_confidence = _estimate_overall_confidence(self.state)
-            result = {
-                "a_number": self.state.a_number,
-                "work_types": [
-                    {"name": wt.name, "confidence": wt.confidence} for wt in self.state.work_types
-                ],
-                "date": self.state.date,
-                "date_inferred": self.state.date_inferred,
-                "overall_confidence": self.state.overall_confidence,
-            }
-            return {"status": "completed", "result": result}
-
-        self.state.validation_errors = errors
-        # ④がNGの場合はvalidation_errorsを添えてLLMに再質問を生成させる
-        question = self._generate_question(message, errors)
-        self.state.record_turn("assistant", question)
-        return {"status": "need_more_info", "question": question}
+    def estimate_overall_confidence(self, state: DialogueState) -> str:
+        # オーケストレーターからも利用できるよう、信頼度算出処理を公開する。
+        return _estimate_overall_confidence(state)
 
     def _has_all_fields(self) -> bool:
         return bool(self.state.a_number and self.state.work_types and self.state.date)
