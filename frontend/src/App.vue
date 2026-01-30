@@ -83,11 +83,10 @@ import { computed, ref } from "vue";
 const backendBaseUrl = (() => {
   const envUrl = import.meta.env.VITE_BACKEND_BASE_URL;
   if (envUrl) return envUrl;
-  const { protocol, hostname, port, origin } = window.location;
-  if (port && port !== "8000") {
-    return `${protocol}//${hostname}:8000`;
+  if (import.meta.env.DEV) {
+    return "";
   }
-  return origin;
+  return window.location.origin;
 })();
 
 const message = ref("");
