@@ -12,9 +12,9 @@ services:
     environment:
       SYSTEM_API_BASE_URL: http://api:8001
       HTTP_TIMEOUT_SECONDS: "5"
-      GEMINI_API_BASE_URL: ${GEMINI_API_BASE_URL:-https://generativelanguage.googleapis.com/v1beta}
-      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GEMINI_API_BASE_URL: https://generativelanguage.googleapis.com/v1beta
+      GEMINI_API_KEY: "your-api-key"
+      GEMINI_MODEL: gemini-2.5-flash
       GEMINI_TIMEOUT_SECONDS: "10"
     depends_on:
       - api
