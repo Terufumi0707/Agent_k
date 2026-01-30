@@ -14,7 +14,12 @@ def get_gemini_api_base_url() -> str:
 
 
 def get_gemini_api_key() -> str | None:
-    return os.getenv("GEMINI_API_KEY")
+    value = os.getenv("GEMINI_API_KEY")
+    if not value:
+        return None
+    if value.strip().lower() in {"your-api-key", "your_api_key", "changeme"}:
+        return None
+    return value
 
 
 def get_gemini_model() -> str:
