@@ -35,13 +35,6 @@ $env:GEMINI_API_KEY="your-api-key"
 $env:GEMINI_MODEL="gemini-2.5-flash"
 ```
 
-#### Linux (bash/zsh)
-
-```
-export GEMINI_API_KEY="your-api-key"
-export GEMINI_MODEL="gemini-2.5-flash"
-```
-
 ### 1. 業務システム（api）
 
 #### PowerShell
@@ -51,16 +44,6 @@ cd api
 python -m venv .venv
 Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 .\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8001
-```
-
-#### Linux (bash/zsh)
-
-```
-cd api
-python3 -m venv .venv
-source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8001
 ```
@@ -77,16 +60,6 @@ Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
 pip install -r requirements.txt
 $env:SYSTEM_API_BASE_URL="http://localhost:8001"
 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
-```
-
-#### Linux (bash/zsh)
-
-```
-cd backend
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-SYSTEM_API_BASE_URL=http://localhost:8001 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
 ```
 
 > **注意:** セッションは FastAPI プロセス内のインメモリ保持です。`--workers 1` 前提で起動してください。再起動するとセッションは消えます。
@@ -125,3 +98,24 @@ Gemini API を利用する場合は、ローカルPCの環境変数に `GEMINI_A
 cd backend
 pytest
 ```
+
+## トラブルシューティング
+
+### Windows で `numpy` のビルドエラーが出る場合
+
+`pip install -r requirements.txt` 実行時に `numpy` のビルドエラーが出る場合、Python のバージョンや `pip` の状態によってホイールが取得できず、ソースビルドが走って失敗している可能性があります。以下の手順を試してください。
+
+1. **Python 3.12 を利用する**（推奨）  
+   `numpy` のホイールが利用できる Python 3.12 で仮想環境を作成してください。
+
+2. **pip をアップグレードする**  
+   ```
+   python -m pip install --upgrade pip
+   ```
+
+3. **ホイールの利用を強制する**（必要に応じて）  
+   ```
+   pip install --only-binary=:all: -r requirements.txt
+   ```
+
+それでも解消しない場合は、Visual Studio Build Tools をインストールして C/C++ コンパイラを利用可能にする必要があります。
