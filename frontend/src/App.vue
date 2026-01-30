@@ -80,7 +80,14 @@
 <script setup>
 import { computed, ref } from "vue";
 
-const backendBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL || "http://localhost:8000";
+const resolveBackendBaseUrl = () => {
+  const envBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL;
+  if (envBaseUrl) return envBaseUrl.replace(/\/$/, "");
+  if (import.meta.env.DEV) return "http://localhost:8000";
+  return window.location.origin;
+};
+
+const backendBaseUrl = resolveBackendBaseUrl();
 
 const message = ref("");
 const sentMessages = ref([]);
@@ -161,7 +168,16 @@ const submit = async () => {
       },
       body: JSON.stringify(payload)
     });
-    const data = await response.json();
+    const contentType = response.headers.get("content-type") || "";
+    const data = contentType.includes("application/json") ? await response.json() : {};
+    if (!response.ok) {
+      status.value = "error";
+      messageText.value =
+        data.message || data.detail || `サーバー応答エラーが発生しました (${response.status})。`;
+      questions.value = [];
+      missingFields.value = [];
+      return;
+    }
     sessionId.value = data.session_id;
     status.value = data.status;
     messageText.value = data.message;
