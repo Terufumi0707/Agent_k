@@ -19,10 +19,28 @@ api/        # FastAPI (業務システムモック)
 | VITE_BACKEND_BASE_URL | frontend -> backend の接続先 | http://localhost:8000 |
 | GEMINI_API_BASE_URL | backend -> Gemini API の接続先 | https://generativelanguage.googleapis.com/v1beta |
 | GEMINI_API_KEY | Gemini API の認証キー | (未設定) |
-| GEMINI_MODEL | 利用する Gemini モデル名 | gemini-1.5-pro |
+| GEMINI_MODEL | 利用する Gemini モデル名 | gemini-2.5-flash |
 | GEMINI_TIMEOUT_SECONDS | Gemini API タイムアウト | 10 |
 
 ## 起動方法
+
+### 事前準備（PowerShell / Linux）
+
+Gemini 2.5 Flash（無料で利用できるモデル）を前提に、API キーとモデル名を環境変数で設定します。
+
+#### PowerShell
+
+```
+$env:GEMINI_API_KEY="your-api-key"
+$env:GEMINI_MODEL="gemini-2.5-flash"
+```
+
+#### Linux (bash/zsh)
+
+```
+export GEMINI_API_KEY="your-api-key"
+export GEMINI_MODEL="gemini-2.5-flash"
+```
 
 ### 1. 業務システム（api）
 
@@ -72,14 +90,7 @@ npm run dev
 
 ## LLM API について
 
-Gemini API を利用する場合は、ローカルPCの環境変数に `GEMINI_API_KEY` を設定し、必要に応じて `GEMINI_MODEL` を指定してください。未設定の場合は従来の正規表現解析のみで処理します。API の利用料金やレート制限は提供元の規約に従ってください。
-
-ローカル環境の設定例:
-
-```
-export GEMINI_API_KEY="your-api-key"
-export GEMINI_MODEL="gemini-1.5-pro"
-```
+Gemini API を利用する場合は、ローカルPCの環境変数に `GEMINI_API_KEY` を設定し、必要に応じて `GEMINI_MODEL` を指定してください（本 README では無料で利用できる Gemini 2.5 Flash を想定しています）。未設定の場合は従来の正規表現解析のみで処理します。API の利用料金やレート制限は提供元の規約に従ってください。
 
 ## テスト
 
