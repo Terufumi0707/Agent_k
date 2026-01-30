@@ -84,7 +84,7 @@ const backendBaseUrl = (() => {
   const envUrl = import.meta.env.VITE_BACKEND_BASE_URL;
   if (envUrl) return envUrl;
   if (import.meta.env.DEV) {
-    return "";
+    return "http://localhost:8000";
   }
   return window.location.origin;
 })();
