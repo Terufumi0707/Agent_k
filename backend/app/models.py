@@ -10,6 +10,23 @@ class WorkChange(BaseModel):
     desired_date: Optional[str] = None
 
 
+class WorkTypeConfidence(BaseModel):
+    name: str
+    confidence: Literal["high", "medium", "low"]
+
+
+class WorkParseRequest(BaseModel):
+    message: str
+
+
+class WorkParseResponse(BaseModel):
+    operation: Literal["change", "add", "delete", "confirm"]
+    work_types: List[WorkTypeConfidence]
+    date: str
+    date_inferred: bool
+    notes: str
+
+
 class IntakeStartRequest(BaseModel):
     a_number: Optional[str] = None
     entry_id: Optional[str] = None

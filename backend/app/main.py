@@ -4,7 +4,15 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.graph import build_graph, graph_to_state, state_to_graph
-from app.models import IntakeNextRequest, IntakeResponse, IntakeStartRequest, IntakeState
+from app.models import (
+    IntakeNextRequest,
+    IntakeResponse,
+    IntakeStartRequest,
+    IntakeState,
+    WorkParseRequest,
+    WorkParseResponse,
+)
+from app.work_parser import parse_work_request
 from app.session import save_session_state, session_store
 
 app = FastAPI()
@@ -73,3 +81,9 @@ def next_intake(request: IntakeNextRequest) -> IntakeResponse:
         questions=state.questions,
         order_info=state.order_info,
     )
+
+
+@app.post("/work/parse", response_model=WorkParseResponse)
+def parse_work(request: WorkParseRequest) -> WorkParseResponse:
+    parsed = parse_work_request(request.message)
+    return WorkParseResponse(**parsed)
