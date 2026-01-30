@@ -17,6 +17,10 @@ api/        # FastAPI (業務システムモック)
 | SYSTEM_API_BASE_URL | backend -> api の接続先 | http://localhost:8001 |
 | HTTP_TIMEOUT_SECONDS | backend の API タイムアウト | 5 |
 | VITE_BACKEND_BASE_URL | frontend -> backend の接続先 | http://localhost:8000 |
+| GEMINI_API_BASE_URL | backend -> Gemini API の接続先 | https://generativelanguage.googleapis.com/v1beta |
+| GEMINI_API_KEY | Gemini API の認証キー | (未設定) |
+| GEMINI_MODEL | 利用する Gemini モデル名 | gemini-1.5-pro |
+| GEMINI_TIMEOUT_SECONDS | Gemini API タイムアウト | 10 |
 
 ## 起動方法
 
@@ -24,7 +28,7 @@ api/        # FastAPI (業務システムモック)
 
 ```
 cd api
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn main:app --host 0.0.0.0 --port 8001
@@ -34,7 +38,7 @@ uvicorn main:app --host 0.0.0.0 --port 8001
 
 ```
 cd backend
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 SYSTEM_API_BASE_URL=http://localhost:8001 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
@@ -65,6 +69,10 @@ npm run dev
 ### POST /intake/next
 
 `session_id` を指定して追加入力を送信します。存在しないセッションは `invalid_request` になります。
+
+## LLM API について
+
+Gemini API を利用する場合は、ローカルPCの環境変数に `GEMINI_API_KEY` を設定し、必要に応じて `GEMINI_MODEL` を指定してください。未設定の場合は従来の正規表現解析のみで処理します。API の利用料金やレート制限は提供元の規約に従ってください。
 
 ## テスト
 
