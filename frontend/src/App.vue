@@ -169,7 +169,19 @@ const submit = async () => {
       body: JSON.stringify(payload)
     });
     const contentType = response.headers.get("content-type") || "";
-    const data = contentType.includes("application/json") ? await response.json() : {};
+    const rawText = await response.text();
+    let data = {};
+    if (contentType.includes("application/json") && rawText) {
+      try {
+        data = JSON.parse(rawText);
+      } catch (parseError) {
+        status.value = "error";
+        messageText.value = "サーバーの応答形式が不正です。管理者に確認してください。";
+        questions.value = [];
+        missingFields.value = [];
+        return;
+      }
+    }
     if (!response.ok) {
       status.value = "error";
       messageText.value =
