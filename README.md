@@ -74,6 +74,13 @@ npm run dev
 
 Gemini API を利用する場合は、ローカルPCの環境変数に `GEMINI_API_KEY` を設定し、必要に応じて `GEMINI_MODEL` を指定してください。未設定の場合は従来の正規表現解析のみで処理します。API の利用料金やレート制限は提供元の規約に従ってください。
 
+ローカル環境の設定例:
+
+```
+export GEMINI_API_KEY="your-api-key"
+export GEMINI_MODEL="gemini-1.5-pro"
+```
+
 ## テスト
 
 ```
