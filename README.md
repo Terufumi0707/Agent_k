@@ -35,36 +35,26 @@ $env:GEMINI_API_KEY="your-api-key"
 $env:GEMINI_MODEL="gemini-2.5-flash"
 ```
 
-### 1. 業務システム（api）
+### 1. 業務システム（api） + AIエージェント（backend）
 
-#### PowerShell
-
-```
-cd api
-python -m venv .venv
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-uvicorn main:app --host 0.0.0.0 --port 8001
-```
-
-### 2. AIエージェント（backend）
-
-#### PowerShell
+Docker を使って api / backend を起動します。
 
 ```
-cd backend
-python -m venv .venv
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-$env:SYSTEM_API_BASE_URL="http://localhost:8001"
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+docker compose up --build
 ```
 
-> **注意:** セッションは FastAPI プロセス内のインメモリ保持です。`--workers 1` 前提で起動してください。再起動するとセッションは消えます。
+> **注意:** セッションは FastAPI プロセス内のインメモリ保持です。`backend` は `--workers 1` 前提で起動しています。再起動するとセッションは消えます。
 
-### 3. フロントエンド（frontend）
+#### .env での環境変数設定（任意）
+
+Docker Compose が自動で読み込む `.env` を使う場合は、リポジトリ直下に作成してください。
+
+```
+GEMINI_API_KEY=your-api-key
+GEMINI_MODEL=gemini-2.5-flash
+```
+
+### 2. フロントエンド（frontend）
 
 ```
 cd frontend
