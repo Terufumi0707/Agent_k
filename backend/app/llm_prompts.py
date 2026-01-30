@@ -79,7 +79,7 @@ def build_autonomous_prompt(state: dict) -> str:
         '"work_types":[{"name":string,"confidence":"high|medium|low"}],'
         '"date":string|null,'
         '"date_inferred":boolean,'
-        '"question":string'
+        '"question":string"\n'
         "}\n\n"
         "現在の状態:\n"
         f"{state}\n"
