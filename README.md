@@ -44,6 +44,19 @@ export GEMINI_MODEL="gemini-2.5-flash"
 
 ### 1. 業務システム（api）
 
+#### PowerShell
+
+```
+cd api
+python -m venv .venv
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+uvicorn main:app --host 0.0.0.0 --port 8001
+```
+
+#### Linux (bash/zsh)
+
 ```
 cd api
 python3 -m venv .venv
@@ -53,6 +66,20 @@ uvicorn main:app --host 0.0.0.0 --port 8001
 ```
 
 ### 2. AIエージェント（backend）
+
+#### PowerShell
+
+```
+cd backend
+python -m venv .venv
+Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+$env:SYSTEM_API_BASE_URL="http://localhost:8001"
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1
+```
+
+#### Linux (bash/zsh)
 
 ```
 cd backend
