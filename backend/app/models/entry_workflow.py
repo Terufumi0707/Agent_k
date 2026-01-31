@@ -21,8 +21,8 @@ class EntryWorkflow:
         self._agent = agent
         self._service = service
 
-    def handle_input(self, entry_id: str | None, payload: list[dict]) -> WorkflowResult:
-        decision: AgentDecision = self._agent.interpret(entry_id, payload)
+    def handle_input(self, payload: str) -> WorkflowResult:
+        decision: AgentDecision = self._agent.interpret(payload)
         if decision.entry is None:
             return WorkflowResult(
                 status="need_more_info",

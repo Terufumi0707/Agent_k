@@ -20,7 +20,7 @@ _workflow = EntryWorkflow(_agent, _service)
 
 @router.post("/entries", response_model=EntryResponse)
 def create_entry(request: EntryRequest) -> EntryResponse:
-    result = _workflow.handle_input(request.entry_id, request.payload)
+    result = _workflow.handle_input(request.payload)
     entry_data = asdict(result.entry) if result.entry else None
     return EntryResponse(
         status=result.status,
