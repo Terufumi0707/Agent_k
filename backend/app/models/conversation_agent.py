@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date
-from typing import Iterable
 
 from app.llm_client import parse_dialogue_decision
 from app.llm_prompts import build_dialogue_prompt
 from app.models.domain_entities import Construction, Entry
 from app.models.domain_value_objects import WorkType
+from app.nlp import parse_message
 
 
 @dataclass
@@ -17,24 +17,30 @@ class AgentDecision:
 
 
 class ConversationAgent:
-    def interpret(self, entry_id: str | None, payload: Iterable[dict]) -> AgentDecision:
-        prompt = build_dialogue_prompt({"entry_id": entry_id, "payload": list(payload)})
+    def interpret(self, payload: str) -> AgentDecision:
+        prompt = build_dialogue_prompt({"payload": payload})
         dialogue_result = parse_dialogue_decision(prompt)
         questions = dialogue_result.get("questions") or []
+        parsed = parse_message(payload)
+        resolved_entry_id = parsed.get("entry_id") or parsed.get("a_number")
 
-        if not entry_id:
+        if not resolved_entry_id:
             return AgentDecision(entry=None, questions=questions or ["Aナンバーを教えてください。"])
 
         constructions: list[Construction] = []
-        for item in payload:
-            work_type = item.get("work_type")
-            work_date = item.get("work_date")
+        for item in parsed.get("work_changes") or []:
+            work_type = getattr(item, "work_type", None)
+            work_date = getattr(item, "desired_date", None)
             if not work_type or not work_date:
+                continue
+            try:
+                parsed_date = date.fromisoformat(str(work_date))
+            except ValueError:
                 continue
             constructions.append(
                 Construction(
                     work_type=WorkType(str(work_type)),
-                    work_date=date.fromisoformat(str(work_date)),
+                    work_date=parsed_date,
                 )
             )
 
@@ -42,6 +48,6 @@ class ConversationAgent:
             return AgentDecision(entry=None, questions=questions or ["工事種別と日程を教えてください。"])
 
         return AgentDecision(
-            entry=Entry(entry_id=entry_id, constructions=constructions),
+            entry=Entry(entry_id=resolved_entry_id, constructions=constructions),
             questions=questions,
         )

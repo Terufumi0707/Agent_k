@@ -4,8 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class EntryRequest(BaseModel):
-    entry_id: str | None = Field(default=None, description="Aナンバー")
-    payload: list[dict] = Field(default_factory=list)
+    payload: str = Field(default="", description="自然言語の入力内容")
 
 
 class EntryResponse(BaseModel):
