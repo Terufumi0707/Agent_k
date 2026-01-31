@@ -34,10 +34,10 @@ class EntryWorkflow:
         validation_errors = validate_entry(decision.entry)
         if validation_errors:
             return WorkflowResult(
-                status="validation_failed",
-                entry=decision.entry,
+                status="need_more_info",
+                entry=None,
                 questions=decision.questions,
-                validation_errors=validation_errors,
+                validation_errors=[],
             )
 
         saved_entry = self._service.register_entry(decision.entry)
