@@ -25,7 +25,7 @@ class ConversationAgent:
         resolved_entry_id = parsed.get("entry_id") or parsed.get("a_number")
 
         if not resolved_entry_id:
-            return AgentDecision(entry=None, questions=questions or ["Aナンバーを教えてください。"])
+            return AgentDecision(entry=None, questions=questions)
 
         constructions: list[Construction] = []
         for item in parsed.get("work_changes") or []:
@@ -45,7 +45,7 @@ class ConversationAgent:
             )
 
         if not constructions:
-            return AgentDecision(entry=None, questions=questions or ["工事種別と日程を教えてください。"])
+            return AgentDecision(entry=None, questions=questions)
 
         return AgentDecision(
             entry=Entry(entry_id=resolved_entry_id, constructions=constructions),
