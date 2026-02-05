@@ -43,7 +43,7 @@
           placeholder="質問してみましょう"
           @keydown.enter="sendMessage"
         />
-        <button class="send-button" :disabled="!canSend" @click="sendMessage">送信</button>
+        <button class="send-button" :disabled="!canSend || isSending" @click="sendMessage">送信</button>
       </footer>
     </div>
   </div>
@@ -54,17 +54,46 @@ import { computed, ref } from "vue";
 
 const inputText = ref("");
 const messages = ref([]);
+const isSending = ref(false);
 
 const canSend = computed(() => inputText.value.trim().length > 0);
 
-const sendMessage = () => {
+const backendBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL
+  ? import.meta.env.VITE_BACKEND_BASE_URL.replace(/\/$/, "")
+  : "";
+
+const createEntryUrl = backendBaseUrl ? `${backendBaseUrl}/api/create_entry` : "/api/create_entry";
+
+const sendMessage = async () => {
   const userText = inputText.value.trim();
-  if (!userText) {
+  if (!userText || isSending.value) {
     return;
   }
 
   messages.value.push({ role: "user", text: userText });
-  messages.value.push({ role: "ai", text: "入力を受け付けました" });
   inputText.value = "";
+  isSending.value = true;
+
+  try {
+    const response = await fetch(createEntryUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ prompt: userText })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    messages.value.push({ role: "ai", text: data.result ?? "" });
+  } catch (error) {
+    console.error("create_entry request failed:", error);
+    messages.value.push({ role: "ai", text: "エラーが発生しました。時間をおいて再度お試しください。" });
+  } finally {
+    isSending.value = false;
+  }
 };
 </script>
