@@ -24,6 +24,6 @@ services:
       GEMINI_API_BASE_URL: https://generativelanguage.googleapis.com/v1beta
       GEMINI_API_KEY: "your-api-key"
       GEMINI_MODEL: gemini-2.5-flash
-      GEMINI_TIMEOUT_SECONDS: "10"
+      GEMINI_TIMEOUT_SECONDS: "60"
     depends_on:
       - api
