@@ -4,6 +4,8 @@ from dataclasses import dataclass
 from datetime import date
 from typing import Dict, Optional, TYPE_CHECKING
 
+from app.llm_client import generate_raw_text
+
 if TYPE_CHECKING:
     from app.autonomous_agent import AutonomousAgent, DialogueState, RuleBasedValidator
 
@@ -68,3 +70,10 @@ class AutonomousOrchestrator:
         question = agent._generate_question(message, errors)
         deps.state.record_turn("assistant", question)
         return {"status": "need_more_info", "question": question}
+
+
+class CreateEntryOrchestrator:
+    """create_entry の処理順序を統一するオーケストレーター。"""
+
+    def run(self, prompt: str) -> str:
+        return generate_raw_text(prompt)
