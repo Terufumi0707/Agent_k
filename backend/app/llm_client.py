@@ -13,16 +13,23 @@ from app.settings import (
 
 
 def generate_raw_text(prompt: str) -> str:
+    return generate_with_system_and_user(system_prompt="", user_prompt=prompt)
+
+
+def generate_with_system_and_user(system_prompt: str, user_prompt: str) -> str:
     api_key = get_gemini_api_key()
     if not api_key:
         return ""
 
     url = f"{get_gemini_api_base_url().rstrip('/')}/models/{get_gemini_model()}:generateContent"
     payload = {
+        "systemInstruction": {
+            "parts": [{"text": system_prompt}],
+        },
         "contents": [
             {
                 "role": "user",
-                "parts": [{"text": prompt}],
+                "parts": [{"text": user_prompt}],
             }
         ],
         "generationConfig": {"temperature": 0},
