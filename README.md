@@ -35,13 +35,19 @@ $env:GEMINI_API_KEY="your-api-key"
 $env:GEMINI_MODEL="gemini-2.5-flash"
 ```
 
-### 1. 業務システム（api） + AIエージェント（backend）
+### 1. Docker Compose で全サービス（frontend / backend / api）を起動
 
-Docker を使って api / backend を起動します。Docker Compose では `docker-compose.yml` に直接 API キーを記載する運用にしているため、`GEMINI_API_KEY` を実値に更新してから起動してください（`your-api-key` のままだと LLM 呼び出しは無効化されます）。
+Docker Compose で `frontend` / `backend` / `api` をまとめて起動します。`docker-compose.yml` では `GEMINI_API_KEY` がプレースホルダー (`your-api-key`) になっているため、実際に LLM を利用する場合は実値に更新してから起動してください。
 
 ```
 docker compose up --build
 ```
+
+起動後のアクセス先:
+
+- frontend: `http://localhost:5173`
+- backend: `http://localhost:8000`
+- api: `http://localhost:8001`
 
 > **注意:** セッションは FastAPI プロセス内のインメモリ保持です。`backend` は `--workers 1` 前提で起動しています。再起動するとセッションは消えます。
 
@@ -54,7 +60,7 @@ GEMINI_API_KEY=your-api-key
 GEMINI_MODEL=gemini-2.5-flash
 ```
 
-### 2. フロントエンド（frontend）
+### 2. フロントエンドをローカル開発モードで単独起動したい場合（任意）
 
 ```
 cd frontend
