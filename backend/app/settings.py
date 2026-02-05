@@ -33,4 +33,5 @@ def get_gemini_model() -> str:
 
 
 def get_gemini_timeout_seconds() -> float:
-    return float(os.getenv("GEMINI_TIMEOUT_SECONDS", "10"))
+    timeout = float(os.getenv("GEMINI_TIMEOUT_SECONDS", "60"))
+    return min(timeout, 60.0)

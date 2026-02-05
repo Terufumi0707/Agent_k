@@ -20,7 +20,7 @@ api/        # FastAPI (業務システムモック)
 | GEMINI_API_BASE_URL | backend -> Gemini API の接続先 | https://generativelanguage.googleapis.com/v1beta |
 | GEMINI_API_KEY | Gemini API の認証キー | (未設定) |
 | GEMINI_MODEL | 利用する Gemini モデル名 | gemini-2.5-flash |
-| GEMINI_TIMEOUT_SECONDS | Gemini API タイムアウト | 10 |
+| GEMINI_TIMEOUT_SECONDS | Gemini API タイムアウト（最大60秒） | 60 |
 
 ## 起動方法
 
