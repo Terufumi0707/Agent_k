@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field
 
 
 class EntryRequest(BaseModel):
-    prompt: str = Field(default="", description="LLM にそのまま渡すプロンプト文字列")
+    prompt: str = Field(default="", description="CreateEntryOrchestrator にそのまま渡すリクエスト文字列")
 
 
 class EntryResponse(BaseModel):
