@@ -1,5 +1,9 @@
 import os
 
+# Docker 環境で環境変数注入が難しい場合は、この定数に API キーを直接設定してください。
+# 例: GEMINI_API_KEY_CODE = "AIza..."
+GEMINI_API_KEY_CODE = ""
+
 
 def get_system_api_base_url() -> str:
     return os.getenv("SYSTEM_API_BASE_URL", "http://localhost:8001")
@@ -14,12 +18,14 @@ def get_gemini_api_base_url() -> str:
 
 
 def get_gemini_api_key() -> str | None:
-    value = os.getenv("GEMINI_API_KEY")
-    if not value:
-        return None
-    if value.strip().lower() in {"your-api-key", "your_api_key", "changeme"}:
-        return None
-    return value
+    env_value = os.getenv("GEMINI_API_KEY")
+    if env_value and env_value.strip().lower() not in {"your-api-key", "your_api_key", "changeme"}:
+        return env_value
+
+    code_value = GEMINI_API_KEY_CODE.strip()
+    if code_value:
+        return code_value
+    return None
 
 
 def get_gemini_model() -> str:

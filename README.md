@@ -37,7 +37,9 @@ $env:GEMINI_MODEL="gemini-2.5-flash"
 
 ### 1. Docker Compose で全サービス（frontend / backend / api）を起動
 
-Docker Compose で `frontend` / `backend` / `api` をまとめて起動します。`docker-compose.yml` では `GEMINI_API_KEY` がプレースホルダー (`your-api-key`) になっているため、実際に LLM を利用する場合は実値に更新してから起動してください。
+Docker Compose で `frontend` / `backend` / `api` をまとめて起動します。`docker-compose.yml` では `GEMINI_API_KEY` がプレースホルダー (`your-api-key`) になっているため、そのままだと LLM 応答は空文字になります。
+
+環境変数を使わずコードに直接書く場合は `backend/app/settings.py` の `GEMINI_API_KEY_CODE` に実キーを設定してください（検証用途のみ推奨）。
 
 ```
 docker compose up --build
