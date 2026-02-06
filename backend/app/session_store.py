@@ -12,6 +12,7 @@ class SessionState:
     extracted_json: str
     judge_result: str
     user_view_message: str
+    intent_result: str
 
 
 class SessionStore(Protocol):

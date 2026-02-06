@@ -21,8 +21,19 @@ def test_orchestrator_run_executes_full_pipeline_and_returns_formatter_result(mo
 
     monkeypatch.setattr(orchestrator, "generate_with_system_and_user", mock_generate_with_system_and_user)
 
+    intent_calls = {"count": 0}
+
+    def mock_classify_intent(
+        self, prompt: str, session_id: str | None = None
+    ) -> orchestrator.IntentClassification:
+        intent_calls["count"] += 1
+        return orchestrator.IntentClassification(intent="NEW", confidence=0.8, reason="新規入力")
+
+    monkeypatch.setattr(orchestrator.CreateEntryOrchestrator, "classify_intent", mock_classify_intent)
+
     result = orchestrator.CreateEntryOrchestrator().run("PlaceHolderのRequest")
 
+    assert intent_calls["count"] == 1
     assert len(captured) == 3
     assert captured[0] == (orchestrator.AGENT_SYSTEM_PROMPT, "PlaceHolderのRequest")
     assert captured[1] == (orchestrator.JUDGE_AGENT_SYSTEM_PROMPT, '{"extracted": true}')

@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from app.intent_classifier import IntentClassification, IntentClassifier
 from app.llm_client import generate_with_system_and_user
 from app.session_store import InMemorySessionStore, SessionState, SessionStore, generate_session_id
 
@@ -18,20 +19,31 @@ FORMATTER_AGENT_SYSTEM_PROMPT = FORMATTER_PROMPT_FILE_PATH.read_text(encoding="u
 class CreateEntryOrchestrator:
     """create_entry の処理順序を統一するオーケストレーター。"""
 
-    def __init__(self, session_store: SessionStore | None = None) -> None:
+    def __init__(
+        self,
+        session_store: SessionStore | None = None,
+        intent_classifier: IntentClassifier | None = None,
+    ) -> None:
         self._session_store = session_store or InMemorySessionStore()
+        self._intent_classifier = intent_classifier or IntentClassifier()
 
     def run(self, prompt: str, session_id: str | None = None) -> tuple[str, str]:
         if session_id is None:
             session_id = generate_session_id()
+        # 1. 最新入力とセッション状態をもとに意図判定（処理分岐の判断材料）
+        intent_result = self.classify_intent(prompt, session_id)
+        # 2. 入力から必要情報を抽出
         extracted_result = generate_with_system_and_user(
             system_prompt=AGENT_SYSTEM_PROMPT,
             user_prompt=prompt,
         )
+        # 3. 抽出結果を評価
         judge_result = self.run_judge(extracted_result)
         extracted_payload = self._to_json_text(extracted_result)
         judge_payload = self._to_json_text(judge_result)
+        # 4. 抽出結果・評価結果をもとにユーザー向け文面を生成
         user_message = self.build_user_message(extracted_payload, judge_payload)
+        # 5. セッション状態として保存（意図判定結果も含める）
         # Phase1: 変更対応は行わず、処理結果をセッション単位で保存するだけに留める。
         self._session_store.save(
             session_id,
@@ -39,6 +51,7 @@ class CreateEntryOrchestrator:
                 extracted_json=extracted_payload,
                 judge_result=judge_payload,
                 user_view_message=user_message,
+                intent_result=self._to_json_text(intent_result.__dict__),
             ),
         )
         return user_message, session_id
@@ -67,3 +80,9 @@ class CreateEntryOrchestrator:
         if isinstance(payload, str):
             return payload
         return json.dumps(payload, ensure_ascii=False)
+
+    def classify_intent(self, prompt: str, session_id: str | None = None) -> IntentClassification:
+        session_state = None
+        if session_id is not None:
+            session_state = self._session_store.get(session_id)
+        return self._intent_classifier.classify(prompt, session_state)
