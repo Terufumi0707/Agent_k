@@ -60,8 +60,7 @@ const messages = ref([]);
 const isSending = ref(false);
 
 const placeholderText =
-  "WebエントリIDもしくはN番号、変更工事種別、変更工事日程を指示してください。\n" +
-  "例: N123456 / 工事種別: 内容確認 / 変更希望日: 2026/04/01";
+  "指示してください";
 
 const canSend = computed(() => inputText.value.trim().length > 0);
 
