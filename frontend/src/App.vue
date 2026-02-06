@@ -36,13 +36,15 @@
       </main>
 
       <footer class="chat-input-area">
-        <input
+        <textarea
+          ref="inputRef"
           v-model="inputText"
-          class="chat-input"
-          type="text"
-          placeholder="質問してみましょう"
-          @keydown.enter="sendMessage"
-        />
+          class="chat-input chat-input-textarea"
+          :placeholder="placeholderText"
+          rows="3"
+          @input="handleInput"
+          @keydown.enter.exact.prevent="sendMessage"
+        ></textarea>
         <button class="send-button" :disabled="!canSend || isSending" @click="sendMessage">送信</button>
       </footer>
     </div>
@@ -50,11 +52,16 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 
 const inputText = ref("");
+const inputRef = ref(null);
 const messages = ref([]);
 const isSending = ref(false);
+
+const placeholderText =
+  "WebエントリIDもしくはN番号、変更工事種別、変更工事日程を指示してください。\n" +
+  "例: N123456 / 工事種別: 内容確認 / 変更希望日: 2026/04/01";
 
 const canSend = computed(() => inputText.value.trim().length > 0);
 
@@ -63,6 +70,23 @@ const backendBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL
   : "";
 
 const createEntryUrl = backendBaseUrl ? `${backendBaseUrl}/api/create_entry` : "/api/create_entry";
+
+const resizeTextarea = () => {
+  const textarea = inputRef.value;
+  if (!textarea) {
+    return;
+  }
+
+  const maxHeight = 200;
+  textarea.style.height = "auto";
+  const nextHeight = Math.min(textarea.scrollHeight, maxHeight);
+  textarea.style.height = `${nextHeight}px`;
+  textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+};
+
+const handleInput = () => {
+  resizeTextarea();
+};
 
 const sendMessage = async () => {
   const userText = inputText.value.trim();
@@ -73,6 +97,8 @@ const sendMessage = async () => {
   messages.value.push({ role: "user", text: userText });
   inputText.value = "";
   isSending.value = true;
+  await nextTick();
+  resizeTextarea();
 
   try {
     const response = await fetch(createEntryUrl, {
@@ -96,4 +122,14 @@ const sendMessage = async () => {
     isSending.value = false;
   }
 };
+
+onMounted(() => {
+  resizeTextarea();
+});
+
+watch(inputText, () => {
+  nextTick(() => {
+    resizeTextarea();
+  });
+});
 </script>
