@@ -136,6 +136,9 @@ body {
   border-radius: 12px;
   background: #ffffff;
   border: 1px solid #d7e0ea;
+  white-space: pre-wrap;
+  margin: 0;
+  font-family: inherit;
 }
 
 .message-row.user .message-bubble {

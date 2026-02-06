@@ -30,7 +30,7 @@
             class="message-row"
             :class="message.role"
           >
-            <div class="message-bubble">{{ message.text }}</div>
+            <pre class="message-bubble">{{ message.text }}</pre>
           </div>
         </div>
       </main>
