@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 from app.llm_client import generate_with_system_and_user
+from app.session_store import InMemorySessionStore, SessionState, SessionStore, generate_session_id
 
 PROMPT_FILE_PATH = Path(__file__).parent / "prompts" / "create_entry_agent_system_prompt.txt"
 AGENT_SYSTEM_PROMPT = PROMPT_FILE_PATH.read_text(encoding="utf-8").strip()
@@ -17,13 +18,30 @@ FORMATTER_AGENT_SYSTEM_PROMPT = FORMATTER_PROMPT_FILE_PATH.read_text(encoding="u
 class CreateEntryOrchestrator:
     """create_entry の処理順序を統一するオーケストレーター。"""
 
-    def run(self, prompt: str) -> str:
+    def __init__(self, session_store: SessionStore | None = None) -> None:
+        self._session_store = session_store or InMemorySessionStore()
+
+    def run(self, prompt: str, session_id: str | None = None) -> tuple[str, str]:
+        if session_id is None:
+            session_id = generate_session_id()
         extracted_result = generate_with_system_and_user(
             system_prompt=AGENT_SYSTEM_PROMPT,
             user_prompt=prompt,
         )
         judge_result = self.run_judge(extracted_result)
-        return self.build_user_message(extracted_result, judge_result)
+        extracted_payload = self._to_json_text(extracted_result)
+        judge_payload = self._to_json_text(judge_result)
+        user_message = self.build_user_message(extracted_payload, judge_payload)
+        # Phase1: 変更対応は行わず、処理結果をセッション単位で保存するだけに留める。
+        self._session_store.save(
+            session_id,
+            SessionState(
+                extracted_json=extracted_payload,
+                judge_result=judge_payload,
+                user_view_message=user_message,
+            ),
+        )
+        return user_message, session_id
 
     def run_judge(self, prompt: str) -> str:
         """情報抽出JSONの評価を行うJudgeエージェントを実行する。"""
