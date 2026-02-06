@@ -18,10 +18,12 @@ class CreateEntryOrchestrator:
     """create_entry の処理順序を統一するオーケストレーター。"""
 
     def run(self, prompt: str) -> str:
-        return generate_with_system_and_user(
+        extracted_result = generate_with_system_and_user(
             system_prompt=AGENT_SYSTEM_PROMPT,
             user_prompt=prompt,
         )
+        judge_result = self.run_judge(extracted_result)
+        return self.build_user_message(extracted_result, judge_result)
 
     def run_judge(self, prompt: str) -> str:
         """情報抽出JSONの評価を行うJudgeエージェントを実行する。"""
