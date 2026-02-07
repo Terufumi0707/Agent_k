@@ -6,6 +6,7 @@ from typing import Any
 
 from app.intent_classifier import IntentClassification, IntentClassifier
 from app.llm_client import generate_with_system_and_user
+from app.patch_generator import PatchGenerator
 from app.session_store import InMemorySessionStore, SessionState, SessionStore, generate_session_id
 
 PROMPT_FILE_PATH = Path(__file__).parent / "prompts" / "create_entry_agent_system_prompt.txt"
@@ -23,9 +24,11 @@ class CreateEntryOrchestrator:
         self,
         session_store: SessionStore | None = None,
         intent_classifier: IntentClassifier | None = None,
+        patch_generator: PatchGenerator | None = None,
     ) -> None:
         self._session_store = session_store or InMemorySessionStore()
         self._intent_classifier = intent_classifier or IntentClassifier()
+        self._patch_generator = patch_generator or PatchGenerator()
 
     def run(self, prompt: str, session_id: str | None = None) -> tuple[str, str]:
         if session_id is None:
@@ -86,3 +89,14 @@ class CreateEntryOrchestrator:
         if session_id is not None:
             session_state = self._session_store.get(session_id)
         return self._intent_classifier.classify(prompt, session_state)
+
+    def generate_patch(self, user_change_input: str, session_id: str | None = None) -> dict[str, Any]:
+        if session_id is None:
+            return {"patches": []}
+        session_state = self._session_store.get(session_id)
+        if session_state is None:
+            return {"patches": []}
+        return self._patch_generator.generate(
+            user_change_input=user_change_input,
+            extracted_json=session_state.extracted_json,
+        )
