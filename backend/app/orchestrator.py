@@ -15,6 +15,7 @@ from app.services.create_entry_service import (
     CreateEntryService,
 )
 from app.session_store import InMemorySessionStore, SessionState, SessionStore
+from app.settings import get_gemini_api_key
 
 
 class CreateEntryOrchestrator:
@@ -43,6 +44,8 @@ class CreateEntryOrchestrator:
     def run(self, user_input: str, session_id: str | None = None) -> tuple[str, str]:
         # NOTE: session_id は外部から渡されない場合に新規発行し、以後の継続対話で利用する
         session_id, session_state = self._service.ensure_session(session_id)
+        if not get_gemini_api_key():
+            return "LLM の API キーが未設定のため、応答を生成できません。設定を確認してください。", session_id
         intent_result = self._service.classify_intent(user_input=user_input, session_state=session_state)
 
         intent = intent_result.intent
@@ -59,6 +62,8 @@ class CreateEntryOrchestrator:
                 extracted_json=extracted_json,
                 judge_json=judge_json,
             )
+            if not user_message.strip():
+                user_message = "応答の生成に失敗しました。設定を確認した上で再度お試しください。"
 
             self._service.save_session(
                 session_id=session_id,
@@ -95,6 +100,9 @@ class CreateEntryOrchestrator:
                 on_phase(phase, detail, session_id)
 
         session_id, session_state = self._service.ensure_session(session_id)
+        if not get_gemini_api_key():
+            notify("PHASE0_ERROR", "LLM の API キーが未設定のため、応答を生成できません。")
+            return "LLM の API キーが未設定のため、応答を生成できません。設定を確認してください。", session_id
         notify("PHASE1_SESSION_READY", "session_id を確定しました。")
 
         notify("PHASE2_INTENT_CLASSIFY", "IntentClassifier を実行します。")
@@ -116,6 +124,8 @@ class CreateEntryOrchestrator:
                 extracted_json=extracted_json,
                 judge_json=judge_json,
             )
+            if not user_message.strip():
+                user_message = "応答の生成に失敗しました。設定を確認した上で再度お試しください。"
 
             notify("PHASE1_SAVE", "セッションを保存します。")
             self._service.save_session(

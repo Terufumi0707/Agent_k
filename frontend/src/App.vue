@@ -128,7 +128,7 @@ const sendMessage = async () => {
   resizeTextarea();
 
   const handleSseEvent = (eventBlock) => {
-    const lines = eventBlock.split("\n");
+    const lines = eventBlock.split(/\r?\n/);
     let eventType = "message";
     let dataPayload = null;
 
@@ -197,7 +197,7 @@ const sendMessage = async () => {
         break;
       }
       buffer += decoder.decode(value, { stream: true });
-      const events = buffer.split("\n\n");
+      const events = buffer.split(/\r?\n\r?\n/);
       buffer = events.pop() ?? "";
       for (const eventBlock of events) {
         if (eventBlock.trim()) {
