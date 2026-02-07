@@ -38,6 +38,7 @@ class CreateEntryOrchestrator:
         self._patch_generator = patch_generator or PatchGenerator()
 
     def run(self, user_input: str, session_id: str | None = None) -> tuple[str, str]:
+        # NOTE: session_id は外部から渡されない場合に新規発行し、以後の継続対話で利用する
         if session_id is None:
             session_id = generate_session_id()
         session_state = self._session_store.get(session_id)
@@ -49,6 +50,7 @@ class CreateEntryOrchestrator:
 
         intent = intent_result.intent
 
+        # NOTE: NEW/CHANGE/CONFIRM の分岐は、抽出→評価→整形→保存の流れを前提とする
         if intent == "NEW":
             extracted_text = generate_with_system_and_user(
                 system_prompt=AGENT_SYSTEM_PROMPT,
@@ -75,6 +77,7 @@ class CreateEntryOrchestrator:
             )
             return user_message, session_id
 
+        # NOTE: CHANGE は直前の抽出結果に対する差分のみ作成し、再抽出は行わない
         if intent == "CHANGE":
             patches = self._generate_patch(
                 user_change_input=user_input,
@@ -83,6 +86,7 @@ class CreateEntryOrchestrator:
             user_message = self._build_change_message(patches)
             return user_message, session_id
 
+        # NOTE: CONFIRM は確定メッセージのみを返し、外部への適用は別途実装に委ねる
         if intent == "CONFIRM":
             return "内容を確定しました。ありがとうございます。", session_id
 
