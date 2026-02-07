@@ -1,6 +1,8 @@
 import json
 
 import app.orchestrator as orchestrator
+from app.intent_classifier import IntentClassification
+from app.session_store import InMemorySessionStore, SessionState
 
 
 def test_orchestrator_run_executes_full_pipeline_and_returns_formatter_result(monkeypatch):
@@ -21,24 +23,28 @@ def test_orchestrator_run_executes_full_pipeline_and_returns_formatter_result(mo
 
     monkeypatch.setattr(orchestrator, "generate_with_system_and_user", mock_generate_with_system_and_user)
 
-    intent_calls = {"count": 0}
+    class DummyIntentClassifier:
+        def __init__(self) -> None:
+            self.count = 0
 
-    def mock_classify_intent(
-        self, prompt: str, session_id: str | None = None
-    ) -> orchestrator.IntentClassification:
-        intent_calls["count"] += 1
-        return orchestrator.IntentClassification(intent="NEW", confidence=0.8, reason="新規入力")
+        def classify(self, user_input: str, session_state: SessionState | None = None) -> IntentClassification:
+            self.count += 1
+            assert user_input == "PlaceHolderのRequest"
+            assert session_state is None
+            return IntentClassification(intent="NEW", confidence=0.8, reason="新規入力")
 
-    monkeypatch.setattr(orchestrator.CreateEntryOrchestrator, "classify_intent", mock_classify_intent)
+    dummy_classifier = DummyIntentClassifier()
+    result, session_id = orchestrator.CreateEntryOrchestrator(
+        intent_classifier=dummy_classifier,
+    ).run("PlaceHolderのRequest")
 
-    result = orchestrator.CreateEntryOrchestrator().run("PlaceHolderのRequest")
-
-    assert intent_calls["count"] == 1
+    assert dummy_classifier.count == 1
     assert len(captured) == 3
     assert captured[0] == (orchestrator.AGENT_SYSTEM_PROMPT, "PlaceHolderのRequest")
     assert captured[1] == (orchestrator.JUDGE_AGENT_SYSTEM_PROMPT, '{"extracted": true}')
     assert captured[2][0] == orchestrator.FORMATTER_AGENT_SYSTEM_PROMPT
     assert result == "display-message"
+    assert isinstance(session_id, str)
 
 
 def test_orchestrator_system_prompt_loaded_from_file():
@@ -57,7 +63,7 @@ def test_orchestrator_run_judge_calls_agent_once_with_judge_system_prompt(monkey
 
     monkeypatch.setattr(orchestrator, "generate_with_system_and_user", mock_generate_with_system_and_user)
 
-    result = orchestrator.CreateEntryOrchestrator().run_judge("抽出JSON")
+    result = orchestrator.CreateEntryOrchestrator()._run_judge("抽出JSON")
 
     assert captured["count"] == 1
     assert captured["system_prompt"] == orchestrator.JUDGE_AGENT_SYSTEM_PROMPT
@@ -84,7 +90,10 @@ def test_orchestrator_build_user_message_calls_formatter_agent(monkeypatch):
     extracted_result = {"construction_types": [{"normalized_type": "切替工事"}]}
     judge_result = {"judge_result": {"status": "CONFIRM"}}
 
-    result = orchestrator.CreateEntryOrchestrator().build_user_message(extracted_result, judge_result)
+    result = orchestrator.CreateEntryOrchestrator()._build_user_message(
+        extracted_json=json.dumps(extracted_result, ensure_ascii=False),
+        judge_json=json.dumps(judge_result, ensure_ascii=False),
+    )
 
     assert captured["count"] == 1
     assert captured["system_prompt"] == orchestrator.FORMATTER_AGENT_SYSTEM_PROMPT
@@ -98,3 +107,85 @@ def test_orchestrator_build_user_message_calls_formatter_agent(monkeypatch):
 def test_formatter_system_prompt_loaded_from_file():
     file_prompt = orchestrator.FORMATTER_PROMPT_FILE_PATH.read_text(encoding="utf-8").strip()
     assert orchestrator.FORMATTER_AGENT_SYSTEM_PROMPT == file_prompt
+
+
+def test_generate_patch_returns_parsed_patches(monkeypatch):
+    store = InMemorySessionStore()
+    store.save(
+        "session-123",
+        SessionState(
+            extracted_json='{"preferred_dates": [{"priority": 1, "date": "2026-04-01"}]}',
+            judge_result="{}",
+            user_view_message="",
+            intent_result="{}",
+        ),
+    )
+
+    def mock_generate(user_change_input: str, extracted_json: str) -> dict[str, object]:
+        assert user_change_input == "希望日を変えてください"
+        assert extracted_json == '{"preferred_dates": [{"priority": 1, "date": "2026-04-01"}]}'
+        return {
+            "patches": [
+                {
+                    "operation": "update",
+                    "target": "preferred_dates[priority=1].date",
+                    "value": "2026-04-02",
+                    "reason": "ユーザーが希望日を変更すると明示したため",
+                }
+            ]
+        }
+
+    patch_generator = orchestrator.PatchGenerator(system_prompt="prompt")
+    monkeypatch.setattr(patch_generator, "generate", mock_generate)
+
+    result = orchestrator.CreateEntryOrchestrator(
+        session_store=store,
+        patch_generator=patch_generator,
+    )._generate_patch("希望日を変えてください", session_state=store.get("session-123"))
+
+    assert result == {
+        "patches": [
+            {
+                "operation": "update",
+                "target": "preferred_dates[priority=1].date",
+                "value": "2026-04-02",
+                "reason": "ユーザーが希望日を変更すると明示したため",
+            }
+        ]
+    }
+
+
+def test_orchestrator_change_intent_returns_change_message(monkeypatch):
+    store = InMemorySessionStore()
+    store.save(
+        "session-456",
+        SessionState(
+            extracted_json='{"preferred_dates": [{"priority": 1, "date": "2026-04-01"}]}',
+            judge_result="{}",
+            user_view_message="",
+            intent_result="{}",
+        ),
+    )
+
+    class DummyIntentClassifier:
+        def classify(self, user_input: str, session_state: SessionState | None = None) -> IntentClassification:
+            assert user_input == "希望日を変えてください"
+            assert session_state is not None
+            return IntentClassification(intent="CHANGE", confidence=0.9, reason="変更依頼")
+
+    def mock_generate(user_change_input: str, extracted_json: str) -> dict[str, object]:
+        assert user_change_input == "希望日を変えてください"
+        assert extracted_json == '{"preferred_dates": [{"priority": 1, "date": "2026-04-01"}]}'
+        return {"patches": [{"operation": "update"}]}
+
+    patch_generator = orchestrator.PatchGenerator(system_prompt="prompt")
+    monkeypatch.setattr(patch_generator, "generate", mock_generate)
+
+    result, session_id = orchestrator.CreateEntryOrchestrator(
+        session_store=store,
+        intent_classifier=DummyIntentClassifier(),
+        patch_generator=patch_generator,
+    ).run("希望日を変えてください", session_id="session-456")
+
+    assert result == "以下の変更内容を受け付けました。問題なければ確定してください。"
+    assert session_id == "session-456"
