@@ -23,6 +23,24 @@
           WebエントリIDもしくはN番号、変更工事種別、変更工事日程を教えてください。
         </p>
 
+        <div
+          v-if="progressLogs.length || currentPhase || streamError || isSending"
+          class="progress-panel"
+        >
+          <p class="progress-title">進捗</p>
+          <p v-if="isSending && !currentPhase" class="progress-current">
+            処理を開始しています...
+          </p>
+          <p v-if="currentPhase" class="progress-current">{{ currentPhase }}</p>
+          <ul v-if="progressLogs.length" class="progress-list">
+            <li v-for="(log, index) in progressLogs" :key="index">
+              <span class="progress-phase">{{ log.phase }}</span>
+              <span class="progress-detail">{{ log.detail }}</span>
+            </li>
+          </ul>
+          <p v-if="streamError" class="progress-error">{{ streamError }}</p>
+        </div>
+
         <div class="messages" v-if="messages.length">
           <div
             v-for="(message, index) in messages"
@@ -58,6 +76,10 @@ const inputText = ref("");
 const inputRef = ref(null);
 const messages = ref([]);
 const isSending = ref(false);
+const progressLogs = ref([]);
+const currentPhase = ref("");
+const streamError = ref("");
+const sessionId = ref(null);
 
 const placeholderText =
   "指示してください";
@@ -68,7 +90,9 @@ const backendBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL
   ? import.meta.env.VITE_BACKEND_BASE_URL.replace(/\/$/, "")
   : "";
 
-const createEntryUrl = backendBaseUrl ? `${backendBaseUrl}/api/create_entry` : "/api/create_entry";
+const createEntryStreamUrl = backendBaseUrl
+  ? `${backendBaseUrl}/api/create_entry/stream`
+  : "/api/create_entry/stream";
 
 const resizeTextarea = () => {
   const textarea = inputRef.value;
@@ -93,29 +117,101 @@ const sendMessage = async () => {
     return;
   }
 
+  progressLogs.value = [];
+  currentPhase.value = "";
+  streamError.value = "";
+
   messages.value.push({ role: "user", text: userText });
   inputText.value = "";
   isSending.value = true;
   await nextTick();
   resizeTextarea();
 
+  const handleSseEvent = (eventBlock) => {
+    const lines = eventBlock.split("\n");
+    let eventType = "message";
+    let dataPayload = null;
+
+    for (const line of lines) {
+      if (line.startsWith("event:")) {
+        eventType = line.replace("event:", "").trim();
+      } else if (line.startsWith("data:")) {
+        dataPayload = line.replace("data:", "").trim();
+      }
+    }
+
+    if (!dataPayload) {
+      return;
+    }
+
+    let payload = null;
+    try {
+      payload = JSON.parse(dataPayload);
+    } catch (error) {
+      console.error("SSE payload parse failed:", error);
+      return;
+    }
+
+    if (eventType === "phase") {
+      currentPhase.value = payload.detail ?? payload.phase ?? "";
+      progressLogs.value.push({
+        phase: payload.phase ?? "",
+        detail: payload.detail ?? ""
+      });
+    } else if (eventType === "done") {
+      sessionId.value = payload.session_id ?? sessionId.value;
+      messages.value.push({ role: "ai", text: payload.message ?? "" });
+    } else if (eventType === "error") {
+      streamError.value = payload.error ?? "ストリーミングでエラーが発生しました。";
+      messages.value.push({
+        role: "ai",
+        text: "エラーが発生しました。時間をおいて再度お試しください。"
+      });
+    }
+  };
+
   try {
-    const response = await fetch(createEntryUrl, {
+    const response = await fetch(createEntryStreamUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ prompt: userText })
+      body: JSON.stringify({ prompt: userText, session_id: sessionId.value })
     });
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);
     }
 
-    const data = await response.json();
-    messages.value.push({ role: "ai", text: data.result ?? "" });
+    if (!response.body) {
+      throw new Error("ReadableStream is not supported in this environment.");
+    }
+
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder("utf-8");
+    let buffer = "";
+
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) {
+        break;
+      }
+      buffer += decoder.decode(value, { stream: true });
+      const events = buffer.split("\n\n");
+      buffer = events.pop() ?? "";
+      for (const eventBlock of events) {
+        if (eventBlock.trim()) {
+          handleSseEvent(eventBlock.trim());
+        }
+      }
+    }
+
+    if (buffer.trim()) {
+      handleSseEvent(buffer.trim());
+    }
   } catch (error) {
     console.error("create_entry request failed:", error);
+    streamError.value = "ストリーミングの接続に失敗しました。";
     messages.value.push({ role: "ai", text: "エラーが発生しました。時間をおいて再度お試しください。" });
   } finally {
     isSending.value = false;
