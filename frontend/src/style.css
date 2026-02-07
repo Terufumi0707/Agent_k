@@ -86,6 +86,21 @@ body {
   color: #2d435d;
 }
 
+.history-toggle {
+  margin-top: 10px;
+  border: none;
+  background: transparent;
+  color: #0072bc;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.history-toggle:hover {
+  text-decoration: underline;
+}
+
 .chat-content {
   flex: 1;
   min-height: 100vh;

@@ -9,10 +9,18 @@
       <div class="sidebar-bottom">
         <p class="history-title">過去のチャット履歴（mock）</p>
         <ul class="history-list">
-          <li>2026/04/01 工事日程の確認</li>
-          <li>2026/03/30 N番号の問い合わせ</li>
-          <li>2026/03/29 変更工事種別の相談</li>
+          <li v-for="(item, index) in visibleHistoryItems" :key="`${item}-${index}`">
+            {{ item }}
+          </li>
         </ul>
+        <button
+          v-if="shouldShowHistoryToggle"
+          type="button"
+          class="history-toggle"
+          @click="toggleHistory"
+        >
+          {{ historyToggleLabel }}
+        </button>
       </div>
     </aside>
 
@@ -84,7 +92,40 @@ const sessionId = ref(null);
 const placeholderText =
   "指示してください";
 
+const historyItems = ref([
+  "2026/04/01 工事日程の確認",
+  "2026/03/30 N番号の問い合わせ",
+  "2026/03/29 変更工事種別の相談",
+  "2026/03/28 工事希望日の再調整",
+  "2026/03/27 連絡先の更新",
+  "2026/03/26 工事内容の補足共有",
+  "2026/03/25 現地調査日程の確認",
+  "2026/03/24 契約内容の再確認",
+  "2026/03/23 施工担当者の変更相談",
+  "2026/03/22 書類提出期限の確認",
+  "2026/03/21 工事時間帯の相談",
+  "2026/03/20 追加工事の可否確認"
+]);
+const historyCollapsed = ref(true);
+const historyLimit = 10;
+
 const canSend = computed(() => inputText.value.trim().length > 0);
+const shouldShowHistoryToggle = computed(
+  () => historyItems.value.length > historyLimit
+);
+const visibleHistoryItems = computed(() => {
+  if (!shouldShowHistoryToggle.value || !historyCollapsed.value) {
+    return historyItems.value;
+  }
+  return historyItems.value.slice(0, historyLimit);
+});
+const historyToggleLabel = computed(() =>
+  historyCollapsed.value ? "履歴をもっと見る" : "履歴を閉じる"
+);
+
+const toggleHistory = () => {
+  historyCollapsed.value = !historyCollapsed.value;
+};
 
 const backendBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL
   ? import.meta.env.VITE_BACKEND_BASE_URL.replace(/\/$/, "")
