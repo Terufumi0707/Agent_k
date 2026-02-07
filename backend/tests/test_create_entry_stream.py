@@ -26,7 +26,7 @@ def test_create_entry_stream_emits_phase_and_done(monkeypatch):
             on_phase("PHASE2_INTENT_CLASSIFY", "intent classify", session_id)
         return "ユーザー向け整形結果", session_id
 
-    monkeypatch.setattr(agent_controller._orchestrator, "run_stream", mock_run_stream)
+    monkeypatch.setattr(agent_controller._stream_service._orchestrator, "run_stream", mock_run_stream)
 
     with client.stream("POST", "/api/create_entry/stream", json={"prompt": "そのまま渡す文字列"}) as response:
         assert response.status_code == 200
