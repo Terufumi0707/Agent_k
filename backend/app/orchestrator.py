@@ -62,7 +62,7 @@ class CreateEntryOrchestrator:
                 extracted_json=extracted_json,
                 judge_json=judge_json,
             )
-            if not user_message.strip():
+            if user_message is None:
                 user_message = "応答の生成に失敗しました。設定を確認した上で再度お試しください。"
 
             self._service.save_session(
@@ -124,7 +124,7 @@ class CreateEntryOrchestrator:
                 extracted_json=extracted_json,
                 judge_json=judge_json,
             )
-            if not user_message.strip():
+            if user_message is None:
                 user_message = "応答の生成に失敗しました。設定を確認した上で再度お試しください。"
 
             notify("PHASE1_SAVE", "セッションを保存します。")
