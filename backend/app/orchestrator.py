@@ -18,7 +18,14 @@ FORMATTER_AGENT_SYSTEM_PROMPT = FORMATTER_PROMPT_FILE_PATH.read_text(encoding="u
 
 
 class CreateEntryOrchestrator:
-    """create_entry の処理順序を統一するオーケストレーター。"""
+    """
+    Phase構成に基づいて create_entry の処理順序を制御するオーケストレーター。
+
+    Phase0: 情報抽出
+    Phase1: 状態保持
+    Phase2: 意図判定
+    Phase3: Patch生成
+    """
 
     def __init__(
         self,
@@ -30,73 +37,90 @@ class CreateEntryOrchestrator:
         self._intent_classifier = intent_classifier or IntentClassifier()
         self._patch_generator = patch_generator or PatchGenerator()
 
-    def run(self, prompt: str, session_id: str | None = None) -> tuple[str, str]:
+    def run(self, user_input: str, session_id: str | None = None) -> tuple[str, str]:
         if session_id is None:
             session_id = generate_session_id()
-        # 1. 最新入力とセッション状態をもとに意図判定（処理分岐の判断材料）
-        intent_result = self.classify_intent(prompt, session_id)
-        # 2. 入力から必要情報を抽出
-        extracted_result = generate_with_system_and_user(
-            system_prompt=AGENT_SYSTEM_PROMPT,
-            user_prompt=prompt,
-        )
-        # 3. 抽出結果を評価
-        judge_result = self.run_judge(extracted_result)
-        extracted_payload = self._to_json_text(extracted_result)
-        judge_payload = self._to_json_text(judge_result)
-        # 4. 抽出結果・評価結果をもとにユーザー向け文面を生成
-        user_message = self.build_user_message(extracted_payload, judge_payload)
-        # 5. セッション状態として保存（意図判定結果も含める）
-        # Phase1: 変更対応は行わず、処理結果をセッション単位で保存するだけに留める。
-        self._session_store.save(
-            session_id,
-            SessionState(
-                extracted_json=extracted_payload,
-                judge_result=judge_payload,
-                user_view_message=user_message,
-                intent_result=self._to_json_text(intent_result.__dict__),
-            ),
-        )
-        return user_message, session_id
+        session_state = self._session_store.get(session_id)
 
-    def run_judge(self, prompt: str) -> str:
-        """情報抽出JSONの評価を行うJudgeエージェントを実行する。"""
+        intent_result = self._intent_classifier.classify(
+            user_input=user_input,
+            session_state=session_state,
+        )
 
+        intent = intent_result.intent
+
+        if intent == "NEW":
+            extracted_text = generate_with_system_and_user(
+                system_prompt=AGENT_SYSTEM_PROMPT,
+                user_prompt=user_input,
+            )
+            judge_text = self._run_judge(extracted_text)
+
+            extracted_json = self._to_json_text(extracted_text)
+            judge_json = self._to_json_text(judge_text)
+
+            user_message = self._build_user_message(
+                extracted_json=extracted_json,
+                judge_json=judge_json,
+            )
+
+            self._session_store.save(
+                session_id,
+                SessionState(
+                    extracted_json=extracted_json,
+                    judge_result=judge_json,
+                    user_view_message=user_message,
+                    intent_result=self._to_json_text(intent_result.__dict__),
+                ),
+            )
+            return user_message, session_id
+
+        if intent == "CHANGE":
+            patches = self._generate_patch(
+                user_change_input=user_input,
+                session_state=session_state,
+            )
+            user_message = self._build_change_message(patches)
+            return user_message, session_id
+
+        if intent == "CONFIRM":
+            return "内容を確定しました。ありがとうございます。", session_id
+
+        return "ご要望の内容をもう少し詳しく教えてください。", session_id
+
+    def _run_judge(self, extracted_text: str) -> str:
         return generate_with_system_and_user(
             system_prompt=JUDGE_AGENT_SYSTEM_PROMPT,
-            user_prompt=prompt,
+            user_prompt=extracted_text,
         )
 
-    def build_user_message(self, extracted_result: dict[str, Any] | str, judge_result: dict[str, Any] | str) -> str:
-        """抽出結果JSONとJudge結果JSONを入力として、ユーザー表示文を生成する。"""
-
-        extracted_payload = self._to_json_text(extracted_result)
-        judge_payload = self._to_json_text(judge_result)
-        user_prompt = f"extracted_result:\n{extracted_payload}\n\njudge_result:\n{judge_payload}"
-
+    def _build_user_message(self, extracted_json: str, judge_json: str) -> str:
+        user_prompt = f"extracted_result:\n{extracted_json}\n\njudge_result:\n{judge_json}"
         return generate_with_system_and_user(
             system_prompt=FORMATTER_AGENT_SYSTEM_PROMPT,
             user_prompt=user_prompt,
         )
 
-    def _to_json_text(self, payload: dict[str, Any] | str) -> str:
-        if isinstance(payload, str):
-            return payload
-        return json.dumps(payload, ensure_ascii=False)
-
-    def classify_intent(self, prompt: str, session_id: str | None = None) -> IntentClassification:
-        session_state = None
-        if session_id is not None:
-            session_state = self._session_store.get(session_id)
-        return self._intent_classifier.classify(prompt, session_state)
-
-    def generate_patch(self, user_change_input: str, session_id: str | None = None) -> dict[str, Any]:
-        if session_id is None:
-            return {"patches": []}
-        session_state = self._session_store.get(session_id)
+    def _generate_patch(self, user_change_input: str, session_state: SessionState | None) -> dict[str, Any]:
         if session_state is None:
             return {"patches": []}
         return self._patch_generator.generate(
             user_change_input=user_change_input,
             extracted_json=session_state.extracted_json,
         )
+
+    def _build_change_message(self, patches: dict[str, Any]) -> str:
+        if not patches.get("patches"):
+            return "変更内容を特定できませんでした。もう少し具体的に教えてください。"
+        return "以下の変更内容を受け付けました。問題なければ確定してください。"
+
+    def _to_json_text(self, payload: dict[str, Any] | str) -> str:
+        if isinstance(payload, str):
+            return payload
+        return json.dumps(payload, ensure_ascii=False)
+
+    def classify_intent(self, user_input: str, session_id: str | None = None) -> IntentClassification:
+        session_state = None
+        if session_id is not None:
+            session_state = self._session_store.get(session_id)
+        return self._intent_classifier.classify(user_input=user_input, session_state=session_state)
