@@ -93,6 +93,9 @@ const backendBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL
 const createEntryStreamUrl = backendBaseUrl
   ? `${backendBaseUrl}/api/create_entry/stream`
   : "/api/create_entry/stream";
+const createEntryUrl = backendBaseUrl
+  ? `${backendBaseUrl}/api/create_entry`
+  : "/api/create_entry";
 
 const resizeTextarea = () => {
   const textarea = inputRef.value;
@@ -160,7 +163,6 @@ const sendMessage = async () => {
       });
     } else if (eventType === "done") {
       sessionId.value = payload.session_id ?? sessionId.value;
-      messages.value.push({ role: "ai", text: payload.message ?? "" });
     } else if (eventType === "error") {
       streamError.value = payload.error ?? "ストリーミングでエラーが発生しました。";
       messages.value.push({
@@ -170,52 +172,80 @@ const sendMessage = async () => {
     }
   };
 
-  try {
-    const response = await fetch(createEntryStreamUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ prompt: userText, session_id: sessionId.value })
-    });
+  const streamPromise = (async () => {
+    try {
+      const response = await fetch(createEntryStreamUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ prompt: userText, session_id: sessionId.value })
+      });
 
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    if (!response.body) {
-      throw new Error("ReadableStream is not supported in this environment.");
-    }
-
-    const reader = response.body.getReader();
-    const decoder = new TextDecoder("utf-8");
-    let buffer = "";
-
-    while (true) {
-      const { value, done } = await reader.read();
-      if (done) {
-        break;
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
       }
-      buffer += decoder.decode(value, { stream: true });
-      const events = buffer.split(/\r?\n\r?\n/);
-      buffer = events.pop() ?? "";
-      for (const eventBlock of events) {
-        if (eventBlock.trim()) {
-          handleSseEvent(eventBlock.trim());
+
+      if (!response.body) {
+        throw new Error("ReadableStream is not supported in this environment.");
+      }
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buffer = "";
+
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) {
+          break;
+        }
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split(/\r?\n\r?\n/);
+        buffer = events.pop() ?? "";
+        for (const eventBlock of events) {
+          if (eventBlock.trim()) {
+            handleSseEvent(eventBlock.trim());
+          }
         }
       }
-    }
 
-    if (buffer.trim()) {
-      handleSseEvent(buffer.trim());
+      if (buffer.trim()) {
+        handleSseEvent(buffer.trim());
+      }
+    } catch (error) {
+      console.error("create_entry stream request failed:", error);
+      streamError.value = "ストリーミングの接続に失敗しました。";
     }
-  } catch (error) {
-    console.error("create_entry request failed:", error);
-    streamError.value = "ストリーミングの接続に失敗しました。";
-    messages.value.push({ role: "ai", text: "エラーが発生しました。時間をおいて再度お試しください。" });
-  } finally {
-    isSending.value = false;
-  }
+  })();
+
+  const resultPromise = (async () => {
+    try {
+      const response = await fetch(createEntryUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({ prompt: userText, session_id: sessionId.value })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+      sessionId.value = data.session_id ?? sessionId.value;
+      messages.value.push({ role: "ai", text: data.result ?? "" });
+    } catch (error) {
+      console.error("create_entry request failed:", error);
+      messages.value.push({
+        role: "ai",
+        text: "エラーが発生しました。時間をおいて再度お試しください。"
+      });
+    }
+  })();
+
+  await Promise.allSettled([streamPromise, resultPromise]);
+  isSending.value = false;
 };
 
 onMounted(() => {
