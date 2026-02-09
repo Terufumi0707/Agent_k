@@ -52,20 +52,17 @@ class CreateEntryOrchestrator:
             extracted_text = self._service.extract(user_input)
             judge_text = self._service.judge(extracted_text)
 
-            extracted_json = self._service.to_json_text(extracted_text)
-            judge_json = self._service.to_json_text(judge_text)
-
             user_message = self._service.format_user_message(
-                extracted_json=extracted_json,
-                judge_json=judge_json,
+                extracted_json=extracted_text,
+                judge_json=judge_text,
             )
             if user_message is None:
                 user_message = "応答の生成に失敗しました。設定を確認した上で再度お試しください。"
 
             self._service.save_session(
                 session_id=session_id,
-                extracted_json=extracted_json,
-                judge_json=judge_json,
+                extracted_json=extracted_text,
+                judge_json=judge_text,
                 user_message=user_message,
                 intent_result=intent_result,
             )
@@ -110,13 +107,10 @@ class CreateEntryOrchestrator:
             notify("PHASE0_JUDGE", "Judge エージェントを実行します。")
             judge_text = self._service.judge(extracted_text)
 
-            extracted_json = self._service.to_json_text(extracted_text)
-            judge_json = self._service.to_json_text(judge_text)
-
             notify("PHASE0_FORMAT", "Formatter でユーザー表示文を生成します。")
             user_message = self._service.format_user_message(
-                extracted_json=extracted_json,
-                judge_json=judge_json,
+                extracted_json=extracted_text,
+                judge_json=judge_text,
             )
             if user_message is None:
                 user_message = "応答の生成に失敗しました。設定を確認した上で再度お試しください。"
@@ -124,8 +118,8 @@ class CreateEntryOrchestrator:
             notify("PHASE1_SAVE", "セッションを保存します。")
             self._service.save_session(
                 session_id=session_id,
-                extracted_json=extracted_json,
-                judge_json=judge_json,
+                extracted_json=extracted_text,
+                judge_json=judge_text,
                 user_message=user_message,
                 intent_result=intent_result,
             )
@@ -157,9 +151,6 @@ class CreateEntryOrchestrator:
 
     def _build_change_message(self, patches: dict[str, Any]) -> str:
         return self._service.build_change_message(patches)
-
-    def _to_json_text(self, payload: dict[str, Any] | str) -> str:
-        return self._service.to_json_text(payload)
 
     def classify_intent(self, user_input: str, session_id: str | None = None) -> IntentClassification:
         session_state = None
