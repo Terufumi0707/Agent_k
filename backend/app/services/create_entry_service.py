@@ -15,6 +15,16 @@ JUDGE_PROMPT_FILE_PATH = Path(__file__).parent.parent / "prompts" / "judge_extra
 JUDGE_AGENT_SYSTEM_PROMPT = JUDGE_PROMPT_FILE_PATH.read_text(encoding="utf-8").strip()
 FORMATTER_PROMPT_FILE_PATH = Path(__file__).parent.parent / "prompts" / "user_message_formatter_agent_system_prompt.txt"
 FORMATTER_AGENT_SYSTEM_PROMPT = FORMATTER_PROMPT_FILE_PATH.read_text(encoding="utf-8").strip()
+PATCH_PREVIEW_PROMPT_FILE_PATH = (
+    Path(__file__).parent.parent / "prompts" / "patch_preview_agent_system_prompt.txt"
+)
+PATCH_PREVIEW_AGENT_SYSTEM_PROMPT = PATCH_PREVIEW_PROMPT_FILE_PATH.read_text(encoding="utf-8").strip()
+CHANGE_PREVIEW_FORMATTER_PROMPT_FILE_PATH = (
+    Path(__file__).parent.parent / "prompts" / "change_preview_formatter_agent_system_prompt.txt"
+)
+CHANGE_PREVIEW_FORMATTER_AGENT_SYSTEM_PROMPT = CHANGE_PREVIEW_FORMATTER_PROMPT_FILE_PATH.read_text(
+    encoding="utf-8"
+).strip()
 
 
 class CreateEntryService:
@@ -72,6 +82,29 @@ class CreateEntryService:
                 judge_result=judge_json,
                 user_view_message=user_message,
                 intent_result=self.to_json_text(intent_result.__dict__),
+                pending_patch=None,
+                preview_extracted_json=None,
+            ),
+        )
+
+    def save_change_session(
+        self,
+        session_id: str,
+        session_state: SessionState,
+        pending_patch: dict[str, Any],
+        preview_extracted_json: str,
+        user_message: str,
+        intent_result: IntentClassification,
+    ) -> None:
+        self._session_store.save(
+            session_id,
+            SessionState(
+                extracted_json=session_state.extracted_json,
+                judge_result=session_state.judge_result,
+                user_view_message=user_message,
+                intent_result=self.to_json_text(intent_result.__dict__),
+                pending_patch=self.to_json_text(pending_patch),
+                preview_extracted_json=preview_extracted_json,
             ),
         )
 
@@ -81,6 +114,29 @@ class CreateEntryService:
         return self._patch_generator.generate(
             user_change_input=user_change_input,
             extracted_json=session_state.extracted_json,
+        )
+
+    def build_preview_extracted_json(self, extracted_json: str, patches: dict[str, Any]) -> str:
+        if not patches.get("patches"):
+            return extracted_json
+        user_prompt = f"extracted_json:\n{extracted_json}\n\npatches:\n{self.to_json_text(patches)}"
+        return self._llm_client(
+            system_prompt=PATCH_PREVIEW_AGENT_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+        )
+
+    def format_change_preview_message(self, preview_extracted_json: str) -> str:
+        user_prompt = f"preview_extracted_json:\n{preview_extracted_json}"
+        summary = self._llm_client(
+            system_prompt=CHANGE_PREVIEW_FORMATTER_AGENT_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+        )
+        if not summary:
+            summary = "変更後の内容を要約できませんでした。"
+        return (
+            f"{summary}\n\n"
+            "この内容でよろしければ確定してください。\n"
+            "さらに変更があれば指示してください。"
         )
 
     def build_change_message(self, patches: dict[str, Any]) -> str:

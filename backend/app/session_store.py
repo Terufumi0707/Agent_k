@@ -13,6 +13,8 @@ class SessionState:
     judge_result: str
     user_view_message: str
     intent_result: str
+    pending_patch: str | None = None
+    preview_extracted_json: str | None = None
 
 
 class SessionStore(Protocol):

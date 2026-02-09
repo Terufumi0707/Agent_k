@@ -9,9 +9,13 @@ from app.services.create_entry_service import (
     AGENT_SYSTEM_PROMPT,
     FORMATTER_AGENT_SYSTEM_PROMPT,
     JUDGE_AGENT_SYSTEM_PROMPT,
+    CHANGE_PREVIEW_FORMATTER_AGENT_SYSTEM_PROMPT,
     FORMATTER_PROMPT_FILE_PATH,
     JUDGE_PROMPT_FILE_PATH,
+    CHANGE_PREVIEW_FORMATTER_PROMPT_FILE_PATH,
     PROMPT_FILE_PATH,
+    PATCH_PREVIEW_AGENT_SYSTEM_PROMPT,
+    PATCH_PREVIEW_PROMPT_FILE_PATH,
     CreateEntryService,
 )
 from app.session_store import InMemorySessionStore, SessionState, SessionStore
@@ -74,7 +78,25 @@ class CreateEntryOrchestrator:
                 user_change_input=user_input,
                 session_state=session_state,
             )
-            user_message = self._service.build_change_message(patches)
+            if session_state is None:
+                user_message = self._service.build_change_message(patches)
+                return user_message, session_id
+
+            preview_extracted_json = self._service.build_preview_extracted_json(
+                extracted_json=session_state.extracted_json,
+                patches=patches,
+            )
+            user_message = self._service.format_change_preview_message(
+                preview_extracted_json=preview_extracted_json,
+            )
+            self._service.save_change_session(
+                session_id=session_id,
+                session_state=session_state,
+                pending_patch=patches,
+                preview_extracted_json=preview_extracted_json,
+                user_message=user_message,
+                intent_result=intent_result,
+            )
             return user_message, session_id
 
         # NOTE: CONFIRM は確定メッセージのみを返し、外部への適用は別途実装に委ねる
@@ -131,8 +153,29 @@ class CreateEntryOrchestrator:
                 user_change_input=user_input,
                 session_state=session_state,
             )
-            notify("PHASE0_FORMAT", "変更内容メッセージを生成します。")
-            user_message = self._service.build_change_message(patches)
+            if session_state is None:
+                notify("PHASE0_FORMAT", "変更内容メッセージを生成します。")
+                user_message = self._service.build_change_message(patches)
+                return user_message, session_id
+
+            notify("PHASE3_PATCH_PREVIEW", "Patch を仮適用してプレビューを作成します。")
+            preview_extracted_json = self._service.build_preview_extracted_json(
+                extracted_json=session_state.extracted_json,
+                patches=patches,
+            )
+            notify("PHASE0_FORMAT", "変更後内容の確認メッセージを生成します。")
+            user_message = self._service.format_change_preview_message(
+                preview_extracted_json=preview_extracted_json,
+            )
+            notify("PHASE1_SAVE", "変更内容のプレビューを保存します。")
+            self._service.save_change_session(
+                session_id=session_id,
+                session_state=session_state,
+                pending_patch=patches,
+                preview_extracted_json=preview_extracted_json,
+                user_message=user_message,
+                intent_result=intent_result,
+            )
             return user_message, session_id
 
         if intent == "CONFIRM":

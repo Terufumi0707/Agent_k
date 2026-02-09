@@ -57,6 +57,8 @@ class IntentClassifier:
             "judge_result": session_state.judge_result,
             "user_view_message": session_state.user_view_message,
             "intent_result": session_state.intent_result,
+            "pending_patch": session_state.pending_patch,
+            "preview_extracted_json": session_state.preview_extracted_json,
         }
         return json.dumps(payload, ensure_ascii=False)
 
