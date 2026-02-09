@@ -118,6 +118,8 @@ def test_generate_patch_returns_parsed_patches(monkeypatch):
             judge_result="{}",
             user_view_message="",
             intent_result="{}",
+            pending_patch=None,
+            preview_extracted_json=None,
         ),
     )
 
@@ -164,6 +166,8 @@ def test_orchestrator_change_intent_returns_change_message(monkeypatch):
             judge_result="{}",
             user_view_message="",
             intent_result="{}",
+            pending_patch=None,
+            preview_extracted_json=None,
         ),
     )
 
@@ -181,11 +185,29 @@ def test_orchestrator_change_intent_returns_change_message(monkeypatch):
     patch_generator = orchestrator.PatchGenerator(system_prompt="prompt")
     monkeypatch.setattr(patch_generator, "generate", mock_generate)
 
+    captured: list[tuple[str, str]] = []
+
+    def mock_generate_with_system_and_user(system_prompt: str, user_prompt: str) -> str:
+        captured.append((system_prompt, user_prompt))
+        if system_prompt == orchestrator.PATCH_PREVIEW_AGENT_SYSTEM_PROMPT:
+            assert "extracted_json:\n" in user_prompt
+            assert "patches:\n" in user_prompt
+            return "{\"preferred_dates\": [{\"priority\": 1, \"date\": \"2026-04-02\"}]}"
+        if system_prompt == orchestrator.CHANGE_PREVIEW_FORMATTER_AGENT_SYSTEM_PROMPT:
+            assert "preview_extracted_json:\n" in user_prompt
+            return "変更後の内容の要約"
+        raise AssertionError("unexpected system prompt")
+
+    monkeypatch.setattr(orchestrator, "generate_with_system_and_user", mock_generate_with_system_and_user)
+
     result, session_id = orchestrator.CreateEntryOrchestrator(
         session_store=store,
         intent_classifier=DummyIntentClassifier(),
         patch_generator=patch_generator,
     ).run("希望日を変えてください", session_id="session-456")
 
-    assert result == "以下の変更内容を受け付けました。問題なければ確定してください。"
+    assert result == (
+        "変更後の内容の要約\n\nこの内容でよろしければ確定してください。\nさらに変更があれば指示してください。"
+    )
     assert session_id == "session-456"
+    assert len(captured) == 2

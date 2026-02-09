@@ -23,6 +23,8 @@ def test_intent_classifier_calls_llm_with_session_summary(monkeypatch):
         judge_result="{\"judge\": true}",
         user_view_message="確認メッセージ",
         intent_result="{\"intent\": \"NEW\"}",
+        pending_patch=None,
+        preview_extracted_json=None,
     )
     result = IntentClassifier().classify("日程を変更したい", state)
 
