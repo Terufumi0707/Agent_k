@@ -163,7 +163,7 @@ def test_generate_patch_returns_parsed_patches(monkeypatch):
     }
 
 
-def test_orchestrator_change_intent_returns_change_message(monkeypatch):
+def test_orchestrator_change_intent_returns_change_preview_message(monkeypatch):
     store = InMemorySessionStore()
     store.save(
         "session-456",
@@ -183,22 +183,14 @@ def test_orchestrator_change_intent_returns_change_message(monkeypatch):
             assert session_state is not None
             return IntentClassification(intent="CHANGE", confidence=0.9, reason="変更依頼")
 
-    def mock_generate(user_change_input: str, extracted_json: str) -> dict[str, object]:
-        assert user_change_input == "希望日を変えてください"
-        assert extracted_json == '{"preferred_dates": [{"priority": 1, "date": "2026-04-01"}]}'
-        return {"patches": [{"operation": "update"}]}
-
-    patch_generator = orchestrator.PatchGenerator(system_prompt="prompt")
-    monkeypatch.setattr(patch_generator, "generate", mock_generate)
-
     captured: list[tuple[str, str]] = []
 
     def mock_generate_with_system_and_user(system_prompt: str, user_prompt: str) -> str:
         captured.append((system_prompt, user_prompt))
-        if system_prompt == orchestrator.PATCH_PREVIEW_AGENT_SYSTEM_PROMPT:
+        if system_prompt == orchestrator.CHANGE_PREVIEW_AGENT_SYSTEM_PROMPT:
             assert "extracted_json:\n" in user_prompt
-            assert "patches:\n" in user_prompt
-            return "{\"preferred_dates\": [{\"priority\": 1, \"date\": \"2026-04-02\"}]}"
+            assert "user_change_input:\n希望日を変えてください" in user_prompt
+            return '{"preferred_dates": [{"priority": 1, "date": "2026-04-02"}]}'
         if system_prompt == orchestrator.CHANGE_PREVIEW_FORMATTER_AGENT_SYSTEM_PROMPT:
             assert "preview_extracted_json:\n" in user_prompt
             return "変更後の内容の要約"
@@ -209,7 +201,6 @@ def test_orchestrator_change_intent_returns_change_message(monkeypatch):
     result, session_id = orchestrator.CreateEntryOrchestrator(
         session_store=store,
         intent_classifier=DummyIntentClassifier(),
-        patch_generator=patch_generator,
     ).run("希望日を変えてください", session_id="session-456")
 
     assert result == (
@@ -217,3 +208,19 @@ def test_orchestrator_change_intent_returns_change_message(monkeypatch):
     )
     assert session_id == "session-456"
     assert len(captured) == 2
+
+
+def test_orchestrator_change_intent_without_session_returns_missing_target_message():
+    class DummyIntentClassifier:
+        def classify(self, user_input: str, session_state: SessionState | None = None) -> IntentClassification:
+            assert user_input == "変更してください"
+            assert session_state is None
+            return IntentClassification(intent="CHANGE", confidence=0.9, reason="変更依頼")
+
+    result, session_id = orchestrator.CreateEntryOrchestrator(
+        session_store=InMemorySessionStore(),
+        intent_classifier=DummyIntentClassifier(),
+    ).run("変更してください")
+
+    assert result == "変更対象となる情報がありません。"
+    assert isinstance(session_id, str)
