@@ -19,6 +19,10 @@ PATCH_PREVIEW_PROMPT_FILE_PATH = (
     Path(__file__).parent.parent / "prompts" / "patch_preview_agent_system_prompt.txt"
 )
 PATCH_PREVIEW_AGENT_SYSTEM_PROMPT = PATCH_PREVIEW_PROMPT_FILE_PATH.read_text(encoding="utf-8").strip()
+CHANGE_PREVIEW_PROMPT_FILE_PATH = (
+    Path(__file__).parent.parent / "prompts" / "change_preview_agent_system_prompt.txt"
+)
+CHANGE_PREVIEW_AGENT_SYSTEM_PROMPT = CHANGE_PREVIEW_PROMPT_FILE_PATH.read_text(encoding="utf-8").strip()
 CHANGE_PREVIEW_FORMATTER_PROMPT_FILE_PATH = (
     Path(__file__).parent.parent / "prompts" / "change_preview_formatter_agent_system_prompt.txt"
 )
@@ -103,7 +107,7 @@ class CreateEntryService:
         self,
         session_id: str,
         session_state: SessionState,
-        pending_patch: dict[str, Any],
+        pending_patch: dict[str, Any] | None,
         preview_extracted_json: str,
         user_message: str,
         intent_result: IntentClassification,
@@ -116,7 +120,7 @@ class CreateEntryService:
                 judge_result=session_state.judge_result,
                 user_view_message=user_message,
                 intent_result=self.to_json_text(intent_result.__dict__),
-                pending_patch=self.to_json_text(pending_patch),
+                pending_patch=self.to_json_text(pending_patch) if pending_patch is not None else None,
                 preview_extracted_json=preview_extracted_json,
             ),
         )
@@ -135,6 +139,13 @@ class CreateEntryService:
         user_prompt = f"extracted_json:\n{extracted_json}\n\npatches:\n{self.to_json_text(patches)}"
         return self._llm_client(
             system_prompt=PATCH_PREVIEW_AGENT_SYSTEM_PROMPT,
+            user_prompt=user_prompt,
+        )
+
+    def build_preview_extracted_json_direct(self, extracted_json: str, user_change_input: str) -> str:
+        user_prompt = f"extracted_json:\n{extracted_json}\n\nuser_change_input:\n{user_change_input}"
+        return self._llm_client(
+            system_prompt=CHANGE_PREVIEW_AGENT_SYSTEM_PROMPT,
             user_prompt=user_prompt,
         )
 

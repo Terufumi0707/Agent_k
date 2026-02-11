@@ -14,8 +14,8 @@ from app.services.create_entry_service import (
     JUDGE_PROMPT_FILE_PATH,
     CHANGE_PREVIEW_FORMATTER_PROMPT_FILE_PATH,
     PROMPT_FILE_PATH,
-    PATCH_PREVIEW_AGENT_SYSTEM_PROMPT,
-    PATCH_PREVIEW_PROMPT_FILE_PATH,
+    CHANGE_PREVIEW_AGENT_SYSTEM_PROMPT,
+    CHANGE_PREVIEW_PROMPT_FILE_PATH,
     CreateEntryService,
 )
 from app.session_store import InMemorySessionStore, SessionState, SessionStore
@@ -74,19 +74,14 @@ class CreateEntryOrchestrator:
             )
             return user_message, session_id
 
-        # NOTE: CHANGE は直前の抽出結果に対する差分のみ作成し、再抽出は行わない
+        # NOTE: CHANGE は保持済みの抽出結果に対して、変更指示のみを反映したプレビューを作成する
         if intent == "CHANGE":
-            patches = self._service.generate_patch(
-                user_change_input=user_input,
-                session_state=session_state,
-            )
             if session_state is None:
-                user_message = self._service.build_change_message(patches)
-                return user_message, session_id
+                return "変更対象となる情報がありません。", session_id
 
-            preview_extracted_json = self._service.build_preview_extracted_json(
+            preview_extracted_json = self._service.build_preview_extracted_json_direct(
                 extracted_json=session_state.extracted_json,
-                patches=patches,
+                user_change_input=user_input,
             )
             user_message = self._service.format_change_preview_message(
                 preview_extracted_json=preview_extracted_json,
@@ -94,7 +89,7 @@ class CreateEntryOrchestrator:
             self._service.save_change_session(
                 session_id=session_id,
                 session_state=session_state,
-                pending_patch=patches,
+                pending_patch=None,
                 preview_extracted_json=preview_extracted_json,
                 user_message=user_message,
                 intent_result=intent_result,
@@ -152,20 +147,14 @@ class CreateEntryOrchestrator:
             return user_message, session_id
 
         if intent == "CHANGE":
-            notify("PHASE3_PATCH", "PatchGenerator を実行します。")
-            patches = self._service.generate_patch(
-                user_change_input=user_input,
-                session_state=session_state,
-            )
             if session_state is None:
-                notify("PHASE0_FORMAT", "変更内容メッセージを生成します。")
-                user_message = self._service.build_change_message(patches)
-                return user_message, session_id
+                notify("PHASE0_FORMAT", "変更対象がないためメッセージを返します。")
+                return "変更対象となる情報がありません。", session_id
 
-            notify("PHASE3_PATCH_PREVIEW", "Patch を仮適用してプレビューを作成します。")
-            preview_extracted_json = self._service.build_preview_extracted_json(
+            notify("PHASE3_CHANGE_PREVIEW", "変更指示からプレビューJSONを生成します。")
+            preview_extracted_json = self._service.build_preview_extracted_json_direct(
                 extracted_json=session_state.extracted_json,
-                patches=patches,
+                user_change_input=user_input,
             )
             notify("PHASE0_FORMAT", "変更後内容の確認メッセージを生成します。")
             user_message = self._service.format_change_preview_message(
@@ -175,7 +164,7 @@ class CreateEntryOrchestrator:
             self._service.save_change_session(
                 session_id=session_id,
                 session_state=session_state,
-                pending_patch=patches,
+                pending_patch=None,
                 preview_extracted_json=preview_extracted_json,
                 user_message=user_message,
                 intent_result=intent_result,
