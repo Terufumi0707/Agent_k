@@ -54,6 +54,7 @@ class CreateEntryOrchestrator:
         # NOTE: NEW/CHANGE/CONFIRM の分岐は、抽出→評価→整形→保存の流れを前提とする
         if intent == "NEW":
             extracted_text = self._service.extract(user_input)
+            extracted_json = self._service.parse_extracted_json(extracted_text)
             judge_text = self._service.judge(extracted_text)
 
             user_message = self._service.format_user_message(
@@ -65,7 +66,8 @@ class CreateEntryOrchestrator:
 
             self._service.save_session(
                 session_id=session_id,
-                extracted_json=extracted_text,
+                extracted_json=extracted_json,
+                extracted_json_raw=extracted_text,
                 judge_json=judge_text,
                 user_message=user_message,
                 intent_result=intent_result,
@@ -126,6 +128,7 @@ class CreateEntryOrchestrator:
         if intent == "NEW":
             notify("PHASE0_EXTRACT", "情報抽出エージェントを実行します。")
             extracted_text = self._service.extract(user_input)
+            extracted_json = self._service.parse_extracted_json(extracted_text)
             notify("PHASE0_JUDGE", "Judge エージェントを実行します。")
             judge_text = self._service.judge(extracted_text)
 
@@ -140,7 +143,8 @@ class CreateEntryOrchestrator:
             notify("PHASE1_SAVE", "セッションを保存します。")
             self._service.save_session(
                 session_id=session_id,
-                extracted_json=extracted_text,
+                extracted_json=extracted_json,
+                extracted_json_raw=extracted_text,
                 judge_json=judge_text,
                 user_message=user_message,
                 intent_result=intent_result,
