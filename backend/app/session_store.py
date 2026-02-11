@@ -13,6 +13,7 @@ class SessionState:
     judge_result: str
     user_view_message: str
     intent_result: str
+    extracted_json_raw: str | None = None
     pending_patch: str | None = None
     preview_extracted_json: str | None = None
 

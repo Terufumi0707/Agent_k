@@ -60,6 +60,16 @@ class CreateEntryService:
             user_prompt=extracted_text,
         )
 
+    def parse_extracted_json(self, extracted_text: str) -> dict[str, Any]:
+        try:
+            parsed = json.loads(extracted_text)
+        except json.JSONDecodeError:
+            return {"raw_text": extracted_text}
+
+        if isinstance(parsed, dict):
+            return parsed
+        return {"value": parsed}
+
     def format_user_message(self, extracted_json: str, judge_json: str) -> str:
         user_prompt = f"extracted_result:\n{extracted_json}\n\njudge_result:\n{judge_json}"
         return self._llm_client(
@@ -70,7 +80,8 @@ class CreateEntryService:
     def save_session(
         self,
         session_id: str,
-        extracted_json: str,
+        extracted_json: dict[str, Any],
+        extracted_json_raw: str,
         judge_json: str,
         user_message: str,
         intent_result: IntentClassification,
@@ -78,7 +89,8 @@ class CreateEntryService:
         self._session_store.save(
             session_id,
             SessionState(
-                extracted_json=extracted_json,
+                extracted_json=self.to_json_text(extracted_json),
+                extracted_json_raw=extracted_json_raw,
                 judge_result=judge_json,
                 user_view_message=user_message,
                 intent_result=self.to_json_text(intent_result.__dict__),
@@ -100,6 +112,7 @@ class CreateEntryService:
             session_id,
             SessionState(
                 extracted_json=session_state.extracted_json,
+                extracted_json_raw=session_state.extracted_json_raw,
                 judge_result=session_state.judge_result,
                 user_view_message=user_message,
                 intent_result=self.to_json_text(intent_result.__dict__),

@@ -34,7 +34,9 @@ def test_orchestrator_run_executes_full_pipeline_and_returns_formatter_result(mo
             return IntentClassification(intent="NEW", confidence=0.8, reason="新規入力")
 
     dummy_classifier = DummyIntentClassifier()
+    store = InMemorySessionStore()
     result, session_id = orchestrator.CreateEntryOrchestrator(
+        session_store=store,
         intent_classifier=dummy_classifier,
     ).run("PlaceHolderのRequest")
 
@@ -45,6 +47,10 @@ def test_orchestrator_run_executes_full_pipeline_and_returns_formatter_result(mo
     assert captured[2][0] == orchestrator.FORMATTER_AGENT_SYSTEM_PROMPT
     assert result == "display-message"
     assert isinstance(session_id, str)
+    state = store.get(session_id)
+    assert state is not None
+    assert state.extracted_json == '{"extracted": true}'
+    assert state.extracted_json_raw == '{"extracted": true}'
 
 
 def test_orchestrator_system_prompt_loaded_from_file():
