@@ -16,6 +16,7 @@ class SessionState:
     extracted_json_raw: str | None = None
     pending_patch: str | None = None
     preview_extracted_json: str | None = None
+    last_lookup: str | None = None
 
 
 class SessionStore(Protocol):

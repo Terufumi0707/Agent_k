@@ -34,7 +34,29 @@ def test_orchestrator_run_executes_full_pipeline_and_returns_formatter_result(mo
             return IntentClassification(intent="NEW", confidence=0.8, reason="新規入力")
 
     dummy_classifier = DummyIntentClassifier()
+    monkeypatch.setattr(
+        orchestrator.CreateEntryService,
+        "route_query_status",
+        lambda self, user_input: {
+            "n_number": "N123456789",
+            "web_entry_id": "UN1234567890",
+            "action": "LOOKUP_BY_WEB_ENTRY_ID",
+            "reason": "both",
+        },
+    )
+
     store = InMemorySessionStore()
+    monkeypatch.setattr(
+        orchestrator.CreateEntryService,
+        "route_query_status",
+        lambda self, user_input: {
+            "n_number": None,
+            "web_entry_id": None,
+            "action": "NEED_IDENTIFIER",
+            "reason": "missing",
+        },
+    )
+
     result, session_id = orchestrator.CreateEntryOrchestrator(
         session_store=store,
         intent_classifier=dummy_classifier,
@@ -224,3 +246,111 @@ def test_orchestrator_change_intent_without_session_returns_missing_target_messa
 
     assert result == "変更対象となる情報がありません。"
     assert isinstance(session_id, str)
+
+
+class DummyOrderStatusFormatter:
+    def format(self, result_json: str) -> str:
+        payload = json.loads(result_json)
+        return f"formatted:{payload.get('status_code')}"
+
+
+def test_orchestrator_query_status_calls_web_entry_lookup_and_formats_result(monkeypatch):
+    class DummyIntentClassifier:
+        def classify(self, user_input: str, session_state: SessionState | None = None) -> IntentClassification:
+            return IntentClassification(intent="QUERY_STATUS", confidence=0.9, reason="照会")
+
+    class DummyOrderLookupClient:
+        async def get_order_by_n_number(self, n_number: str) -> dict[str, object]:
+            raise AssertionError("web_entry_id should be preferred")
+
+        async def get_order_by_web_entry_id(self, web_entry_id: str) -> dict[str, object]:
+            assert web_entry_id == "UN1234567890"
+            return {"ok": True, "status_code": 200, "payload": {"identifiers": {"web_entry_id": web_entry_id}}}
+
+    monkeypatch.setattr(
+        orchestrator.CreateEntryService,
+        "route_query_status",
+        lambda self, user_input: {
+            "n_number": "N123456789",
+            "web_entry_id": "UN1234567890",
+            "action": "LOOKUP_BY_WEB_ENTRY_ID",
+            "reason": "both",
+        },
+    )
+
+    store = InMemorySessionStore()
+    result, session_id = orchestrator.CreateEntryOrchestrator(
+        session_store=store,
+        intent_classifier=DummyIntentClassifier(),
+        order_lookup_client=DummyOrderLookupClient(),
+        order_status_formatter=DummyOrderStatusFormatter(),
+    ).run("N123456789 と UN1234567890 の現在状況を教えて")
+
+    assert result == "formatted:200"
+    state = store.get(session_id)
+    assert state is not None
+    assert state.last_lookup is not None
+    assert '"web_entry_id": "UN1234567890"' in state.last_lookup
+
+
+def test_orchestrator_query_status_without_identifier_returns_guide_message(monkeypatch):
+    class DummyIntentClassifier:
+        def classify(self, user_input: str, session_state: SessionState | None = None) -> IntentClassification:
+            return IntentClassification(intent="QUERY_STATUS", confidence=0.9, reason="照会")
+
+    monkeypatch.setattr(
+        orchestrator.CreateEntryService,
+        "route_query_status",
+        lambda self, user_input: {
+            "n_number": None,
+            "web_entry_id": None,
+            "action": "NEED_IDENTIFIER",
+            "reason": "missing",
+        },
+    )
+
+    result, session_id = orchestrator.CreateEntryOrchestrator(
+        session_store=InMemorySessionStore(),
+        intent_classifier=DummyIntentClassifier(),
+    ).run("現在の工事予定を確認したい")
+
+    assert result == "N番号（N+9桁）またはWebエントリID（UN+10桁）を本文に記載してください。"
+    assert isinstance(session_id, str)
+
+
+def test_orchestrator_query_status_formats_error_response(monkeypatch):
+    class DummyIntentClassifier:
+        def classify(self, user_input: str, session_state: SessionState | None = None) -> IntentClassification:
+            return IntentClassification(intent="QUERY_STATUS", confidence=0.9, reason="照会")
+
+    class DummyOrderLookupClient:
+        async def get_order_by_n_number(self, n_number: str) -> dict[str, object]:
+            assert n_number == "N123456789"
+            return {
+                "ok": False,
+                "status_code": 404,
+                "payload": {"error": {"message": "not found"}},
+            }
+
+        async def get_order_by_web_entry_id(self, web_entry_id: str) -> dict[str, object]:
+            raise AssertionError("n_number path should be called")
+
+    monkeypatch.setattr(
+        orchestrator.CreateEntryService,
+        "route_query_status",
+        lambda self, user_input: {
+            "n_number": "N123456789",
+            "web_entry_id": None,
+            "action": "LOOKUP_BY_N_NUMBER",
+            "reason": "n-only",
+        },
+    )
+
+    result, _ = orchestrator.CreateEntryOrchestrator(
+        session_store=InMemorySessionStore(),
+        intent_classifier=DummyIntentClassifier(),
+        order_lookup_client=DummyOrderLookupClient(),
+        order_status_formatter=DummyOrderStatusFormatter(),
+    ).run("N123456789 のステータス確認")
+
+    assert result == "formatted:404"
