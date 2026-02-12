@@ -22,14 +22,14 @@ class IntentClassification:
 
 class IntentClassifier:
     """
-    ユーザー入力の意図を NEW / CHANGE / CONFIRM / UNKNOWN に分類する。
+    ユーザー入力の意図を NEW / CHANGE / CONFIRM / QUERY_STATUS / UNKNOWN に分類する。
 
     NOTE:
     - LLMの出力は揺れ（大小文字、空白、想定外値、型揺れ）が起こり得るため、ここで正規化・安全化する。
     - 初回（session_state is None）は参照元が無いので CHANGE を許可しない（原則 NEW、例外は明確な CONFIRM のみ）。
     """
 
-    _ALLOWED_INTENTS = {"NEW", "CHANGE", "CONFIRM", "UNKNOWN"}
+    _ALLOWED_INTENTS = {"NEW", "CHANGE", "CONFIRM", "QUERY_STATUS", "UNKNOWN"}
 
     def __init__(self) -> None:
         self._system_prompt = INTENT_AGENT_SYSTEM_PROMPT
@@ -111,6 +111,13 @@ class IntentClassifier:
                 intent="CONFIRM",
                 confidence=max(result.confidence, 0.5),
                 reason="Session is empty; input matched confirmation message.",
+            )
+
+        if result.intent == "QUERY_STATUS":
+            return IntentClassification(
+                intent="QUERY_STATUS",
+                confidence=max(result.confidence, 0.5),
+                reason=result.reason or "Session is empty; QUERY_STATUS is allowed.",
             )
 
         if result.intent == "NEW":

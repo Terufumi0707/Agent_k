@@ -35,3 +35,7 @@ def get_gemini_model() -> str:
 def get_gemini_timeout_seconds() -> float:
     timeout = float(os.getenv("GEMINI_TIMEOUT_SECONDS", "60"))
     return min(timeout, 60.0)
+
+
+def get_order_lookup_mcp_base_url() -> str:
+    return os.getenv("ORDER_LOOKUP_MCP_BASE_URL", "http://mcp-order-lookup:9000/mcp")

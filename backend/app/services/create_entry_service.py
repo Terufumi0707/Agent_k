@@ -29,6 +29,10 @@ CHANGE_PREVIEW_FORMATTER_PROMPT_FILE_PATH = (
 CHANGE_PREVIEW_FORMATTER_AGENT_SYSTEM_PROMPT = CHANGE_PREVIEW_FORMATTER_PROMPT_FILE_PATH.read_text(
     encoding="utf-8"
 ).strip()
+QUERY_STATUS_ROUTER_PROMPT_FILE_PATH = (
+    Path(__file__).parent.parent / "prompts" / "query_status_router_agent_system_prompt.txt"
+)
+QUERY_STATUS_ROUTER_AGENT_SYSTEM_PROMPT = QUERY_STATUS_ROUTER_PROMPT_FILE_PATH.read_text(encoding="utf-8").strip()
 
 
 class CreateEntryService:
@@ -100,6 +104,7 @@ class CreateEntryService:
                 intent_result=self.to_json_text(intent_result.__dict__),
                 pending_patch=None,
                 preview_extracted_json=None,
+                last_lookup=None,
             ),
         )
 
@@ -122,8 +127,44 @@ class CreateEntryService:
                 intent_result=self.to_json_text(intent_result.__dict__),
                 pending_patch=self.to_json_text(pending_patch) if pending_patch is not None else None,
                 preview_extracted_json=preview_extracted_json,
+                last_lookup=session_state.last_lookup,
             ),
         )
+
+    def save_lookup_session(
+        self,
+        session_id: str,
+        session_state: SessionState | None,
+        user_message: str,
+        lookup_state: dict[str, Any],
+    ) -> None:
+        self._session_store.save(
+            session_id,
+            SessionState(
+                extracted_json=session_state.extracted_json if session_state is not None else "{}",
+                extracted_json_raw=session_state.extracted_json_raw if session_state is not None else None,
+                judge_result=session_state.judge_result if session_state is not None else "{}",
+                user_view_message=user_message,
+                intent_result=self.to_json_text({"intent": "QUERY_STATUS"}),
+                pending_patch=session_state.pending_patch if session_state is not None else None,
+                preview_extracted_json=session_state.preview_extracted_json if session_state is not None else None,
+                last_lookup=self.to_json_text(lookup_state),
+            ),
+        )
+
+
+    def route_query_status(self, user_input: str) -> dict[str, Any]:
+        router_text = self._llm_client(
+            system_prompt=QUERY_STATUS_ROUTER_AGENT_SYSTEM_PROMPT,
+            user_prompt=f"latest_input:\n{user_input}",
+        )
+        try:
+            payload = json.loads(router_text)
+            if isinstance(payload, dict):
+                return payload
+        except json.JSONDecodeError:
+            pass
+        return {"n_number": None, "web_entry_id": None, "action": "NEED_IDENTIFIER", "reason": "parse_error"}
 
     def generate_patch(self, user_change_input: str, session_state: SessionState | None) -> dict[str, Any]:
         if session_state is None:

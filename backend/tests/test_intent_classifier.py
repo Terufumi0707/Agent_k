@@ -42,3 +42,18 @@ def test_intent_classifier_handles_invalid_json():
     assert result.intent == "UNKNOWN"
     assert result.confidence == 0.0
     assert result.reason
+
+
+def test_intent_classifier_keeps_query_status_for_empty_session(monkeypatch):
+    def mock_generate_with_system_and_user(system_prompt: str, user_prompt: str) -> str:
+        return json.dumps(
+            {"intent": "QUERY_STATUS", "confidence": 0.2, "reason": "照会"},
+            ensure_ascii=False,
+        )
+
+    monkeypatch.setattr(intent_classifier, "generate_with_system_and_user", mock_generate_with_system_and_user)
+
+    result = IntentClassifier().classify("N123456789 のステータス確認", session_state=None)
+
+    assert result.intent == "QUERY_STATUS"
+    assert result.confidence >= 0.5
