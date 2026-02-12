@@ -1,13 +1,14 @@
 # 日程変更の受付AIエージェント（初期フェーズ）
 
-PoC用途として、3プロセス構成のAIエージェントをローカルで動作させるためのサンプルです。
+PoC用途として、4プロセス構成（frontend / backend / api / mcp-order-lookup）のAIエージェントをローカルで動作させるためのサンプルです。
 
 ## ディレクトリ構成
 
 ```
-frontend/   # Vue3 + Vite
-backend/    # FastAPI + LangGraph
-api/        # FastAPI (業務システムモック)
+frontend/                # Vue3 + Vite
+backend/                 # FastAPI + LangGraph
+api/                     # FastAPI (業務システムモック)
+mcp_order_lookup_server/ # MCPサーバー（apiへの照会を中継）
 ```
 
 ## 環境変数
@@ -16,6 +17,7 @@ api/        # FastAPI (業務システムモック)
 | --- | --- | --- |
 | SYSTEM_API_BASE_URL | backend -> api の接続先 | http://localhost:8001 |
 | HTTP_TIMEOUT_SECONDS | backend の API タイムアウト | 5 |
+| ORDER_LOOKUP_MCP_BASE_URL | backend -> MCP の接続先 | http://mcp-order-lookup:9000/mcp（Compose時） |
 | VITE_BACKEND_BASE_URL | frontend -> backend の接続先 | http://localhost:8000（開発時） |
 | GEMINI_API_BASE_URL | backend -> Gemini API の接続先 | https://generativelanguage.googleapis.com/v1beta |
 | GEMINI_API_KEY | Gemini API の認証キー | (未設定) |
@@ -35,9 +37,9 @@ $env:GEMINI_API_KEY="your-api-key"
 $env:GEMINI_MODEL="gemini-2.5-flash"
 ```
 
-### 1. Docker Compose で全サービス（frontend / backend / api）を起動
+### 1. Docker Compose で全サービス（frontend / backend / api / mcp-order-lookup）を起動
 
-Docker Compose で `frontend` / `backend` / `api` をまとめて起動します。`docker-compose.yml` では `GEMINI_API_KEY` がプレースホルダー (`your-api-key`) になっているため、そのままだと LLM 応答は空文字になります。
+Docker Compose で `frontend` / `backend` / `api` / `mcp-order-lookup` をまとめて起動します。`docker-compose.yml` では `GEMINI_API_KEY` がプレースホルダー (`your-api-key`) になっているため、そのままだと LLM 応答は空文字になります。
 
 環境変数を使わずコードに直接書く場合は `backend/app/settings.py` の `GEMINI_API_KEY_CODE` に実キーを設定してください（検証用途のみ推奨）。
 
@@ -50,6 +52,7 @@ docker compose up --build
 - frontend: `http://localhost:5173`
 - backend: `http://localhost:8000`
 - api: `http://localhost:8001`
+- mcp-order-lookup: `http://localhost:9000/mcp`
 
 > **注意:** セッションは FastAPI プロセス内のインメモリ保持です。`backend` は `--workers 1` 前提で起動しています。再起動するとセッションは消えます。
 

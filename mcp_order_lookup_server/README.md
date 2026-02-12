@@ -36,6 +36,9 @@ pip install -r requirements.txt
 ```bash
 ORDER_LOOKUP_API_BASE_URL=http://localhost:8001 \
 ORDER_LOOKUP_API_TIMEOUT_SECONDS=5 \
+MCP_TRANSPORT=streamable-http \
+MCP_HOST=0.0.0.0 \
+MCP_PORT=9000 \
 python server.py
 ```
 
@@ -43,3 +46,16 @@ python server.py
 
 - `ORDER_LOOKUP_API_BASE_URL` (default: `http://localhost:8001`)
 - `ORDER_LOOKUP_API_TIMEOUT_SECONDS` (default: `5`)
+
+
+## Docker
+
+```bash
+docker build -t order-lookup-mcp ./mcp_order_lookup_server
+docker run --rm -p 9000:9000 \
+  -e ORDER_LOOKUP_API_BASE_URL=http://host.docker.internal:8001 \
+  -e MCP_TRANSPORT=streamable-http \
+  -e MCP_HOST=0.0.0.0 \
+  -e MCP_PORT=9000 \
+  order-lookup-mcp
+```

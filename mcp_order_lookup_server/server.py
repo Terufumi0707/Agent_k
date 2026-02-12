@@ -79,4 +79,11 @@ async def get_order_by_web_entry_id(web_entry_id: str) -> dict[str, Any]:
 
 
 if __name__ == "__main__":
-    mcp.run()
+    transport = os.getenv("MCP_TRANSPORT", "stdio")
+    host = os.getenv("MCP_HOST", "0.0.0.0")
+    port = int(os.getenv("MCP_PORT", "9000"))
+
+    if transport == "stdio":
+        mcp.run()
+    else:
+        mcp.run(transport=transport, host=host, port=port)
