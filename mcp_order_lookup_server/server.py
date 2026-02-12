@@ -12,8 +12,10 @@ WEB_ENTRY_ID_PATTERN = re.compile(r"^UN[0-9]{10}$")
 
 API_BASE_URL = os.getenv("ORDER_LOOKUP_API_BASE_URL", "http://localhost:8001")
 REQUEST_TIMEOUT_SECONDS = float(os.getenv("ORDER_LOOKUP_API_TIMEOUT_SECONDS", "5"))
+MCP_HOST = os.getenv("MCP_HOST", "0.0.0.0")
+MCP_PORT = int(os.getenv("MCP_PORT", "9000"))
 
-mcp = FastMCP("order-lookup-mcp")
+mcp = FastMCP("order-lookup-mcp", host=MCP_HOST, port=MCP_PORT)
 
 
 async def _get(path: str) -> dict[str, Any]:
@@ -80,10 +82,8 @@ async def get_order_by_web_entry_id(web_entry_id: str) -> dict[str, Any]:
 
 if __name__ == "__main__":
     transport = os.getenv("MCP_TRANSPORT", "stdio")
-    host = os.getenv("MCP_HOST", "0.0.0.0")
-    port = int(os.getenv("MCP_PORT", "9000"))
 
     if transport == "stdio":
         mcp.run()
     else:
-        mcp.run(transport=transport, host=host, port=port)
+        mcp.run(transport=transport)
