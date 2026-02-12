@@ -8,11 +8,27 @@ services:
       VITE_BACKEND_BASE_URL: http://localhost:8000
     depends_on:
       - backend
+
   api:
     build:
       context: ./api
     ports:
       - "8001:8001"
+
+  mcp-order-lookup:
+    build:
+      context: ./mcp_order_lookup_server
+    ports:
+      - "9000:9000"
+    environment:
+      ORDER_LOOKUP_API_BASE_URL: http://api:8001
+      ORDER_LOOKUP_API_TIMEOUT_SECONDS: "5"
+      MCP_TRANSPORT: streamable-http
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: "9000"
+    depends_on:
+      - api
+
   backend:
     build:
       context: ./backend
@@ -20,6 +36,7 @@ services:
       - "8000:8000"
     environment:
       SYSTEM_API_BASE_URL: http://api:8001
+      ORDER_LOOKUP_MCP_BASE_URL: http://mcp-order-lookup:9000/mcp
       HTTP_TIMEOUT_SECONDS: "5"
       GEMINI_API_BASE_URL: https://generativelanguage.googleapis.com/v1beta
       GEMINI_API_KEY: "your-api-key"
@@ -27,3 +44,4 @@ services:
       GEMINI_TIMEOUT_SECONDS: "60"
     depends_on:
       - api
+      - mcp-order-lookup
