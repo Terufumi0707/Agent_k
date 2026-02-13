@@ -38,7 +38,7 @@ body {
   --sidebar-width: 280px;
   --top-header-height: 88px;
   min-height: calc(100vh - var(--top-header-height));
-  padding-top: var(--top-header-height);
+  padding-top: calc(var(--top-header-height) - 1px);
   display: flex;
 }
 
@@ -48,7 +48,7 @@ body {
 
 .left-sidebar {
   width: var(--sidebar-width);
-  min-height: calc(100vh - var(--top-header-height));
+  min-height: calc(100vh - var(--top-header-height) + 1px);
   border-right: 1px solid var(--border-soft);
   background: linear-gradient(170deg, #ffffff 0%, #f7f9ff 100%);
   padding: 20px 14px;
