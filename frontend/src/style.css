@@ -214,20 +214,20 @@ body {
   box-shadow: 0 0 0 1px #4f72ff;
 }
 
-.order-item-id,
-.order-item-session {
+.order-item-summary,
+.order-item-meta {
   margin: 0;
-  word-break: break-all;
+  word-break: break-word;
 }
 
-.order-item-id {
+.order-item-summary {
   font-size: 13px;
   color: var(--text-primary);
-  font-weight: 600;
+  font-weight: 700;
 }
 
-.order-item-session {
-  font-size: 12px;
+.order-item-meta {
+  font-size: 11px;
   color: var(--text-secondary);
 }
 
