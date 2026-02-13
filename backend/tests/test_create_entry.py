@@ -14,7 +14,7 @@ def reset_repository_state() -> None:
 def test_create_entry_uses_orchestrator_and_returns_text(monkeypatch):
     client = TestClient(app)
 
-    def mock_run(prompt: str, session_id: str | None = None) -> tuple[str, str]:
+    async def mock_run(prompt: str, session_id: str | None = None) -> tuple[str, str]:
         assert prompt == "そのまま渡す文字列"
         assert session_id is None
         return "ユーザー向け整形結果", "session-123"
@@ -39,13 +39,11 @@ def test_get_orders_filters_by_status_coordinate_only():
     response = client.get("/api/orders", params={"status": "COORDINATE"})
 
     assert response.status_code == 200
-    assert response.json() == [
-        {
-            "id": coordinate_order.id,
-            "session_id": "session-coordinate",
-            "current_status": "COORDINATE",
-        }
-    ]
+    body = response.json()
+    assert len(body) == 1
+    assert body[0]["id"] == coordinate_order.id
+    assert body[0]["session_id"] == "session-coordinate"
+    assert body[0]["current_status"] == "COORDINATE"
 
 
 def test_get_orders_without_status_returns_all_orders():
@@ -61,18 +59,9 @@ def test_get_orders_without_status_returns_all_orders():
     response = client.get("/api/orders")
 
     assert response.status_code == 200
-    assert response.json() == [
-        {
-            "id": delivery_order.id,
-            "session_id": "session-delivery",
-            "current_status": "DELIVERY",
-        },
-        {
-            "id": backyard_order.id,
-            "session_id": "session-backyard",
-            "current_status": "BACKYARD",
-        },
-    ]
+    body = response.json()
+    assert [item["id"] for item in body] == [delivery_order.id, backyard_order.id]
+    assert [item["current_status"] for item in body] == ["DELIVERY", "BACKYARD"]
 
 
 def test_get_orders_returns_seeded_orders_on_startup():
@@ -83,8 +72,6 @@ def test_get_orders_returns_seeded_orders_on_startup():
     assert response.status_code == 200
     body = response.json()
     assert len(body) == 9
-    assert body[0] == {
-        "id": "order-delivery-001",
-        "session_id": "session-delivery-001",
-        "current_status": "DELIVERY",
-    }
+    assert body[0]["id"] == "order-delivery-001"
+    assert body[0]["session_id"] == "session-delivery-001"
+    assert body[0]["current_status"] == "DELIVERY"

@@ -7,6 +7,7 @@ from app.llm_client import generate_with_system_and_user
 from app.patch_generator import PatchGenerator
 from app.order_lookup import MCPOrderLookupClient, OrderStatusFormatter
 from app.query_status_agent import QueryStatusAgent
+from app.repositories.conversation_repository import ConversationRepository, InMemoryConversationRepository
 from app.repositories.order_repository import InMemoryOrderRepository, OrderRepository
 from app.services.create_entry_service import (
     AGENT_SYSTEM_PROMPT,
@@ -22,6 +23,7 @@ from app.services.create_entry_service import (
     CreateEntryService,
 )
 from app.services.order_service import InvalidOrderStatusTransitionError, OrderService
+from app.services.conversation_service import ConversationService
 from app.session_store import InMemorySessionStore, SessionState, SessionStore
 
 
@@ -45,6 +47,8 @@ class CreateEntryOrchestrator:
         order_repository: OrderRepository | None = None,
         order_service: OrderService | None = None,
         query_status_agent: QueryStatusAgent | None = None,
+        conversation_repository: ConversationRepository | None = None,
+        conversation_service: ConversationService | None = None,
     ) -> None:
         # create_entry 系の中核サービスを組み立てる（抽出/判定/保存の責務）。
         self._service = CreateEntryService(
@@ -62,6 +66,9 @@ class CreateEntryOrchestrator:
         )
         # 注文ステータス遷移（DELIVERY→COORDINATEなど）はOrderServiceへ集約する。
         self._order_service = order_service or OrderService(repository=order_repository or InMemoryOrderRepository())
+        self._conversation_service = conversation_service or ConversationService(
+            repository=conversation_repository or InMemoryConversationRepository()
+        )
 
     async def run(self, user_input: str, session_id: str | None = None) -> tuple[str, str]:
         # NOTE: session_id は外部から渡されない場合に新規発行し、以後の継続対話で利用する
@@ -91,7 +98,13 @@ class CreateEntryOrchestrator:
                 user_message=user_message,
                 intent_result=intent_result,
             )
-            self._order_service.create_if_not_exists(session_id=session_id)
+            order = self._order_service.create_if_not_exists(session_id=session_id)
+            self._log_user_and_assistant(
+                order=order,
+                user_input=user_input,
+                user_message=user_message,
+                intent=intent,
+            )
             return user_message, session_id
 
         # NOTE: CHANGE は保持済みの抽出結果に対して、変更指示のみを反映したプレビューを作成する
@@ -114,17 +127,36 @@ class CreateEntryOrchestrator:
                 user_message=user_message,
                 intent_result=intent_result,
             )
+            order = self._order_service.get_by_session_id(session_id=session_id)
+            if order is not None:
+                self._log_user_and_assistant(
+                    order=order,
+                    user_input=user_input,
+                    user_message=user_message,
+                    intent=intent,
+                )
             return user_message, session_id
 
         # NOTE: CONFIRM は確定メッセージのみを返し、外部への適用は別途実装に委ねる
         if intent == "CONFIRM":
             try:
-                self._order_service.move_to_coordinate(session_id=session_id)
+                before, after = self._order_service.move_to_coordinate(session_id=session_id)
             except KeyError:
                 return "確定対象の注文が見つかりませんでした。", session_id
             except InvalidOrderStatusTransitionError:
                 return "現在の状態では確定できません。", session_id
-            return "ステータスをCOORDINATEに更新しました。", session_id
+            user_message = "ステータスをCOORDINATEに更新しました。"
+            order = self._order_service.get_by_session_id(session_id=session_id)
+            if order is not None:
+                self._log_user_and_assistant(
+                    order=order,
+                    user_input=user_input,
+                    user_message=user_message,
+                    intent=intent,
+                    status_before=before.value,
+                    status_after=after.value,
+                )
+            return user_message, session_id
 
         # QUERY_STATUS は照会Agentの非同期処理を同期呼び出しし、照会コンテキストをセッションへ保存する。
         if intent == "QUERY_STATUS":
@@ -136,6 +168,25 @@ class CreateEntryOrchestrator:
                 lookup_result=self._query_status_agent.last_lookup_result,
                 n_number=self._query_status_agent.last_n_number,
                 web_entry_id=self._query_status_agent.last_web_entry_id,
+            )
+            order = self._order_service.create_if_not_exists(session_id=session_id)
+            self._order_service.save_lookup_identifiers(
+                session_id=session_id,
+                n_number=self._query_status_agent.last_n_number,
+                web_entry_id=self._query_status_agent.last_web_entry_id,
+            )
+            self._log_user_and_assistant(
+                order=order,
+                user_input=user_input,
+                user_message=user_message,
+                intent=intent,
+                tool_call={
+                    "tool": "order_lookup",
+                    "arguments": {
+                        "n_number": self._query_status_agent.last_n_number,
+                        "web_entry_id": self._query_status_agent.last_web_entry_id,
+                    },
+                },
             )
             return user_message, session_id
 
@@ -185,7 +236,13 @@ class CreateEntryOrchestrator:
                 user_message=user_message,
                 intent_result=intent_result,
             )
-            self._order_service.create_if_not_exists(session_id=session_id)
+            order = self._order_service.create_if_not_exists(session_id=session_id)
+            self._log_user_and_assistant(
+                order=order,
+                user_input=user_input,
+                user_message=user_message,
+                intent=intent,
+            )
             return user_message, session_id
 
         if intent == "CHANGE":
@@ -211,16 +268,35 @@ class CreateEntryOrchestrator:
                 user_message=user_message,
                 intent_result=intent_result,
             )
+            order = self._order_service.get_by_session_id(session_id=session_id)
+            if order is not None:
+                self._log_user_and_assistant(
+                    order=order,
+                    user_input=user_input,
+                    user_message=user_message,
+                    intent=intent,
+                )
             return user_message, session_id
 
         if intent == "CONFIRM":
             try:
-                self._order_service.move_to_coordinate(session_id=session_id)
+                before, after = self._order_service.move_to_coordinate(session_id=session_id)
             except KeyError:
                 return "確定対象の注文が見つかりませんでした。", session_id
             except InvalidOrderStatusTransitionError:
                 return "現在の状態では確定できません。", session_id
-            return "ステータスをCOORDINATEに更新しました。", session_id
+            user_message = "ステータスをCOORDINATEに更新しました。"
+            order = self._order_service.get_by_session_id(session_id=session_id)
+            if order is not None:
+                self._log_user_and_assistant(
+                    order=order,
+                    user_input=user_input,
+                    user_message=user_message,
+                    intent=intent,
+                    status_before=before.value,
+                    status_after=after.value,
+                )
+            return user_message, session_id
 
         if intent == "QUERY_STATUS":
             notify("PHASE_QUERY_STATUS", "現在オーダー情報の照会を実行します。")
@@ -232,6 +308,25 @@ class CreateEntryOrchestrator:
                 lookup_result=self._query_status_agent.last_lookup_result,
                 n_number=self._query_status_agent.last_n_number,
                 web_entry_id=self._query_status_agent.last_web_entry_id,
+            )
+            order = self._order_service.create_if_not_exists(session_id=session_id)
+            self._order_service.save_lookup_identifiers(
+                session_id=session_id,
+                n_number=self._query_status_agent.last_n_number,
+                web_entry_id=self._query_status_agent.last_web_entry_id,
+            )
+            self._log_user_and_assistant(
+                order=order,
+                user_input=user_input,
+                user_message=user_message,
+                intent=intent,
+                tool_call={
+                    "tool": "order_lookup",
+                    "arguments": {
+                        "n_number": self._query_status_agent.last_n_number,
+                        "web_entry_id": self._query_status_agent.last_web_entry_id,
+                    },
+                },
             )
             return user_message, session_id
 
@@ -275,4 +370,40 @@ class CreateEntryOrchestrator:
             session_state=session_state,
             user_message=user_message,
             lookup_state=lookup_state,
+        )
+
+    def _log_user_and_assistant(
+        self,
+        order: Any,
+        user_input: str,
+        user_message: str,
+        intent: str,
+        tool_call: dict[str, Any] | None = None,
+        status_before: str | None = None,
+        status_after: str | None = None,
+    ) -> None:
+        self._conversation_service.add_order_message(
+            order=order,
+            role="user",
+            content=user_input,
+            metadata={
+                "intent": intent,
+                "status_event": False,
+                "order_status_before": None,
+                "order_status_after": None,
+            },
+        )
+        metadata: dict[str, Any] = {
+            "intent": intent,
+            "status_event": status_before is not None or status_after is not None,
+            "order_status_before": status_before,
+            "order_status_after": status_after,
+        }
+        if tool_call is not None:
+            metadata["tool_call"] = tool_call
+        self._conversation_service.add_order_message(
+            order=order,
+            role="assistant",
+            content=user_message,
+            metadata=metadata,
         )
