@@ -38,7 +38,7 @@ body {
   --sidebar-width: 280px;
   --top-header-height: 88px;
   min-height: calc(100vh - var(--top-header-height));
-  padding-top: calc(var(--top-header-height) - 1px);
+  padding-top: calc(var(--top-header-height) - 8px);
   display: flex;
 }
 
