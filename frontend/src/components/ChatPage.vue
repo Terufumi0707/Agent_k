@@ -9,7 +9,6 @@
         >
           {{ isSidebarCollapsed ? "＞" : "＜" }}
         </button>
-        <button v-if="!isSidebarCollapsed" type="button" class="feature-link">別機能へ遷移</button>
       </div>
 
       <div v-if="!isSidebarCollapsed" class="sidebar-bottom">
@@ -60,24 +59,38 @@
 
         <section class="sidebar-section">
           <button type="button" class="section-toggle" @click="historySectionCollapsed = !historySectionCollapsed">
-            <span class="history-title">過去のチャット履歴（mock）</span>
+            <span class="history-title">依頼一覧</span>
             <span class="section-toggle-icon">{{ historySectionCollapsed ? "＋" : "－" }}</span>
           </button>
 
           <template v-if="!historySectionCollapsed">
-            <ul class="history-list">
-              <li v-for="(item, index) in visibleHistoryItems" :key="`${item}-${index}`">
-                {{ item }}
-              </li>
-            </ul>
-            <button
-              v-if="shouldShowHistoryToggle"
-              type="button"
-              class="history-toggle"
-              @click="toggleHistory"
+            <div
+              v-for="month in requestMonths"
+              :key="month"
+              class="order-group"
             >
-              {{ historyToggleLabel }}
-            </button>
+              <button
+                type="button"
+                class="order-group-toggle"
+                @click="toggleRequestMonthSection(month)"
+              >
+                <span class="order-group-title">{{ month }}</span>
+                <span class="order-group-icon">{{ isRequestMonthCollapsed(month) ? "＋" : "－" }}</span>
+              </button>
+
+              <template v-if="!isRequestMonthCollapsed(month)">
+                <ul class="history-list">
+                  <li
+                    v-for="request in requestsByMonth[month]"
+                    :key="request.id"
+                    class="order-item"
+                  >
+                    <p class="order-item-id">{{ request.id }}</p>
+                    <p class="order-item-session">{{ request.summary }}</p>
+                  </li>
+                </ul>
+              </template>
+            </div>
           </template>
         </section>
       </div>
@@ -92,11 +105,6 @@
       />
 
       <main class="chat-main">
-        <p class="welcome-message">
-          お手伝いできることはありますか？<br />
-          WebエントリIDもしくはN番号、変更工事種別、変更工事日程を教えてください。
-        </p>
-
         <div
           v-if="progressLogs.length || currentPhase || streamError || isSending"
           class="progress-panel"
@@ -122,7 +130,10 @@
             class="message-row"
             :class="message.role"
           >
-            <pre class="message-bubble">{{ message.text }}</pre>
+            <div class="message-bubble" :class="{ 'greeting-bubble': message.isGreeting }">
+              <span v-if="message.role === 'ai'" class="ai-icon" aria-hidden="true">🤖</span>
+              <span class="message-text">{{ message.text }}</span>
+            </div>
           </div>
         </div>
       </main>
@@ -152,7 +163,9 @@ const { user, logout } = useOptionalAuth();
 
 const inputText = ref("");
 const inputRef = ref(null);
-const messages = ref([]);
+const greetingMessage = `日程変更依頼のメール、もしくは変更対象の確認したいオーダーをN番号かWebエントリIDで教えてください。`;
+
+const messages = ref([{ role: "ai", text: greetingMessage, isGreeting: true }]);
 const isSending = ref(false);
 const progressLogs = ref([]);
 const currentPhase = ref("");
@@ -177,45 +190,38 @@ const ordersByStatus = ref({
 const placeholderText =
   "指示してください";
 
-const historyItems = ref([
-  "2026/04/01 工事日程の確認",
-  "2026/03/30 N番号の問い合わせ",
-  "2026/03/29 変更工事種別の相談",
-  "2026/03/28 工事希望日の再調整",
-  "2026/03/27 連絡先の更新",
-  "2026/03/26 工事内容の補足共有",
-  "2026/03/25 現地調査日程の確認",
-  "2026/03/24 契約内容の再確認",
-  "2026/03/23 施工担当者の変更相談",
-  "2026/03/22 書類提出期限の確認",
-  "2026/03/21 工事時間帯の相談",
-  "2026/03/20 追加工事の可否確認"
-]);
-const historyCollapsed = ref(true);
+const requestsByMonth = {
+  "2026年4月": [
+    { id: "N-202604-001", summary: "日程変更依頼メールの確認" },
+    { id: "WE-202604-014", summary: "変更対象オーダーの内容確認" }
+  ],
+  "2026年3月": [
+    { id: "N-202603-122", summary: "工事希望日の再調整" },
+    { id: "WE-202603-089", summary: "変更工事種別の問い合わせ" },
+    { id: "N-202603-076", summary: "連絡先更新依頼" }
+  ]
+};
+const requestMonths = Object.keys(requestsByMonth);
+const requestMonthCollapsed = ref({
+  "2026年4月": false,
+  "2026年3月": true
+});
 const historySectionCollapsed = ref(true);
-const historyLimit = 10;
 
 const canSend = computed(() => inputText.value.trim().length > 0);
-const shouldShowHistoryToggle = computed(
-  () => historyItems.value.length > historyLimit
-);
-const visibleHistoryItems = computed(() => {
-  if (!shouldShowHistoryToggle.value || !historyCollapsed.value) {
-    return historyItems.value;
-  }
-  return historyItems.value.slice(0, historyLimit);
-});
-const historyToggleLabel = computed(() =>
-  historyCollapsed.value ? "履歴をもっと見る" : "履歴を閉じる"
-);
 const authDisplayName = computed(
   () => user.value?.name || user.value?.nickname || "認証済みユーザー"
 );
 const authDisplayEmail = computed(() => user.value?.email || "");
 const authDisplaySub = computed(() => user.value?.sub || "");
 
-const toggleHistory = () => {
-  historyCollapsed.value = !historyCollapsed.value;
+const isRequestMonthCollapsed = (month) => Boolean(requestMonthCollapsed.value[month]);
+
+const toggleRequestMonthSection = (month) => {
+  requestMonthCollapsed.value = {
+    ...requestMonthCollapsed.value,
+    [month]: !isRequestMonthCollapsed(month)
+  };
 };
 
 const isStatusCollapsed = (status) => Boolean(statusSectionCollapsed.value[status]);
