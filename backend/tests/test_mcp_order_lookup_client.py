@@ -105,3 +105,18 @@ def test_to_dict_parses_result_field_from_dict_response():
 
     assert result["ok"] is True
     assert result["payload"]["order_id"] == "6"
+
+
+def test_to_dict_parses_top_level_textcontent_list_response():
+    client = MCPOrderLookupClient(base_url="http://example.com", timeout_seconds=1)
+
+    result = client._to_dict(
+        [DummyContentItem("""{
+  "ok": true,
+  "status_code": 200,
+  "payload": {"order_id": "7"}
+}""")]
+    )
+
+    assert result["ok"] is True
+    assert result["payload"]["order_id"] == "7"

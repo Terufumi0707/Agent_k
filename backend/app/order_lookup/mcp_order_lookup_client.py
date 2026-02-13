@@ -53,6 +53,11 @@ class MCPOrderLookupClient:
             if parsed is not None:
                 return parsed
 
+        if isinstance(response, Sequence) and not isinstance(response, (str, bytes)):
+            parsed_from_response_list = self._parse_content_list(response)
+            if parsed_from_response_list is not None:
+                return parsed_from_response_list
+
         if isinstance(response, dict):
             structured_content = response.get("structured_content") or response.get("structuredContent")
             parsed_structured_content = self._extract_dict_value(structured_content)
