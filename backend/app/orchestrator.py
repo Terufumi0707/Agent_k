@@ -407,3 +407,8 @@ class CreateEntryOrchestrator:
             content=user_message,
             metadata=metadata,
         )
+        self._order_service.update_summary(
+            session_id=order.session_id,
+            user_input=user_input,
+            assistant_message=user_message,
+        )

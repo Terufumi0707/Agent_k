@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
+
 from app.domain.order import Order, OrderStatus
 from app.repositories.order_repository import OrderRepository
 
@@ -13,7 +15,15 @@ class OrderStatusService:
         self._repository = repository
 
     def create_new_order(self, order_id: str) -> Order:
-        order = Order(id=order_id, current_status=OrderStatus.DELIVERY)
+        now = datetime.now(timezone.utc)
+        order = Order(
+            id=order_id,
+            session_id=order_id,
+            summary="新規依頼",
+            current_status=OrderStatus.DELIVERY,
+            created_at=now,
+            updated_at=now,
+        )
         self._repository.save(order)
         return order
 
@@ -30,4 +40,3 @@ class OrderStatusService:
         order.current_status = OrderStatus.COORDINATE
         self._repository.save(order)
         return order
-

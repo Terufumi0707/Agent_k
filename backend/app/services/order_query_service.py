@@ -40,6 +40,7 @@ class OrderQueryService:
         return OrderResponse(
             id=order.id,
             session_id=order.session_id,
+            summary=order.summary,
             current_status=order.current_status,
             created_at=order.created_at,
             updated_at=order.updated_at,

@@ -21,6 +21,7 @@ class EntryResponse(BaseModel):
 class OrderResponse(BaseModel):
     id: str
     session_id: str
+    summary: str
     current_status: OrderStatus
     created_at: datetime
     updated_at: datetime
