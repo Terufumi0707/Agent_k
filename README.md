@@ -21,7 +21,7 @@ mcp_order_lookup_server/ # MCPサーバー（apiへの照会を中継）
 | VITE_BACKEND_BASE_URL | frontend -> backend の接続先 | http://localhost:8000（開発時） |
 | VITE_AUTH0_DOMAIN | Auth0テナントドメイン（SPA設定） | your-tenant.us.auth0.com |
 | VITE_AUTH0_CLIENT_ID | Auth0アプリのClient ID（SPA） | your-client-id |
-| VITE_AUTH0_REDIRECT_URI | Auth0ログイン後のリダイレクト先 | http://localhost:5173/callback |
+| VITE_AUTH0_REDIRECT_URI | Auth0ログイン後のリダイレクト先 | http://localhost:5173 |
 | GEMINI_API_BASE_URL | backend -> Gemini API の接続先 | https://generativelanguage.googleapis.com/v1beta |
 | GEMINI_API_KEY | Gemini API の認証キー | (未設定) |
 | GEMINI_MODEL | 利用する Gemini モデル名 | gemini-2.5-flash |
@@ -136,7 +136,7 @@ pytest
 
 Auth0ダッシュボードの SPA 設定では次を登録してください。
 
-- Allowed Callback URLs: `http://localhost:5173/callback`
+- Allowed Callback URLs: `http://localhost:5173`
 - Allowed Logout URLs: `http://localhost:5173/login`
 - Allowed Web Origins: `http://localhost:5173`
 
