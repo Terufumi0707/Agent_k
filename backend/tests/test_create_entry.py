@@ -75,3 +75,4 @@ def test_get_orders_returns_seeded_orders_on_startup():
     assert body[0]["id"] == "order-delivery-001"
     assert body[0]["session_id"] == "session-delivery-001"
     assert body[0]["current_status"] == "DELIVERY"
+    assert "通信事業者" in body[0]["summary"]

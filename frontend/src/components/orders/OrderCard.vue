@@ -5,8 +5,9 @@
     :class="{ 'order-card-selected': isSelected }"
     @click="$emit('select', order.id)"
   >
-    <p class="order-card-label">ID</p>
-    <p class="order-card-value">{{ order.id }}</p>
+    <p class="order-card-label">要約</p>
+    <p class="order-card-value">{{ order.summary || "要約なし" }}</p>
+    <p class="order-card-id">{{ order.id }}</p>
     <p class="order-card-label">Status</p>
     <p class="order-card-session">{{ order.current_status }}</p>
     <p class="order-card-label">Updated</p>
@@ -77,6 +78,13 @@ const formatDate = (value) => {
   margin: 2px 0 10px;
   color: #152140;
   font-weight: 700;
+  word-break: break-all;
+}
+
+.order-card-id {
+  margin: -6px 0 10px;
+  color: #7a87a8;
+  font-size: 12px;
   word-break: break-all;
 }
 

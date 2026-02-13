@@ -12,6 +12,7 @@ def _make_order(order_id: str, session_id: str, status: OrderStatus, minutes: in
     return Order(
         id=order_id,
         session_id=session_id,
+        summary=f"通信事業者工事の日程調整 {order_id}",
         current_status=status,
         created_at=base - timedelta(minutes=minutes + 1),
         updated_at=base - timedelta(minutes=minutes),
@@ -46,8 +47,10 @@ def test_v1_orders_returns_updated_at_desc() -> None:
     response = client.get("/api/v1/orders")
 
     assert response.status_code == 200
-    ids = [item["id"] for item in response.json()]
+    payload = response.json()
+    ids = [item["id"] for item in payload]
     assert ids == ["o2", "o3", "o1"]
+    assert all("通信事業者工事の日程調整" in item["summary"] for item in payload)
 
 
 def test_v1_status_groups_returns_three_groups_and_sorted_orders() -> None:

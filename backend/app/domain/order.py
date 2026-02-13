@@ -16,6 +16,7 @@ class OrderStatus(str, Enum):
 class Order:
     id: str
     session_id: str
+    summary: str
     current_status: OrderStatus
     created_at: datetime
     updated_at: datetime
@@ -27,11 +28,17 @@ class Order:
         return self.current_status
 
     @classmethod
-    def create(cls, session_id: str, current_status: OrderStatus) -> "Order":
+    def create(
+        cls,
+        session_id: str,
+        current_status: OrderStatus,
+        summary: str = "通信事業者の工事日程を調整する新規依頼。",
+    ) -> "Order":
         now = datetime.now(timezone.utc)
         return cls(
             id=str(uuid4()),
             session_id=session_id,
+            summary=summary,
             current_status=current_status,
             created_at=now,
             updated_at=now,

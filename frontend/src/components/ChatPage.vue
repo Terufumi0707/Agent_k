@@ -54,8 +54,8 @@
                         :class="{ 'order-item-button-active': activeOrderId === order.id }"
                         @click="openOrderExecution(order)"
                       >
-                        <p class="order-item-id">{{ order.id }}</p>
-                        <p class="order-item-session">session: {{ order.session_id }}</p>
+                        <p class="order-item-summary">{{ order.summary || "要約なし" }}</p>
+                        <p class="order-item-meta">ID: {{ order.id }}</p>
                       </button>
                     </li>
                   </ul>
@@ -102,8 +102,8 @@
                       :class="{ 'order-item-button-active': activeOrderId === request.id }"
                       @click="openRequestExecution(request)"
                     >
-                      <p class="order-item-id">{{ request.id }}</p>
-                      <p class="order-item-session">session: {{ request.session_id }}</p>
+                      <p class="order-item-summary">{{ request.summary || "要約なし" }}</p>
+                      <p class="order-item-meta">ID: {{ request.id }}</p>
                     </button>
                   </li>
                 </ul>
