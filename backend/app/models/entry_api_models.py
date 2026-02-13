@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from datetime import datetime
+from typing import Any
+
 from pydantic import BaseModel, Field
 
 from app.domain.order import OrderStatus
@@ -19,3 +22,21 @@ class OrderResponse(BaseModel):
     id: str
     session_id: str
     current_status: OrderStatus
+    created_at: datetime
+    updated_at: datetime
+    n_number: str | None = None
+    web_entry_id: str | None = None
+
+
+class OrderStatusGroupResponse(BaseModel):
+    status: OrderStatus
+    orders: list[OrderResponse]
+
+
+class MessageResponse(BaseModel):
+    id: str
+    conversation_id: str
+    role: str
+    content: str
+    metadata: dict[str, Any]
+    created_at: datetime
