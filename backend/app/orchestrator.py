@@ -23,7 +23,7 @@ from app.services.create_entry_service import (
     CHANGE_PREVIEW_PROMPT_FILE_PATH,
     CreateEntryService,
 )
-from app.services.order_status_service import InvalidOrderStatusTransitionError, OrderStatusService
+from app.services.order_service import InvalidOrderStatusTransitionError, OrderService
 from app.session_store import InMemorySessionStore, SessionState, SessionStore
 
 
@@ -45,7 +45,7 @@ class CreateEntryOrchestrator:
         order_lookup_client: MCPOrderLookupClient | None = None,
         order_status_formatter: OrderStatusFormatter | None = None,
         order_repository: OrderRepository | None = None,
-        order_status_service: OrderStatusService | None = None,
+        order_service: OrderService | None = None,
     ) -> None:
         self._service = CreateEntryService(
             session_store=session_store or InMemorySessionStore(),
@@ -55,9 +55,7 @@ class CreateEntryOrchestrator:
         )
         self._order_lookup_client = order_lookup_client or MCPOrderLookupClient()
         self._order_status_formatter = order_status_formatter or OrderStatusFormatter()
-        self._order_status_service = order_status_service or OrderStatusService(
-            repository=order_repository or InMemoryOrderRepository()
-        )
+        self._order_service = order_service or OrderService(repository=order_repository or InMemoryOrderRepository())
 
     def run(self, user_input: str, session_id: str | None = None) -> tuple[str, str]:
         # NOTE: session_id は外部から渡されない場合に新規発行し、以後の継続対話で利用する
@@ -87,7 +85,7 @@ class CreateEntryOrchestrator:
                 user_message=user_message,
                 intent_result=intent_result,
             )
-            self._order_status_service.create_new_order(order_id=session_id)
+            self._order_service.create_if_not_exists(session_id=session_id)
             return user_message, session_id
 
         # NOTE: CHANGE は保持済みの抽出結果に対して、変更指示のみを反映したプレビューを作成する
@@ -115,12 +113,12 @@ class CreateEntryOrchestrator:
         # NOTE: CONFIRM は確定メッセージのみを返し、外部への適用は別途実装に委ねる
         if intent == "CONFIRM":
             try:
-                self._order_status_service.confirm_order(order_id=session_id)
+                self._order_service.move_to_coordinate(session_id=session_id)
             except KeyError:
                 return "確定対象の注文が見つかりませんでした。", session_id
             except InvalidOrderStatusTransitionError:
                 return "現在の状態では確定できません。", session_id
-            return "内容を確定しました。ありがとうございます。", session_id
+            return "ステータスをCOORDINATEに更新しました。", session_id
 
         if intent == "QUERY_STATUS":
             return self._handle_query_status(user_input=user_input, session_id=session_id, session_state=session_state)
@@ -169,7 +167,7 @@ class CreateEntryOrchestrator:
                 user_message=user_message,
                 intent_result=intent_result,
             )
-            self._order_status_service.create_new_order(order_id=session_id)
+            self._order_service.create_if_not_exists(session_id=session_id)
             return user_message, session_id
 
         if intent == "CHANGE":
@@ -199,12 +197,12 @@ class CreateEntryOrchestrator:
 
         if intent == "CONFIRM":
             try:
-                self._order_status_service.confirm_order(order_id=session_id)
+                self._order_service.move_to_coordinate(session_id=session_id)
             except KeyError:
                 return "確定対象の注文が見つかりませんでした。", session_id
             except InvalidOrderStatusTransitionError:
                 return "現在の状態では確定できません。", session_id
-            return "内容を確定しました。ありがとうございます。", session_id
+            return "ステータスをCOORDINATEに更新しました。", session_id
 
         if intent == "QUERY_STATUS":
             notify("PHASE_QUERY_STATUS", "現在オーダー情報の照会を実行します。")

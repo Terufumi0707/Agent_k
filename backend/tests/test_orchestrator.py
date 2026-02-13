@@ -3,7 +3,7 @@ import json
 import app.orchestrator as orchestrator
 from app.intent_classifier import IntentClassification
 from app.repositories.order_repository import InMemoryOrderRepository
-from app.services.order_status_service import OrderStatusService
+from app.services.order_service import OrderService
 from app.session_store import InMemorySessionStore, SessionState
 
 
@@ -381,7 +381,7 @@ def test_orchestrator_new_intent_sets_order_status_delivery(monkeypatch):
         order_repository=order_repository,
     ).run("PlaceHolderのRequest")
 
-    saved_order = order_repository.get_by_id(session_id)
+    saved_order = order_repository.find_by_session_id(session_id)
     assert result == "display-message"
     assert saved_order is not None
     assert saved_order.current_status.value == "DELIVERY"
@@ -393,17 +393,17 @@ def test_orchestrator_confirm_intent_updates_order_status_to_coordinate():
             return IntentClassification(intent="CONFIRM", confidence=0.9, reason="確定")
 
     order_repository = InMemoryOrderRepository()
-    order_status_service = OrderStatusService(order_repository)
-    order_status_service.create_new_order(order_id="session-999")
+    order_service = OrderService(order_repository)
+    order_service.create_if_not_exists(session_id="session-999")
 
     result, session_id = orchestrator.CreateEntryOrchestrator(
         session_store=InMemorySessionStore(),
         intent_classifier=DummyIntentClassifier(),
-        order_status_service=order_status_service,
+        order_service=order_service,
     ).run("確定です", session_id="session-999")
 
-    saved_order = order_repository.get_by_id("session-999")
+    saved_order = order_repository.find_by_session_id("session-999")
     assert session_id == "session-999"
-    assert result == "内容を確定しました。ありがとうございます。"
+    assert result == "ステータスをCOORDINATEに更新しました。"
     assert saved_order is not None
     assert saved_order.current_status.value == "COORDINATE"

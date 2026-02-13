@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
 
+from app.domain.order import Order, OrderStatus
 from app.main import app
 import app.controllers.agent_controller as agent_controller
 
@@ -17,3 +18,25 @@ def test_create_entry_uses_orchestrator_and_returns_text(monkeypatch):
     response = client.post("/api/create_entry", json={"prompt": "そのまま渡す文字列"})
     assert response.status_code == 200
     assert response.json() == {"result": "ユーザー向け整形結果", "session_id": "session-123"}
+
+
+def test_get_orders_filters_by_status_coordinate_only():
+    client = TestClient(app)
+    repository = agent_controller._order_repository
+    repository.clear()
+
+    delivery_order = Order.create(session_id="session-delivery", current_status=OrderStatus.DELIVERY)
+    coordinate_order = Order.create(session_id="session-coordinate", current_status=OrderStatus.COORDINATE)
+    repository.save(delivery_order)
+    repository.save(coordinate_order)
+
+    response = client.get("/api/orders", params={"status": "COORDINATE"})
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "id": coordinate_order.id,
+            "session_id": "session-coordinate",
+            "current_status": "COORDINATE",
+        }
+    ]
