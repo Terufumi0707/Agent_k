@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import re
 
 from typing import Any, Callable
 
@@ -9,6 +8,7 @@ from app.intent_classifier import IntentClassification, IntentClassifier
 from app.llm_client import generate_with_system_and_user
 from app.patch_generator import PatchGenerator
 from app.order_lookup import MCPOrderLookupClient, OrderStatusFormatter
+from app.query_status_agent import QueryStatusAgent
 from app.repositories.order_repository import InMemoryOrderRepository, OrderRepository
 from app.services.create_entry_service import (
     AGENT_SYSTEM_PROMPT,
@@ -46,6 +46,7 @@ class CreateEntryOrchestrator:
         order_status_formatter: OrderStatusFormatter | None = None,
         order_repository: OrderRepository | None = None,
         order_service: OrderService | None = None,
+        query_status_agent: QueryStatusAgent | None = None,
     ) -> None:
         self._service = CreateEntryService(
             session_store=session_store or InMemorySessionStore(),
@@ -55,6 +56,10 @@ class CreateEntryOrchestrator:
         )
         self._order_lookup_client = order_lookup_client or MCPOrderLookupClient()
         self._order_status_formatter = order_status_formatter or OrderStatusFormatter()
+        self._query_status_agent = query_status_agent or QueryStatusAgent(
+            order_lookup_client=self._order_lookup_client,
+            order_status_formatter=self._order_status_formatter,
+        )
         self._order_service = order_service or OrderService(repository=order_repository or InMemoryOrderRepository())
 
     def run(self, user_input: str, session_id: str | None = None) -> tuple[str, str]:
@@ -121,7 +126,16 @@ class CreateEntryOrchestrator:
             return "ステータスをCOORDINATEに更新しました。", session_id
 
         if intent == "QUERY_STATUS":
-            return self._handle_query_status(user_input=user_input, session_id=session_id, session_state=session_state)
+            user_message = self._run_async(self._query_status_agent.run(user_input))
+            self._save_lookup_session(
+                session_id=session_id,
+                session_state=session_state,
+                user_message=user_message,
+                lookup_result=self._query_status_agent.last_lookup_result,
+                n_number=self._query_status_agent.last_n_number,
+                web_entry_id=self._query_status_agent.last_web_entry_id,
+            )
+            return user_message, session_id
 
         return "ご要望の内容をもう少し詳しく教えてください。", session_id
 
@@ -206,7 +220,16 @@ class CreateEntryOrchestrator:
 
         if intent == "QUERY_STATUS":
             notify("PHASE_QUERY_STATUS", "現在オーダー情報の照会を実行します。")
-            return self._handle_query_status(user_input=user_input, session_id=session_id, session_state=session_state)
+            user_message = self._run_async(self._query_status_agent.run(user_input))
+            self._save_lookup_session(
+                session_id=session_id,
+                session_state=session_state,
+                user_message=user_message,
+                lookup_result=self._query_status_agent.last_lookup_result,
+                n_number=self._query_status_agent.last_n_number,
+                web_entry_id=self._query_status_agent.last_web_entry_id,
+            )
+            return user_message, session_id
 
         return "ご要望の内容をもう少し詳しく教えてください。", session_id
 
@@ -228,50 +251,26 @@ class CreateEntryOrchestrator:
             session_state = self._service.get_session_state(session_id)
         return self._service.classify_intent(user_input=user_input, session_state=session_state)
 
-    def _handle_query_status(
-        self,
-        user_input: str,
-        session_id: str,
-        session_state: SessionState | None,
-    ) -> tuple[str, str]:
-        route = self._service.route_query_status(user_input)
-        n_number = route.get("n_number")
-        web_entry_id = route.get("web_entry_id")
-
-        # 実行時バリデーションのみ実施（照会判定はLLMに委譲）
-        if isinstance(web_entry_id, str) and re.fullmatch(r"UN\d{10}", web_entry_id):
-            lookup_result = asyncio.run(self._order_lookup_client.get_order_by_web_entry_id(web_entry_id))
-        elif isinstance(n_number, str) and re.fullmatch(r"N\d{9}", n_number):
-            lookup_result = asyncio.run(self._order_lookup_client.get_order_by_n_number(n_number))
-            web_entry_id = None
-        else:
-            return "N番号（N+9桁）またはWebエントリID（UN+10桁）を本文に記載してください。", session_id
-
-        lookup_result_json = self._service.to_json_text(lookup_result)
-        user_message = self._order_status_formatter.format(lookup_result_json)
-        self._save_lookup_session(
-            session_id=session_id,
-            session_state=session_state,
-            user_message=user_message,
-            lookup_result=lookup_result,
-            n_number=n_number if isinstance(n_number, str) else None,
-            web_entry_id=web_entry_id if isinstance(web_entry_id, str) else None,
-        )
-        return user_message, session_id
+    def _run_async(self, coroutine: Any) -> Any:
+        loop = asyncio.new_event_loop()
+        try:
+            return loop.run_until_complete(coroutine)
+        finally:
+            loop.close()
 
     def _save_lookup_session(
         self,
         session_id: str,
         session_state: SessionState | None,
         user_message: str,
-        lookup_result: dict[str, Any],
+        lookup_result: dict[str, Any] | None,
         n_number: str | None,
         web_entry_id: str | None,
     ) -> None:
         lookup_state = {
             "n_number": n_number,
             "web_entry_id": web_entry_id,
-            "result": lookup_result,
+            "result": lookup_result if lookup_result is not None else {},
         }
         self._service.save_lookup_session(
             session_id=session_id,
