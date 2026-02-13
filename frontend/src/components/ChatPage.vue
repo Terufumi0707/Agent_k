@@ -8,7 +8,7 @@
 
       <div class="sidebar-bottom">
         <section class="sidebar-section">
-          <p class="history-title">オーダー一覧</p>
+          <p class="history-title">ステータス一覧</p>
           <p v-if="ordersLoading" class="history-status">読み込み中...</p>
           <p v-else-if="ordersError" class="history-error">{{ ordersError }}</p>
 
@@ -18,20 +18,30 @@
               :key="status"
               class="order-group"
             >
-              <p class="order-group-title">{{ status }}</p>
-              <ul class="history-list">
-                <li
-                  v-for="order in ordersByStatus[status]"
-                  :key="order.id"
-                  class="order-item"
-                >
-                  <p class="order-item-id">{{ order.id }}</p>
-                  <p class="order-item-session">session: {{ order.session_id }}</p>
-                </li>
-              </ul>
-              <p v-if="ordersByStatus[status].length === 0" class="history-status">
-                該当オーダーはありません。
-              </p>
+              <button
+                type="button"
+                class="order-group-toggle"
+                @click="toggleStatusSection(status)"
+              >
+                <span class="order-group-title">{{ status }}</span>
+                <span class="order-group-icon">{{ isStatusCollapsed(status) ? "＋" : "－" }}</span>
+              </button>
+
+              <template v-if="!isStatusCollapsed(status)">
+                <ul class="history-list">
+                  <li
+                    v-for="order in ordersByStatus[status]"
+                    :key="order.id"
+                    class="order-item"
+                  >
+                    <p class="order-item-id">{{ order.id }}</p>
+                    <p class="order-item-session">session: {{ order.session_id }}</p>
+                  </li>
+                </ul>
+                <p v-if="ordersByStatus[status].length === 0" class="history-status">
+                  該当オーダーはありません。
+                </p>
+              </template>
             </div>
           </template>
         </section>
@@ -134,6 +144,11 @@ const sessionId = ref(null);
 const ordersLoading = ref(false);
 const ordersError = ref("");
 const orderStatuses = ["DELIVERY", "COORDINATE", "BACKYARD"];
+const statusSectionCollapsed = ref({
+  DELIVERY: false,
+  COORDINATE: false,
+  BACKYARD: false
+});
 const ordersByStatus = ref({
   DELIVERY: [],
   COORDINATE: [],
@@ -181,6 +196,15 @@ const authDisplaySub = computed(() => user.value?.sub || "");
 
 const toggleHistory = () => {
   historyCollapsed.value = !historyCollapsed.value;
+};
+
+const isStatusCollapsed = (status) => Boolean(statusSectionCollapsed.value[status]);
+
+const toggleStatusSection = (status) => {
+  statusSectionCollapsed.value = {
+    ...statusSectionCollapsed.value,
+    [status]: !isStatusCollapsed(status)
+  };
 };
 
 const handleLogout = () => {

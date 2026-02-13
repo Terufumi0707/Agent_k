@@ -112,11 +112,30 @@ body {
   margin-bottom: 14px;
 }
 
+.order-group-toggle {
+  border: none;
+  background: transparent;
+  padding: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+}
+
 .order-group-title {
   margin: 0;
   font-size: 12px;
   font-weight: 700;
   color: #0f2240;
+  text-align: left;
+}
+
+.order-group-icon {
+  font-size: 14px;
+  font-weight: 700;
+  color: #4c647a;
+  line-height: 1;
 }
 
 .order-item {
