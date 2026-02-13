@@ -18,6 +18,19 @@ def _make_order(order_id: str, session_id: str, status: OrderStatus, minutes: in
     )
 
 
+
+
+def _reset_default_seed_data() -> None:
+    agent_controller._order_repository.seed_defaults()
+    agent_controller._conversation_repository = agent_controller.InMemoryConversationRepository()
+    agent_controller._conversation_service = agent_controller.ConversationService(repository=agent_controller._conversation_repository)
+    agent_controller._conversation_service.seed_order_histories(agent_controller._order_repository.list_all())
+    agent_controller._order_query_service = agent_controller.OrderQueryService(
+        order_service=agent_controller._order_service,
+        conversation_service=agent_controller._conversation_service,
+    )
+
+
 def test_v1_orders_returns_updated_at_desc() -> None:
     client = TestClient(app)
     repository = agent_controller._order_repository
@@ -95,6 +108,7 @@ def test_v1_order_messages_returns_created_at_asc_and_status_event() -> None:
 
 
 def test_seeded_demo_messages_for_delivery_orders() -> None:
+    _reset_default_seed_data()
     client = TestClient(app)
 
     response_001 = client.get("/api/v1/orders/order-delivery-001/messages")
@@ -121,7 +135,27 @@ def test_seeded_demo_messages_for_delivery_orders() -> None:
     status_events_001 = [message for message in messages_001 if message["metadata"].get("status_event") is True]
     status_events_002 = [message for message in messages_002 if message["metadata"].get("status_event") is True]
 
-    assert any(message["metadata"].get("order_status_before") == "DELIVERY" for message in status_events_001)
-    assert any(message["metadata"].get("order_status_after") == "COORDINATE" for message in status_events_001)
-    assert any(message["metadata"].get("order_status_before") == "DELIVERY" for message in status_events_002)
-    assert any(message["metadata"].get("order_status_after") == "COORDINATE" for message in status_events_002)
+    assert any(message["metadata"].get("order_status_before") == "COORDINATE" for message in status_events_001)
+    assert any(message["metadata"].get("order_status_after") == "DELIVERY" for message in status_events_001)
+    assert any(message["metadata"].get("order_status_before") == "COORDINATE" for message in status_events_002)
+    assert any(message["metadata"].get("order_status_after") == "DELIVERY" for message in status_events_002)
+
+
+def test_all_default_orders_have_histories_and_last_status_matches_current() -> None:
+    _reset_default_seed_data()
+    client = TestClient(app)
+
+    orders_response = client.get("/api/v1/orders")
+    assert orders_response.status_code == 200
+    orders = orders_response.json()
+
+    assert len(orders) >= 9
+
+    for order in orders:
+        messages_response = client.get(f"/api/v1/orders/{order['id']}/messages")
+        assert messages_response.status_code == 200
+        messages = messages_response.json()
+        assert len(messages) >= 3
+
+        last_message = messages[-1]
+        assert last_message["metadata"].get("order_status_after") == order["current_status"]

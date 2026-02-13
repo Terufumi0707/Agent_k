@@ -99,7 +99,7 @@
                       @click="openRequestExecution(request)"
                     >
                       <p class="order-item-id">{{ request.id }}</p>
-                      <p class="order-item-session">{{ request.summary }}</p>
+                      <p class="order-item-session">session: {{ request.session_id }}</p>
                     </button>
                   </li>
                 </ul>
@@ -208,22 +208,9 @@ const activeOrderId = ref(null);
 const placeholderText =
   "指示してください";
 
-const requestsByMonth = {
-  "2026年4月": [
-    { id: "N-202604-001", summary: "日程変更依頼メールの確認" },
-    { id: "WE-202604-014", summary: "変更対象オーダーの内容確認" }
-  ],
-  "2026年3月": [
-    { id: "N-202603-122", summary: "工事希望日の再調整" },
-    { id: "WE-202603-089", summary: "変更工事種別の問い合わせ" },
-    { id: "N-202603-076", summary: "連絡先更新依頼" }
-  ]
-};
-const requestMonths = Object.keys(requestsByMonth);
-const requestMonthCollapsed = ref({
-  "2026年4月": false,
-  "2026年3月": true
-});
+const requestsByMonth = ref({});
+const requestMonths = computed(() => Object.keys(requestsByMonth.value));
+const requestMonthCollapsed = ref({});
 const historySectionCollapsed = ref(true);
 
 const canSend = computed(() => inputText.value.trim().length > 0);
@@ -232,6 +219,26 @@ const authDisplayName = computed(
 );
 const authDisplayEmail = computed(() => user.value?.email || "");
 const authDisplaySub = computed(() => user.value?.sub || "");
+
+const formatMonthLabel = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "不明";
+  }
+  return `${date.getFullYear()}年${date.getMonth() + 1}月`;
+};
+
+const buildRequestsByMonth = (orders) => {
+  const grouped = {};
+  for (const order of orders) {
+    const month = formatMonthLabel(order.updated_at);
+    if (!grouped[month]) {
+      grouped[month] = [];
+    }
+    grouped[month].push(order);
+  }
+  return grouped;
+};
 
 const isRequestMonthCollapsed = (month) => Boolean(requestMonthCollapsed.value[month]);
 
@@ -264,6 +271,9 @@ const openOrderExecution = async (order) => {
 const openRequestExecution = async (request) => {
   activeOrderId.value = request.id;
   const nextQuery = { ...route.query, order_id: request.id };
+  if (request.session_id) {
+    nextQuery.session_id = request.session_id;
+  }
   await router.push({ name: "chat", query: nextQuery });
   await fetchOrderMessages(request.id);
 };
@@ -341,6 +351,13 @@ const fetchOrders = async () => {
     }
 
     ordersByStatus.value = groupedOrders;
+    const monthly = buildRequestsByMonth(orders);
+    requestsByMonth.value = monthly;
+    const monthState = {};
+    requestMonths.value.forEach((month, index) => {
+      monthState[month] = index !== 0;
+    });
+    requestMonthCollapsed.value = monthState;
   } catch (error) {
     console.error("orders request failed:", error);
     ordersError.value = "オーダー一覧の取得に失敗しました。";

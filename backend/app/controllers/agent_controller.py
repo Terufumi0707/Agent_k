@@ -18,116 +18,11 @@ _order_repository = InMemoryOrderRepository()
 _conversation_repository = InMemoryConversationRepository()
 _order_service = OrderService(repository=_order_repository)
 _conversation_service = ConversationService(repository=_conversation_repository)
+_conversation_service.seed_order_histories(_order_repository.list_all())
 _order_query_service = OrderQueryService(
     order_service=_order_service,
     conversation_service=_conversation_service,
 )
-
-
-def _seed_demo_conversations() -> None:
-    conversation_specs = {
-        "order-delivery-001": [
-            {
-                "role": "user",
-                "content": "N123456789の工事日を4/20午前へ変更したいです。",
-                "metadata": {
-                    "intent": "CHANGE_REQUEST",
-                    "status_event": False,
-                    "order_status_before": None,
-                    "order_status_after": None,
-                },
-            },
-            {
-                "role": "assistant",
-                "content": "現在のオーダー情報を確認します。希望日は4/20午前で承りました。",
-                "metadata": {
-                    "intent": "CHANGE_REQUEST",
-                    "status_event": False,
-                    "order_status_before": None,
-                    "order_status_after": None,
-                    "tool_call": {"name": "fetch_current_order", "status": "success"},
-                },
-            },
-            {
-                "role": "user",
-                "content": "連絡先は090-1111-2222です。",
-                "metadata": {
-                    "intent": "SUPPLEMENT",
-                    "status_event": False,
-                    "order_status_before": None,
-                    "order_status_after": None,
-                },
-            },
-            {
-                "role": "assistant",
-                "content": "不足情報が補完できたため、調整担当へ引き継ぎました。",
-                "metadata": {
-                    "intent": "SUPPLEMENT",
-                    "status_event": True,
-                    "order_status_before": "DELIVERY",
-                    "order_status_after": "COORDINATE",
-                },
-            },
-            {
-                "role": "system",
-                "content": "オーダー状態をDELIVERYからCOORDINATEへ更新。",
-                "metadata": {
-                    "intent": "STATUS_SYNC",
-                    "status_event": True,
-                    "order_status_before": "DELIVERY",
-                    "order_status_after": "COORDINATE",
-                },
-            },
-        ],
-        "order-delivery-002": [
-            {
-                "role": "user",
-                "content": "WE-202604-014 の希望時間を午後に変更できますか？",
-                "metadata": {
-                    "intent": "CHANGE_REQUEST",
-                    "status_event": False,
-                    "order_status_before": None,
-                    "order_status_after": None,
-                },
-            },
-            {
-                "role": "assistant",
-                "content": "関係部署へ確認中です。折り返しご連絡します。",
-                "metadata": {
-                    "intent": "CHANGE_REQUEST",
-                    "status_event": False,
-                    "order_status_before": None,
-                    "order_status_after": None,
-                },
-            },
-            {
-                "role": "assistant",
-                "content": "調整依頼を作成し、ステータスを更新しました。",
-                "metadata": {
-                    "intent": "CONFIRM",
-                    "status_event": True,
-                    "order_status_before": "DELIVERY",
-                    "order_status_after": "COORDINATE",
-                },
-            },
-        ],
-    }
-
-    for order_id, specs in conversation_specs.items():
-        order = _order_repository.find_by_id(order_id)
-        if order is None:
-            continue
-        for spec in specs:
-            _conversation_service.add_order_message(
-                order=order,
-                role=spec["role"],
-                content=spec["content"],
-                metadata=spec["metadata"],
-            )
-
-
-_seed_demo_conversations()
-
 _orchestrator = CreateEntryOrchestrator(
     order_repository=_order_repository,
     order_service=_order_service,
