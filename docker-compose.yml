@@ -8,7 +8,6 @@ services:
       VITE_BACKEND_BASE_URL: ${VITE_BACKEND_BASE_URL:-http://localhost:8000}
       VITE_AUTH0_DOMAIN: ${VITE_AUTH0_DOMAIN:-your-tenant.us.auth0.com}
       VITE_AUTH0_CLIENT_ID: ${VITE_AUTH0_CLIENT_ID:-your-client-id}
-      VITE_AUTH0_AUDIENCE: ${VITE_AUTH0_AUDIENCE:-https://your-api-identifier}
       VITE_AUTH0_REDIRECT_URI: ${VITE_AUTH0_REDIRECT_URI:-http://localhost:5173/callback}
     depends_on:
       - backend

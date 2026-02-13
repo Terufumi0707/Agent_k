@@ -21,7 +21,6 @@ mcp_order_lookup_server/ # MCPサーバー（apiへの照会を中継）
 | VITE_BACKEND_BASE_URL | frontend -> backend の接続先 | http://localhost:8000（開発時） |
 | VITE_AUTH0_DOMAIN | Auth0テナントドメイン（SPA設定） | your-tenant.us.auth0.com |
 | VITE_AUTH0_CLIENT_ID | Auth0アプリのClient ID（SPA） | your-client-id |
-| VITE_AUTH0_AUDIENCE | バックエンドAPIのIdentifier（任意） | https://your-api-identifier |
 | VITE_AUTH0_REDIRECT_URI | Auth0ログイン後のリダイレクト先 | http://localhost:5173/callback |
 | GEMINI_API_BASE_URL | backend -> Gemini API の接続先 | https://generativelanguage.googleapis.com/v1beta |
 | GEMINI_API_KEY | Gemini API の認証キー | (未設定) |
