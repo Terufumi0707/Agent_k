@@ -88,9 +88,9 @@
 
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from "vue";
-import { useAuth0 } from "@auth0/auth0-vue";
+import { useOptionalAuth } from "../auth";
 
-const { user, logout } = useAuth0();
+const { user, logout } = useOptionalAuth();
 
 const inputText = ref("");
 const inputRef = ref(null);
