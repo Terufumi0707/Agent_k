@@ -1,8 +1,14 @@
 from fastapi.testclient import TestClient
+import pytest
 
 from app.domain.order import Order, OrderStatus
 from app.main import app
 import app.controllers.agent_controller as agent_controller
+
+
+@pytest.fixture(autouse=True)
+def reset_repository_state() -> None:
+    agent_controller._order_repository.seed_defaults()
 
 
 def test_create_entry_uses_orchestrator_and_returns_text(monkeypatch):
@@ -67,3 +73,18 @@ def test_get_orders_without_status_returns_all_orders():
             "current_status": "BACKYARD",
         },
     ]
+
+
+def test_get_orders_returns_seeded_orders_on_startup():
+    client = TestClient(app)
+
+    response = client.get("/api/orders")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert len(body) == 9
+    assert body[0] == {
+        "id": "order-delivery-001",
+        "session_id": "session-delivery-001",
+        "current_status": "DELIVERY",
+    }

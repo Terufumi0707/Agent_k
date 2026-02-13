@@ -21,6 +21,10 @@ class OrderRepository(Protocol):
 
 class InMemoryOrderRepository:
     def __init__(self) -> None:
+        self._orders: list[Order] = []
+        self.seed_defaults()
+
+    def seed_defaults(self) -> None:
         self._orders = [
             Order(id="order-delivery-001", session_id="session-delivery-001", current_status=OrderStatus.DELIVERY),
             Order(id="order-delivery-002", session_id="session-delivery-002", current_status=OrderStatus.DELIVERY),
