@@ -307,7 +307,7 @@ body {
   margin-top: 40px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 14px;
 }
 
 .progress-panel {
@@ -368,19 +368,30 @@ body {
 }
 
 .message-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  column-gap: 20px;
 }
 
 .message-row.user {
-  justify-content: flex-end;
+  justify-items: end;
 }
 
 .message-row.ai {
-  justify-content: flex-start;
+  justify-items: start;
+}
+
+.message-row.ai .message-bubble {
+  grid-column: 1;
+}
+
+.message-row.user .message-bubble {
+  grid-column: 2;
 }
 
 .message-bubble {
-  max-width: 70%;
+  width: 100%;
+  max-width: 100%;
   padding: 10px 14px;
   border-radius: 14px;
   background: #ffffff;
@@ -541,6 +552,16 @@ body {
   }
 
   .message-bubble {
-    max-width: 85%;
+    max-width: 100%;
+  }
+
+  .message-row {
+    grid-template-columns: 1fr;
+    row-gap: 8px;
+  }
+
+  .message-row.ai .message-bubble,
+  .message-row.user .message-bubble {
+    grid-column: 1;
   }
 }
