@@ -12,6 +12,10 @@
       </div>
 
       <div v-if="!isSidebarCollapsed" class="sidebar-bottom">
+        <button type="button" class="new-request-button" @click="startNewRequest">
+          ＋ 新しい依頼へ
+        </button>
+
         <section class="sidebar-section">
           <button type="button" class="section-toggle" @click="statusListCollapsed = !statusListCollapsed">
             <span class="history-title">ステータス一覧</span>
@@ -204,6 +208,7 @@ const ordersByStatus = ref({
   BACKYARD: []
 });
 const activeOrderId = ref(null);
+const messageFetchRequestId = ref(0);
 
 const placeholderText =
   "指示してください";
@@ -284,6 +289,21 @@ const handleLogout = () => {
       returnTo: window.location.origin
     }
   });
+};
+
+const startNewRequest = async () => {
+  messageFetchRequestId.value += 1;
+  activeOrderId.value = null;
+  sessionId.value = null;
+  inputText.value = "";
+  progressLogs.value = [];
+  currentPhase.value = "";
+  streamError.value = "";
+  messages.value = [{ role: "ai", text: greetingMessage, isGreeting: true }];
+
+  await router.push({ name: "chat", query: {} });
+  await nextTick();
+  resizeTextarea();
 };
 
 const backendBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL
@@ -377,6 +397,9 @@ const mapHistoryMessage = (message) => {
 };
 
 const fetchOrderMessages = async (orderId) => {
+  const requestId = messageFetchRequestId.value + 1;
+  messageFetchRequestId.value = requestId;
+
   try {
     const response = await fetchWithRelativeFallback(
       `${orderMessagesBaseUrl}/${orderId}/messages?limit=200&offset=0`,
@@ -386,8 +409,14 @@ const fetchOrderMessages = async (orderId) => {
       throw new Error(`会話履歴の取得に失敗しました (${response.status})`);
     }
     const historyMessages = await response.json();
+    if (requestId !== messageFetchRequestId.value) {
+      return;
+    }
     messages.value = historyMessages.map(mapHistoryMessage);
   } catch (error) {
+    if (requestId !== messageFetchRequestId.value) {
+      return;
+    }
     console.error("order messages request failed:", error);
     messages.value = [{ role: "ai", text: "会話履歴の取得に失敗しました。" }];
   }
