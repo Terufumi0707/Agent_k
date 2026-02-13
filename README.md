@@ -140,3 +140,39 @@ Auth0ダッシュボードの SPA 設定では次を登録してください。
 - Allowed Web Origins: `http://localhost:5173`
 
 バックエンド側を保護する場合は、API で Access Token（issuer / audience / exp）を検証してください。
+
+
+### Windows で `dockerDesktopLinuxEngine` の接続エラーが出る場合
+
+次のようなエラーが出る場合は、アプリ側ではなく Docker Desktop 側の起動状態・コンテキスト設定が原因です。
+
+```
+unable to get image 'ndb_pre-api': error during connect:
+Get "http://%2F%2F.%2Fpipe%2FdockerDesktopLinuxEngine/...":
+open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified.
+```
+
+対処手順（Windows）:
+
+1. **Docker Desktop を起動**（完全起動まで待つ）
+2. Docker Desktop の設定で **Use the WSL 2 based engine** を有効化
+3. PowerShell で Docker コンテキストを Linux 側に切り替え
+   ```
+   docker context ls
+   docker context use desktop-linux
+   ```
+4. デーモン接続確認
+   ```
+   docker version
+   docker info
+   ```
+5. その後、再度実行
+   ```
+   docker compose up --build
+   ```
+
+補足:
+- `docker version` の `Server` 情報が取れない状態では `docker compose` は必ず失敗します。
+- 会社PCで Docker Desktop サービスが停止されるポリシーの場合は、管理者権限で Docker Desktop Service の起動が必要です。
+- WSL 統合を使う場合は、Docker Desktop の **Resources > WSL integration** で利用中ディストリビューションを有効化してください。
+
