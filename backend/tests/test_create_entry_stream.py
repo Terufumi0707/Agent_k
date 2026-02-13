@@ -17,7 +17,7 @@ def _parse_event(event_block: str) -> tuple[str, dict[str, str]]:
 def test_create_entry_stream_emits_phase_and_done(monkeypatch):
     client = TestClient(app)
 
-    def mock_run_stream(prompt: str, session_id: str | None = None, on_phase=None) -> tuple[str, str]:
+    async def mock_run_stream(prompt: str, session_id: str | None = None, on_phase=None) -> tuple[str, str]:
         assert prompt == "そのまま渡す文字列"
         if session_id is None:
             session_id = "session-123"

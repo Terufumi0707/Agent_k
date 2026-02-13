@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import queue
 import threading
@@ -30,10 +31,12 @@ class CreateEntryStreamService:
 
             def run_orchestrator() -> None:
                 try:
-                    result, session_id = self._orchestrator.run_stream(
-                        request.prompt,
-                        session_id=session_id_holder["value"],
-                        on_phase=on_phase,
+                    result, session_id = asyncio.run(
+                        self._orchestrator.run_stream(
+                            request.prompt,
+                            session_id=session_id_holder["value"],
+                            on_phase=on_phase,
+                        )
                     )
                     session_id_holder["value"] = session_id
                     event_queue.put(

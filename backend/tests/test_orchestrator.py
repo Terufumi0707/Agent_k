@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 import app.orchestrator as orchestrator
@@ -59,10 +60,12 @@ def test_orchestrator_run_executes_full_pipeline_and_returns_formatter_result(mo
         },
     )
 
-    result, session_id = orchestrator.CreateEntryOrchestrator(
-        session_store=store,
-        intent_classifier=dummy_classifier,
-    ).run("PlaceHolderのRequest")
+    result, session_id = asyncio.run(
+        orchestrator.CreateEntryOrchestrator(
+            session_store=store,
+            intent_classifier=dummy_classifier,
+        ).run("PlaceHolderのRequest")
+    )
 
     assert dummy_classifier.count == 1
     assert len(captured) == 3
@@ -222,10 +225,12 @@ def test_orchestrator_change_intent_returns_change_preview_message(monkeypatch):
 
     monkeypatch.setattr(orchestrator, "generate_with_system_and_user", mock_generate_with_system_and_user)
 
-    result, session_id = orchestrator.CreateEntryOrchestrator(
-        session_store=store,
-        intent_classifier=DummyIntentClassifier(),
-    ).run("希望日を変えてください", session_id="session-456")
+    result, session_id = asyncio.run(
+        orchestrator.CreateEntryOrchestrator(
+            session_store=store,
+            intent_classifier=DummyIntentClassifier(),
+        ).run("希望日を変えてください", session_id="session-456")
+    )
 
     assert result == (
         "変更後の内容の要約\n\nこの内容でよろしければ確定してください。\nさらに変更があれば指示してください。"
@@ -241,10 +246,12 @@ def test_orchestrator_change_intent_without_session_returns_missing_target_messa
             assert session_state is None
             return IntentClassification(intent="CHANGE", confidence=0.9, reason="変更依頼")
 
-    result, session_id = orchestrator.CreateEntryOrchestrator(
-        session_store=InMemorySessionStore(),
-        intent_classifier=DummyIntentClassifier(),
-    ).run("変更してください")
+    result, session_id = asyncio.run(
+        orchestrator.CreateEntryOrchestrator(
+            session_store=InMemorySessionStore(),
+            intent_classifier=DummyIntentClassifier(),
+        ).run("変更してください")
+    )
 
     assert result == "変更対象となる情報がありません。"
     assert isinstance(session_id, str)
@@ -272,11 +279,13 @@ def test_orchestrator_query_status_delegates_to_agent_and_saves_lookup():
             return "formatted:200"
 
     store = InMemorySessionStore()
-    result, session_id = orchestrator.CreateEntryOrchestrator(
-        session_store=store,
-        intent_classifier=DummyIntentClassifier(),
-        query_status_agent=DummyQueryStatusAgent(),
-    ).run("N123456789 と UN1234567890 の現在状況を教えて")
+    result, session_id = asyncio.run(
+        orchestrator.CreateEntryOrchestrator(
+            session_store=store,
+            intent_classifier=DummyIntentClassifier(),
+            query_status_agent=DummyQueryStatusAgent(),
+        ).run("N123456789 と UN1234567890 の現在状況を教えて")
+    )
 
     assert result == "formatted:200"
     state = store.get(session_id)
@@ -299,11 +308,13 @@ def test_orchestrator_query_status_without_identifier_returns_guide_message():
         async def run(self, user_input: str) -> str:
             return "N番号（N+9桁）またはWebエントリID（UN+10桁）を本文に記載してください。"
 
-    result, session_id = orchestrator.CreateEntryOrchestrator(
-        session_store=InMemorySessionStore(),
-        intent_classifier=DummyIntentClassifier(),
-        query_status_agent=DummyQueryStatusAgent(),
-    ).run("現在の工事予定を確認したい")
+    result, session_id = asyncio.run(
+        orchestrator.CreateEntryOrchestrator(
+            session_store=InMemorySessionStore(),
+            intent_classifier=DummyIntentClassifier(),
+            query_status_agent=DummyQueryStatusAgent(),
+        ).run("現在の工事予定を確認したい")
+    )
 
     assert result == "N番号（N+9桁）またはWebエントリID（UN+10桁）を本文に記載してください。"
     assert isinstance(session_id, str)
@@ -323,11 +334,13 @@ def test_orchestrator_query_status_formats_error_response():
         async def run(self, user_input: str) -> str:
             return "formatted:404"
 
-    result, _ = orchestrator.CreateEntryOrchestrator(
-        session_store=InMemorySessionStore(),
-        intent_classifier=DummyIntentClassifier(),
-        query_status_agent=DummyQueryStatusAgent(),
-    ).run("N123456789 のステータス確認")
+    result, _ = asyncio.run(
+        orchestrator.CreateEntryOrchestrator(
+            session_store=InMemorySessionStore(),
+            intent_classifier=DummyIntentClassifier(),
+            query_status_agent=DummyQueryStatusAgent(),
+        ).run("N123456789 のステータス確認")
+    )
 
     assert result == "formatted:404"
 
@@ -349,11 +362,13 @@ def test_orchestrator_new_intent_sets_order_status_delivery(monkeypatch):
             return IntentClassification(intent="NEW", confidence=0.8, reason="新規入力")
 
     order_repository = InMemoryOrderRepository()
-    result, session_id = orchestrator.CreateEntryOrchestrator(
-        session_store=InMemorySessionStore(),
-        intent_classifier=DummyIntentClassifier(),
-        order_repository=order_repository,
-    ).run("PlaceHolderのRequest")
+    result, session_id = asyncio.run(
+        orchestrator.CreateEntryOrchestrator(
+            session_store=InMemorySessionStore(),
+            intent_classifier=DummyIntentClassifier(),
+            order_repository=order_repository,
+        ).run("PlaceHolderのRequest")
+    )
 
     saved_order = order_repository.find_by_session_id(session_id)
     assert result == "display-message"
@@ -370,11 +385,13 @@ def test_orchestrator_confirm_intent_updates_order_status_to_coordinate():
     order_service = OrderService(order_repository)
     order_service.create_if_not_exists(session_id="session-999")
 
-    result, session_id = orchestrator.CreateEntryOrchestrator(
-        session_store=InMemorySessionStore(),
-        intent_classifier=DummyIntentClassifier(),
-        order_service=order_service,
-    ).run("確定です", session_id="session-999")
+    result, session_id = asyncio.run(
+        orchestrator.CreateEntryOrchestrator(
+            session_store=InMemorySessionStore(),
+            intent_classifier=DummyIntentClassifier(),
+            order_service=order_service,
+        ).run("確定です", session_id="session-999")
+    )
 
     saved_order = order_repository.find_by_session_id("session-999")
     assert session_id == "session-999"
