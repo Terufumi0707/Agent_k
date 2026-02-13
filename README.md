@@ -132,12 +132,10 @@ pytest
 
 本フロントエンドは `@auth0/auth0-vue` を使った Universal Login を前提にしています。Docker Compose 起動時は `VITE_AUTH0_*` を環境変数で渡してください。
 
-`/login` は Auth0 へ遷移する前の中間画面として実装しており、3秒後の自動遷移または手動ボタンでログインを開始できます。
-
 Auth0ダッシュボードの SPA 設定では次を登録してください。
 
 - Allowed Callback URLs: `http://localhost:5173`
-- Allowed Logout URLs: `http://localhost:5173/login`
+- Allowed Logout URLs: `http://localhost:5173`
 - Allowed Web Origins: `http://localhost:5173`
 
 バックエンド側を保護する場合は、API で Access Token（issuer / audience / exp）を検証してください。
