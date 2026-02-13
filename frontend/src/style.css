@@ -54,7 +54,7 @@ body {
   padding: 20px 14px;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   box-shadow: 14px 0 30px rgba(12, 39, 244, 0.05);
 }
 
@@ -86,7 +86,9 @@ body {
 }
 
 .sidebar-bottom {
-  margin-top: 24px;
+  margin-top: 16px;
+  width: 100%;
+  flex: 1;
   overflow-y: auto;
 }
 
