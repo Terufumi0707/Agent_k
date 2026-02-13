@@ -8,59 +8,71 @@
 
       <div class="sidebar-bottom">
         <section class="sidebar-section">
-          <p class="history-title">ステータス一覧</p>
-          <p v-if="ordersLoading" class="history-status">読み込み中...</p>
-          <p v-else-if="ordersError" class="history-error">{{ ordersError }}</p>
+          <button type="button" class="section-toggle" @click="statusListCollapsed = !statusListCollapsed">
+            <span class="history-title">ステータス一覧</span>
+            <span class="section-toggle-icon">{{ statusListCollapsed ? "＋" : "－" }}</span>
+          </button>
 
-          <template v-else>
-            <div
-              v-for="status in orderStatuses"
-              :key="status"
-              class="order-group"
-            >
-              <button
-                type="button"
-                class="order-group-toggle"
-                @click="toggleStatusSection(status)"
+          <template v-if="!statusListCollapsed">
+            <p v-if="ordersLoading" class="history-status">読み込み中...</p>
+            <p v-else-if="ordersError" class="history-error">{{ ordersError }}</p>
+
+            <template v-else>
+              <div
+                v-for="status in orderStatuses"
+                :key="status"
+                class="order-group"
               >
-                <span class="order-group-title">{{ status }}</span>
-                <span class="order-group-icon">{{ isStatusCollapsed(status) ? "＋" : "－" }}</span>
-              </button>
+                <button
+                  type="button"
+                  class="order-group-toggle"
+                  @click="toggleStatusSection(status)"
+                >
+                  <span class="order-group-title">{{ status }}</span>
+                  <span class="order-group-icon">{{ isStatusCollapsed(status) ? "＋" : "－" }}</span>
+                </button>
 
-              <template v-if="!isStatusCollapsed(status)">
-                <ul class="history-list">
-                  <li
-                    v-for="order in ordersByStatus[status]"
-                    :key="order.id"
-                    class="order-item"
-                  >
-                    <p class="order-item-id">{{ order.id }}</p>
-                    <p class="order-item-session">session: {{ order.session_id }}</p>
-                  </li>
-                </ul>
-                <p v-if="ordersByStatus[status].length === 0" class="history-status">
-                  該当オーダーはありません。
-                </p>
-              </template>
-            </div>
+                <template v-if="!isStatusCollapsed(status)">
+                  <ul class="history-list">
+                    <li
+                      v-for="order in ordersByStatus[status]"
+                      :key="order.id"
+                      class="order-item"
+                    >
+                      <p class="order-item-id">{{ order.id }}</p>
+                      <p class="order-item-session">session: {{ order.session_id }}</p>
+                    </li>
+                  </ul>
+                  <p v-if="ordersByStatus[status].length === 0" class="history-status">
+                    該当オーダーはありません。
+                  </p>
+                </template>
+              </div>
+            </template>
           </template>
         </section>
 
         <section class="sidebar-section">
-          <p class="history-title">過去のチャット履歴（mock）</p>
-          <ul class="history-list">
-            <li v-for="(item, index) in visibleHistoryItems" :key="`${item}-${index}`">
-              {{ item }}
-            </li>
-          </ul>
-          <button
-            v-if="shouldShowHistoryToggle"
-            type="button"
-            class="history-toggle"
-            @click="toggleHistory"
-          >
-            {{ historyToggleLabel }}
+          <button type="button" class="section-toggle" @click="historySectionCollapsed = !historySectionCollapsed">
+            <span class="history-title">過去のチャット履歴（mock）</span>
+            <span class="section-toggle-icon">{{ historySectionCollapsed ? "＋" : "－" }}</span>
           </button>
+
+          <template v-if="!historySectionCollapsed">
+            <ul class="history-list">
+              <li v-for="(item, index) in visibleHistoryItems" :key="`${item}-${index}`">
+                {{ item }}
+              </li>
+            </ul>
+            <button
+              v-if="shouldShowHistoryToggle"
+              type="button"
+              class="history-toggle"
+              @click="toggleHistory"
+            >
+              {{ historyToggleLabel }}
+            </button>
+          </template>
         </section>
       </div>
     </aside>
@@ -144,10 +156,11 @@ const sessionId = ref(null);
 const ordersLoading = ref(false);
 const ordersError = ref("");
 const orderStatuses = ["DELIVERY", "COORDINATE", "BACKYARD"];
+const statusListCollapsed = ref(true);
 const statusSectionCollapsed = ref({
-  DELIVERY: false,
-  COORDINATE: false,
-  BACKYARD: false
+  DELIVERY: true,
+  COORDINATE: true,
+  BACKYARD: true
 });
 const ordersByStatus = ref({
   DELIVERY: [],
@@ -173,6 +186,7 @@ const historyItems = ref([
   "2026/03/20 追加工事の可否確認"
 ]);
 const historyCollapsed = ref(true);
+const historySectionCollapsed = ref(true);
 const historyLimit = 10;
 
 const canSend = computed(() => inputText.value.trim().length > 0);
