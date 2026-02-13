@@ -251,19 +251,21 @@ const toggleStatusSection = (status) => {
   };
 };
 
-const openOrderExecution = (order) => {
+const openOrderExecution = async (order) => {
   activeOrderId.value = order.id;
   const nextQuery = { ...route.query, order_id: order.id };
   if (order.session_id) {
     nextQuery.session_id = order.session_id;
   }
-  router.push({ name: "chat", query: nextQuery });
+  await router.push({ name: "chat", query: nextQuery });
+  await fetchOrderMessages(order.id);
 };
 
-const openRequestExecution = (request) => {
+const openRequestExecution = async (request) => {
   activeOrderId.value = request.id;
   const nextQuery = { ...route.query, order_id: request.id };
-  router.push({ name: "chat", query: nextQuery });
+  await router.push({ name: "chat", query: nextQuery });
+  await fetchOrderMessages(request.id);
 };
 
 const handleLogout = () => {
@@ -287,6 +289,9 @@ const createEntryUrl = backendBaseUrl
 const ordersUrl = backendBaseUrl
   ? `${backendBaseUrl}/api/orders`
   : "/api/orders";
+const orderMessagesBaseUrl = backendBaseUrl
+  ? `${backendBaseUrl}/api/v1/orders`
+  : "/api/v1/orders";
 
 const shouldRetryWithRelativeUrl = (error) => {
   if (!backendBaseUrl) {
@@ -341,6 +346,33 @@ const fetchOrders = async () => {
     ordersError.value = "オーダー一覧の取得に失敗しました。";
   } finally {
     ordersLoading.value = false;
+  }
+};
+
+const mapHistoryMessage = (message) => {
+  if (message.role === "user") {
+    return { role: "user", text: message.content };
+  }
+  if (message.role === "system") {
+    return { role: "ai", text: `[system] ${message.content}` };
+  }
+  return { role: "ai", text: message.content };
+};
+
+const fetchOrderMessages = async (orderId) => {
+  try {
+    const response = await fetchWithRelativeFallback(
+      `${orderMessagesBaseUrl}/${orderId}/messages?limit=200&offset=0`,
+      `/api/v1/orders/${orderId}/messages?limit=200&offset=0`
+    );
+    if (!response.ok) {
+      throw new Error(`会話履歴の取得に失敗しました (${response.status})`);
+    }
+    const historyMessages = await response.json();
+    messages.value = historyMessages.map(mapHistoryMessage);
+  } catch (error) {
+    console.error("order messages request failed:", error);
+    messages.value = [{ role: "ai", text: "会話履歴の取得に失敗しました。" }];
   }
 };
 
@@ -504,6 +536,9 @@ onMounted(() => {
     sessionId.value = route.query.session_id;
   }
   fetchOrders();
+  if (activeOrderId.value) {
+    fetchOrderMessages(activeOrderId.value);
+  }
 });
 
 watch(inputText, () => {
