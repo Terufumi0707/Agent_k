@@ -229,12 +229,31 @@ const ordersUrl = backendBaseUrl
   ? `${backendBaseUrl}/api/orders`
   : "/api/orders";
 
+const shouldRetryWithRelativeUrl = (error) => {
+  if (!backendBaseUrl) {
+    return false;
+  }
+  return error instanceof TypeError;
+};
+
+const fetchWithRelativeFallback = async (primaryUrl, relativeUrl, options) => {
+  try {
+    return await fetch(primaryUrl, options);
+  } catch (error) {
+    if (!shouldRetryWithRelativeUrl(error)) {
+      throw error;
+    }
+    console.warn(`Primary API endpoint is unreachable. Falling back to ${relativeUrl}.`, error);
+    return fetch(relativeUrl, options);
+  }
+};
+
 const fetchOrders = async () => {
   ordersLoading.value = true;
   ordersError.value = "";
 
   try {
-    const response = await fetch(ordersUrl);
+    const response = await fetchWithRelativeFallback(ordersUrl, "/api/orders");
     if (!response.ok) {
       throw new Error(`オーダー一覧の取得に失敗しました (${response.status})`);
     }
@@ -339,7 +358,7 @@ const sendMessage = async () => {
 
   const streamPromise = (async () => {
     try {
-      const response = await fetch(createEntryStreamUrl, {
+      const response = await fetchWithRelativeFallback(createEntryStreamUrl, "/api/create_entry/stream", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
@@ -385,7 +404,7 @@ const sendMessage = async () => {
 
   const resultPromise = (async () => {
     try {
-      const response = await fetch(createEntryUrl, {
+      const response = await fetchWithRelativeFallback(createEntryUrl, "/api/create_entry", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"
