@@ -37,7 +37,7 @@
                   class="order-group-toggle"
                   @click="toggleStatusSection(status)"
                 >
-                  <span class="order-group-title">{{ status }}</span>
+                  <span class="order-group-title">{{ statusLabels[status] ?? status }}</span>
                   <span class="order-group-icon">{{ isStatusCollapsed(status) ? "＋" : "－" }}</span>
                 </button>
 
@@ -195,6 +195,11 @@ const sessionId = ref(null);
 const ordersLoading = ref(false);
 const ordersError = ref("");
 const orderStatuses = ["DELIVERY", "COORDINATE", "BACKYARD"];
+const statusLabels = {
+  DELIVERY: "デリバリー",
+  COORDINATE: "コーディネート",
+  BACKYARD: "バックヤード"
+};
 const statusListCollapsed = ref(true);
 const statusSectionCollapsed = ref({
   DELIVERY: true,
