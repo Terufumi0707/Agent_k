@@ -92,6 +92,25 @@ body {
   overflow-y: auto;
 }
 
+
+.new-request-button {
+  width: 100%;
+  border: 1px solid #b6c7ff;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #4363ff 0%, #2747e6 100%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 12px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(39, 71, 230, 0.2);
+  margin-bottom: 16px;
+}
+
+.new-request-button:hover {
+  background: linear-gradient(135deg, #3a59f4 0%, #1f3ed4 100%);
+}
+
 .sidebar-section + .sidebar-section {
   margin-top: 24px;
   padding-top: 16px;
