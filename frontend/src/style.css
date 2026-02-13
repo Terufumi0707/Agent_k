@@ -295,8 +295,8 @@ body {
 
 .chat-main {
   flex: 1;
-  width: min(900px, 100%);
-  margin: 0 auto 0 24px;
+  width: 100%;
+  margin: 0;
   padding: 32px 20px 140px;
   display: flex;
   flex-direction: column;
@@ -305,6 +305,7 @@ body {
 
 .messages {
   margin-top: 40px;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 14px;
@@ -368,30 +369,21 @@ body {
 }
 
 .message-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  column-gap: 20px;
+  width: 100%;
+  display: flex;
 }
 
 .message-row.user {
-  justify-items: end;
+  justify-content: flex-end;
 }
 
 .message-row.ai {
-  justify-items: start;
-}
-
-.message-row.ai .message-bubble {
-  grid-column: 1;
-}
-
-.message-row.user .message-bubble {
-  grid-column: 2;
+  justify-content: flex-start;
 }
 
 .message-bubble {
-  width: 100%;
-  max-width: 100%;
+  width: 70%;
+  max-width: 70%;
   padding: 10px 14px;
   border-radius: 14px;
   background: #ffffff;
@@ -522,7 +514,7 @@ body {
   }
 
   .chat-main {
-    margin: 0 auto;
+    margin: 0;
   }
 
   .top-header {
@@ -556,12 +548,6 @@ body {
   }
 
   .message-row {
-    grid-template-columns: 1fr;
-    row-gap: 8px;
-  }
-
-  .message-row.ai .message-bubble,
-  .message-row.user .message-bubble {
-    grid-column: 1;
+    width: 100%;
   }
 }
