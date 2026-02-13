@@ -340,3 +340,23 @@ body {
 .auth-button:hover {
   background: #0846ab;
 }
+
+.auth-note {
+  margin: 0;
+  color: #4a6178;
+}
+
+.auth-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.auth-button-secondary {
+  background: #6a7785;
+}
+
+.auth-button-secondary:hover {
+  background: #586471;
+}
