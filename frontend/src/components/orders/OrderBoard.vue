@@ -34,7 +34,7 @@ const selectedOrderId = ref(null);
   grid-template-columns: 1fr;
   gap: 16px;
   padding: 16px;
-  background: #f3f4f6;
+  background: linear-gradient(150deg, #f4f7ff 0%, #eff4ff 100%);
 }
 
 .status-column {
@@ -43,23 +43,23 @@ const selectedOrderId = ref(null);
 }
 
 .order-detail {
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #fff;
+  border: 1px solid #d3defa;
+  border-radius: 14px;
+  background: #ffffff;
   padding: 24px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 10px 24px rgba(12, 39, 244, 0.07);
 }
 
 .order-detail-title {
   margin: 0 0 8px;
   font-size: 18px;
-  color: #111827;
+  color: #19295e;
 }
 
 .order-detail-text {
   margin: 0;
   font-size: 14px;
-  color: #4b5563;
+  color: #4f6084;
 }
 
 @media (min-width: 960px) {

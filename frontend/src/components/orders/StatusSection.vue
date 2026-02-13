@@ -75,30 +75,31 @@ onMounted(() => {
 
 <style scoped>
 .status-section {
-  border: 1px solid #e5e7eb;
-  border-radius: 12px;
-  background: #fff;
+  border: 1px solid #d3defa;
+  border-radius: 14px;
+  background: linear-gradient(160deg, #ffffff 0%, #f6f8ff 100%);
   padding: 16px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  box-shadow: 0 8px 20px rgba(12, 39, 244, 0.06);
 }
 
 .status-title {
   margin: 0 0 12px;
   font-size: 14px;
-  font-weight: 700;
-  color: #1f2937;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #1c2d67;
 }
 
 .status-message {
   margin: 0;
   font-size: 14px;
-  color: #6b7280;
+  color: #566588;
 }
 
 .status-error {
   margin: 0;
   font-size: 14px;
-  color: #dc2626;
+  color: #c62828;
 }
 
 .order-list {
