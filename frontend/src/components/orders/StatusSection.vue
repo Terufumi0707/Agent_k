@@ -19,13 +19,24 @@
 </template>
 
 <script setup>
-import { onMounted, ref, watch } from "vue";
 import OrderCard from "./OrderCard.vue";
 
-const props = defineProps({
+defineProps({
   status: {
     type: String,
     required: true
+  },
+  orders: {
+    type: Array,
+    default: () => []
+  },
+  loading: {
+    type: Boolean,
+    default: false
+  },
+  error: {
+    type: String,
+    default: ""
   },
   selectedOrderId: {
     type: String,
@@ -34,43 +45,6 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["select-order"]);
-
-const orders = ref([]);
-const loading = ref(true);
-const error = ref("");
-
-const backendBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL
-  ? import.meta.env.VITE_BACKEND_BASE_URL.replace(/\/$/, "")
-  : "";
-
-const fetchOrders = async () => {
-  try {
-    loading.value = true;
-    error.value = "";
-    const response = await fetch(`${backendBaseUrl}/orders?status=${props.status}`);
-
-    if (!response.ok) {
-      throw new Error(`Failed to fetch ${props.status} orders: ${response.status}`);
-    }
-
-    orders.value = await response.json();
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : "An unexpected error occurred.";
-  } finally {
-    loading.value = false;
-  }
-};
-
-watch(
-  () => props.status,
-  () => {
-    fetchOrders();
-  }
-);
-
-onMounted(() => {
-  fetchOrders();
-});
 </script>
 
 <style scoped>

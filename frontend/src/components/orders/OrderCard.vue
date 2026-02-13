@@ -7,8 +7,10 @@
   >
     <p class="order-card-label">ID</p>
     <p class="order-card-value">{{ order.id }}</p>
-    <p class="order-card-label">Session ID</p>
-    <p class="order-card-session">{{ order.session_id }}</p>
+    <p class="order-card-label">Status</p>
+    <p class="order-card-session">{{ order.current_status }}</p>
+    <p class="order-card-label">Updated</p>
+    <p class="order-card-session">{{ formatDate(order.updated_at) }}</p>
   </button>
 </template>
 
@@ -25,6 +27,19 @@ defineProps({
 });
 
 defineEmits(["select"]);
+
+const formatDate = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+  return date.toLocaleString("ja-JP", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+};
 </script>
 
 <style scoped>
@@ -66,7 +81,7 @@ defineEmits(["select"]);
 }
 
 .order-card-session {
-  margin: 2px 0 0;
+  margin: 2px 0 10px;
   color: #33456f;
   font-size: 14px;
   word-break: break-all;
