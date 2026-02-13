@@ -14,13 +14,16 @@ from app.domain.order import (
 
 class OrderRepository(Protocol):
     def find_by_n_number(self, n_number: str) -> OrderRecord:
+        # N番号は重複の可能性があるため、0件/複数件を明示的に例外で表現する。
         ...
 
     def find_by_web_entry_id(self, web_entry_id: str) -> OrderRecord:
+        # WebエントリIDは一意想定のため、最初の一致を返却する。
         ...
 
 
 class InMemoryOrderRepository:
+    # リファクタリング前後の挙動比較やAPI検証に使うスタブ実装。
     def __init__(self) -> None:
         self._orders = [
             OrderRecord(
@@ -93,6 +96,7 @@ class InMemoryOrderRepository:
         ]
 
     def find_by_n_number(self, n_number: str) -> OrderRecord:
+        # N番号は重複の可能性があるため、0件/複数件を明示的に例外で表現する。
         if n_number == "N999999999":
             raise RepositoryUnavailableError("downstream unavailable")
 
@@ -104,6 +108,7 @@ class InMemoryOrderRepository:
         return matches[0]
 
     def find_by_web_entry_id(self, web_entry_id: str) -> OrderRecord:
+        # WebエントリIDは一意想定のため、最初の一致を返却する。
         if web_entry_id == "UN9999999999":
             raise RepositoryUnavailableError("downstream unavailable")
 

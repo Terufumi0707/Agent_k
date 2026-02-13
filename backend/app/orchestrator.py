@@ -48,6 +48,7 @@ class CreateEntryOrchestrator:
         order_service: OrderService | None = None,
         query_status_agent: QueryStatusAgent | None = None,
     ) -> None:
+        # create_entry 系の中核サービスを組み立てる（抽出/判定/保存の責務）。
         self._service = CreateEntryService(
             session_store=session_store or InMemorySessionStore(),
             intent_classifier=intent_classifier or IntentClassifier(),
@@ -56,10 +57,12 @@ class CreateEntryOrchestrator:
         )
         self._order_lookup_client = order_lookup_client or MCPOrderLookupClient()
         self._order_status_formatter = order_status_formatter or OrderStatusFormatter()
+        # ステータス照会は専用Agentに委譲し、run/run_streamは結果の保存に専念する。
         self._query_status_agent = query_status_agent or QueryStatusAgent(
             order_lookup_client=self._order_lookup_client,
             order_status_formatter=self._order_status_formatter,
         )
+        # 注文ステータス遷移（DELIVERY→COORDINATEなど）はOrderServiceへ集約する。
         self._order_service = order_service or OrderService(repository=order_repository or InMemoryOrderRepository())
 
     def run(self, user_input: str, session_id: str | None = None) -> tuple[str, str]:
@@ -125,6 +128,7 @@ class CreateEntryOrchestrator:
                 return "現在の状態では確定できません。", session_id
             return "ステータスをCOORDINATEに更新しました。", session_id
 
+        # QUERY_STATUS は照会Agentの非同期処理を同期呼び出しし、照会コンテキストをセッションへ保存する。
         if intent == "QUERY_STATUS":
             user_message = self._run_async(self._query_status_agent.run(user_input))
             self._save_lookup_session(
@@ -139,12 +143,14 @@ class CreateEntryOrchestrator:
 
         return "ご要望の内容をもう少し詳しく教えてください。", session_id
 
+    # run_stream は run と同等の業務処理に、フェーズ通知（on_phase）を追加したAPI。
     def run_stream(
         self,
         user_input: str,
         session_id: str | None = None,
         on_phase: Callable[[str, str, str], None] | None = None,
     ) -> tuple[str, str]:
+        # UI側で進捗表示しやすいよう、フェーズイベントをコールバックで通知する。
         def notify(phase: str, detail: str) -> None:
             if on_phase is not None:
                 on_phase(phase, detail, session_id)
@@ -252,6 +258,7 @@ class CreateEntryOrchestrator:
         return self._service.classify_intent(user_input=user_input, session_state=session_state)
 
     def _run_async(self, coroutine: Any) -> Any:
+        # 同期APIからasync Agentを使うため、都度イベントループを作成して実行する。
         loop = asyncio.new_event_loop()
         try:
             return loop.run_until_complete(coroutine)
@@ -267,6 +274,7 @@ class CreateEntryOrchestrator:
         n_number: str | None,
         web_entry_id: str | None,
     ) -> None:
+        # LOOKUP系の会話履歴を構造化して保存し、後続ターンで再利用しやすくする。
         lookup_state = {
             "n_number": n_number,
             "web_entry_id": web_entry_id,

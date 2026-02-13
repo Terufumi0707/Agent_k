@@ -25,6 +25,7 @@ class OrderInfo(BaseModel):
 
 
 class LookupByNNumberRequest(BaseModel):
+    # N番号検索リクエストの入力境界モデル。
     n_number: str
 
     @model_validator(mode="after")
@@ -35,6 +36,7 @@ class LookupByNNumberRequest(BaseModel):
 
 
 class LookupByWebEntryIdRequest(BaseModel):
+    # WebエントリID検索リクエストの入力境界モデル。
     web_entry_id: str
 
     @model_validator(mode="after")
