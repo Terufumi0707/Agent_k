@@ -92,3 +92,36 @@ def test_v1_order_messages_returns_created_at_asc_and_status_event() -> None:
     created_at_list = [message["created_at"] for message in messages]
     assert created_at_list == sorted(created_at_list)
     assert any(message["metadata"].get("status_event") is True for message in messages)
+
+
+def test_seeded_demo_messages_for_delivery_orders() -> None:
+    client = TestClient(app)
+
+    response_001 = client.get("/api/v1/orders/order-delivery-001/messages")
+    response_002 = client.get("/api/v1/orders/order-delivery-002/messages")
+
+    assert response_001.status_code == 200
+    assert response_002.status_code == 200
+
+    messages_001 = response_001.json()
+    messages_002 = response_002.json()
+
+    assert len(messages_001) >= 5
+    assert len(messages_002) >= 3
+
+    assert [message["role"] for message in messages_001[:5]] == [
+        "user",
+        "assistant",
+        "user",
+        "assistant",
+        "system",
+    ]
+    assert [message["role"] for message in messages_002[:3]] == ["user", "assistant", "assistant"]
+
+    status_events_001 = [message for message in messages_001 if message["metadata"].get("status_event") is True]
+    status_events_002 = [message for message in messages_002 if message["metadata"].get("status_event") is True]
+
+    assert any(message["metadata"].get("order_status_before") == "DELIVERY" for message in status_events_001)
+    assert any(message["metadata"].get("order_status_after") == "COORDINATE" for message in status_events_001)
+    assert any(message["metadata"].get("order_status_before") == "DELIVERY" for message in status_events_002)
+    assert any(message["metadata"].get("order_status_after") == "COORDINATE" for message in status_events_002)
