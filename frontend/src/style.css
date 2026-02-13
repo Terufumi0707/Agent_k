@@ -300,3 +300,43 @@ body {
     max-width: 85%;
   }
 }
+
+.auth-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 20px;
+  background: #edf2f8;
+  border-bottom: 1px solid #d7e0ea;
+}
+
+.auth-user {
+  margin: 0;
+  color: #2f455b;
+  font-size: 14px;
+}
+
+.auth-container {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 12px;
+  padding: 24px;
+}
+
+.auth-button {
+  border: none;
+  border-radius: 8px;
+  background: #0b57d0;
+  color: white;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.auth-button:hover {
+  background: #0846ab;
+}
