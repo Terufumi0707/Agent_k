@@ -18,6 +18,7 @@ _order_repository = InMemoryOrderRepository()
 _conversation_repository = InMemoryConversationRepository()
 _order_service = OrderService(repository=_order_repository)
 _conversation_service = ConversationService(repository=_conversation_repository)
+_conversation_service.seed_order_histories(_order_repository.list_all())
 _order_query_service = OrderQueryService(
     order_service=_order_service,
     conversation_service=_conversation_service,

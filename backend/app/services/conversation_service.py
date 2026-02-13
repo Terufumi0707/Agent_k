@@ -26,3 +26,6 @@ class ConversationService:
 
     def list_order_messages(self, order_id: str, limit: int = 100, offset: int = 0) -> list[Message]:
         return self._repository.list_messages_for_order(order_id=order_id, limit=limit, offset=offset)
+
+    def seed_order_histories(self, orders: list[Order]) -> None:
+        self._repository.seed_order_histories(orders)

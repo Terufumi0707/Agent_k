@@ -44,8 +44,15 @@
                       :key="order.id"
                       class="order-item"
                     >
-                      <p class="order-item-id">{{ order.id }}</p>
-                      <p class="order-item-session">session: {{ order.session_id }}</p>
+                      <button
+                        type="button"
+                        class="order-item-button"
+                        :class="{ 'order-item-button-active': activeOrderId === order.id }"
+                        @click="openOrderExecution(order)"
+                      >
+                        <p class="order-item-id">{{ order.id }}</p>
+                        <p class="order-item-session">session: {{ order.session_id }}</p>
+                      </button>
                     </li>
                   </ul>
                   <p v-if="ordersByStatus[status].length === 0" class="history-status">
@@ -85,8 +92,15 @@
                     :key="request.id"
                     class="order-item"
                   >
-                    <p class="order-item-id">{{ request.id }}</p>
-                    <p class="order-item-session">{{ request.summary }}</p>
+                    <button
+                      type="button"
+                      class="order-item-button"
+                      :class="{ 'order-item-button-active': activeOrderId === request.id }"
+                      @click="openRequestExecution(request)"
+                    >
+                      <p class="order-item-id">{{ request.id }}</p>
+                      <p class="order-item-session">session: {{ request.session_id }}</p>
+                    </button>
                   </li>
                 </ul>
               </template>
@@ -156,10 +170,13 @@
 
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useOptionalAuth } from "../auth";
 import TopHeader from "./TopHeader.vue";
 
 const { user, logout } = useOptionalAuth();
+const router = useRouter();
+const route = useRoute();
 
 const inputText = ref("");
 const inputRef = ref(null);
@@ -186,26 +203,14 @@ const ordersByStatus = ref({
   COORDINATE: [],
   BACKYARD: []
 });
+const activeOrderId = ref(null);
 
 const placeholderText =
   "指示してください";
 
-const requestsByMonth = {
-  "2026年4月": [
-    { id: "N-202604-001", summary: "日程変更依頼メールの確認" },
-    { id: "WE-202604-014", summary: "変更対象オーダーの内容確認" }
-  ],
-  "2026年3月": [
-    { id: "N-202603-122", summary: "工事希望日の再調整" },
-    { id: "WE-202603-089", summary: "変更工事種別の問い合わせ" },
-    { id: "N-202603-076", summary: "連絡先更新依頼" }
-  ]
-};
-const requestMonths = Object.keys(requestsByMonth);
-const requestMonthCollapsed = ref({
-  "2026年4月": false,
-  "2026年3月": true
-});
+const requestsByMonth = ref({});
+const requestMonths = computed(() => Object.keys(requestsByMonth.value));
+const requestMonthCollapsed = ref({});
 const historySectionCollapsed = ref(true);
 
 const canSend = computed(() => inputText.value.trim().length > 0);
@@ -214,6 +219,26 @@ const authDisplayName = computed(
 );
 const authDisplayEmail = computed(() => user.value?.email || "");
 const authDisplaySub = computed(() => user.value?.sub || "");
+
+const formatMonthLabel = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "不明";
+  }
+  return `${date.getFullYear()}年${date.getMonth() + 1}月`;
+};
+
+const buildRequestsByMonth = (orders) => {
+  const grouped = {};
+  for (const order of orders) {
+    const month = formatMonthLabel(order.updated_at);
+    if (!grouped[month]) {
+      grouped[month] = [];
+    }
+    grouped[month].push(order);
+  }
+  return grouped;
+};
 
 const isRequestMonthCollapsed = (month) => Boolean(requestMonthCollapsed.value[month]);
 
@@ -231,6 +256,26 @@ const toggleStatusSection = (status) => {
     ...statusSectionCollapsed.value,
     [status]: !isStatusCollapsed(status)
   };
+};
+
+const openOrderExecution = async (order) => {
+  activeOrderId.value = order.id;
+  const nextQuery = { ...route.query, order_id: order.id };
+  if (order.session_id) {
+    nextQuery.session_id = order.session_id;
+  }
+  await router.push({ name: "chat", query: nextQuery });
+  await fetchOrderMessages(order.id);
+};
+
+const openRequestExecution = async (request) => {
+  activeOrderId.value = request.id;
+  const nextQuery = { ...route.query, order_id: request.id };
+  if (request.session_id) {
+    nextQuery.session_id = request.session_id;
+  }
+  await router.push({ name: "chat", query: nextQuery });
+  await fetchOrderMessages(request.id);
 };
 
 const handleLogout = () => {
@@ -254,6 +299,9 @@ const createEntryUrl = backendBaseUrl
 const ordersUrl = backendBaseUrl
   ? `${backendBaseUrl}/api/orders`
   : "/api/orders";
+const orderMessagesBaseUrl = backendBaseUrl
+  ? `${backendBaseUrl}/api/v1/orders`
+  : "/api/v1/orders";
 
 const shouldRetryWithRelativeUrl = (error) => {
   if (!backendBaseUrl) {
@@ -298,12 +346,50 @@ const fetchOrders = async () => {
       }
     }
 
+    for (const status of orderStatuses) {
+      groupedOrders[status].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
+    }
+
     ordersByStatus.value = groupedOrders;
+    const monthly = buildRequestsByMonth(orders);
+    requestsByMonth.value = monthly;
+    const monthState = {};
+    requestMonths.value.forEach((month, index) => {
+      monthState[month] = index !== 0;
+    });
+    requestMonthCollapsed.value = monthState;
   } catch (error) {
     console.error("orders request failed:", error);
     ordersError.value = "オーダー一覧の取得に失敗しました。";
   } finally {
     ordersLoading.value = false;
+  }
+};
+
+const mapHistoryMessage = (message) => {
+  if (message.role === "user") {
+    return { role: "user", text: message.content };
+  }
+  if (message.role === "system") {
+    return { role: "ai", text: `[system] ${message.content}` };
+  }
+  return { role: "ai", text: message.content };
+};
+
+const fetchOrderMessages = async (orderId) => {
+  try {
+    const response = await fetchWithRelativeFallback(
+      `${orderMessagesBaseUrl}/${orderId}/messages?limit=200&offset=0`,
+      `/api/v1/orders/${orderId}/messages?limit=200&offset=0`
+    );
+    if (!response.ok) {
+      throw new Error(`会話履歴の取得に失敗しました (${response.status})`);
+    }
+    const historyMessages = await response.json();
+    messages.value = historyMessages.map(mapHistoryMessage);
+  } catch (error) {
+    console.error("order messages request failed:", error);
+    messages.value = [{ role: "ai", text: "会話履歴の取得に失敗しました。" }];
   }
 };
 
@@ -460,7 +546,16 @@ const sendMessage = async () => {
 
 onMounted(() => {
   resizeTextarea();
+  if (typeof route.query.order_id === "string") {
+    activeOrderId.value = route.query.order_id;
+  }
+  if (typeof route.query.session_id === "string") {
+    sessionId.value = route.query.session_id;
+  }
   fetchOrders();
+  if (activeOrderId.value) {
+    fetchOrderMessages(activeOrderId.value);
+  }
 });
 
 watch(inputText, () => {
