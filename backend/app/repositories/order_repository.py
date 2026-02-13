@@ -12,6 +12,9 @@ class OrderRepository(Protocol):
     def find_by_status(self, status: OrderStatus) -> list[Order]:
         ...
 
+    def list_all(self) -> list[Order]:
+        ...
+
     def save(self, order: Order) -> None:
         ...
 
@@ -50,6 +53,9 @@ class InMemoryOrderRepository:
 
     def find_by_status(self, status: OrderStatus) -> list[Order]:
         return [order for order in self._orders if order.current_status == status]
+
+    def list_all(self) -> list[Order]:
+        return list(self._orders)
 
     def save(self, order: Order) -> None:
         for index, existing_order in enumerate(self._orders):

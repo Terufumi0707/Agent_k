@@ -27,8 +27,8 @@ def create_entry_stream(request: EntryRequest) -> StreamingResponse:
 
 
 @router.get("/orders", response_model=list[OrderResponse])
-def get_orders(status: OrderStatus) -> list[OrderResponse]:
-    orders = _order_repository.find_by_status(status)
+def get_orders(status: OrderStatus | None = None) -> list[OrderResponse]:
+    orders = _order_repository.find_by_status(status) if status else _order_repository.list_all()
     return [
         OrderResponse(id=order.id, session_id=order.session_id, current_status=order.current_status)
         for order in orders

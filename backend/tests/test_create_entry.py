@@ -40,3 +40,30 @@ def test_get_orders_filters_by_status_coordinate_only():
             "current_status": "COORDINATE",
         }
     ]
+
+
+def test_get_orders_without_status_returns_all_orders():
+    client = TestClient(app)
+    repository = agent_controller._order_repository
+    repository.clear()
+
+    delivery_order = Order.create(session_id="session-delivery", current_status=OrderStatus.DELIVERY)
+    backyard_order = Order.create(session_id="session-backyard", current_status=OrderStatus.BACKYARD)
+    repository.save(delivery_order)
+    repository.save(backyard_order)
+
+    response = client.get("/api/orders")
+
+    assert response.status_code == 200
+    assert response.json() == [
+        {
+            "id": delivery_order.id,
+            "session_id": "session-delivery",
+            "current_status": "DELIVERY",
+        },
+        {
+            "id": backyard_order.id,
+            "session_id": "session-backyard",
+            "current_status": "BACKYARD",
+        },
+    ]

@@ -7,20 +7,51 @@
       </div>
 
       <div class="sidebar-bottom">
-        <p class="history-title">過去のチャット履歴（mock）</p>
-        <ul class="history-list">
-          <li v-for="(item, index) in visibleHistoryItems" :key="`${item}-${index}`">
-            {{ item }}
-          </li>
-        </ul>
-        <button
-          v-if="shouldShowHistoryToggle"
-          type="button"
-          class="history-toggle"
-          @click="toggleHistory"
-        >
-          {{ historyToggleLabel }}
-        </button>
+        <section class="sidebar-section">
+          <p class="history-title">オーダー一覧</p>
+          <p v-if="ordersLoading" class="history-status">読み込み中...</p>
+          <p v-else-if="ordersError" class="history-error">{{ ordersError }}</p>
+
+          <template v-else>
+            <div
+              v-for="status in orderStatuses"
+              :key="status"
+              class="order-group"
+            >
+              <p class="order-group-title">{{ status }}</p>
+              <ul class="history-list">
+                <li
+                  v-for="order in ordersByStatus[status]"
+                  :key="order.id"
+                  class="order-item"
+                >
+                  <p class="order-item-id">{{ order.id }}</p>
+                  <p class="order-item-session">session: {{ order.session_id }}</p>
+                </li>
+              </ul>
+              <p v-if="ordersByStatus[status].length === 0" class="history-status">
+                該当オーダーはありません。
+              </p>
+            </div>
+          </template>
+        </section>
+
+        <section class="sidebar-section">
+          <p class="history-title">過去のチャット履歴（mock）</p>
+          <ul class="history-list">
+            <li v-for="(item, index) in visibleHistoryItems" :key="`${item}-${index}`">
+              {{ item }}
+            </li>
+          </ul>
+          <button
+            v-if="shouldShowHistoryToggle"
+            type="button"
+            class="history-toggle"
+            @click="toggleHistory"
+          >
+            {{ historyToggleLabel }}
+          </button>
+        </section>
       </div>
     </aside>
 
@@ -100,6 +131,14 @@ const progressLogs = ref([]);
 const currentPhase = ref("");
 const streamError = ref("");
 const sessionId = ref(null);
+const ordersLoading = ref(false);
+const ordersError = ref("");
+const orderStatuses = ["DELIVERY", "COORDINATE", "BACKYARD"];
+const ordersByStatus = ref({
+  DELIVERY: [],
+  COORDINATE: [],
+  BACKYARD: []
+});
 
 const placeholderText =
   "指示してください";
@@ -162,6 +201,42 @@ const createEntryStreamUrl = backendBaseUrl
 const createEntryUrl = backendBaseUrl
   ? `${backendBaseUrl}/api/create_entry`
   : "/api/create_entry";
+const ordersUrl = backendBaseUrl
+  ? `${backendBaseUrl}/api/orders`
+  : "/api/orders";
+
+const fetchOrders = async () => {
+  ordersLoading.value = true;
+  ordersError.value = "";
+
+  try {
+    const response = await fetch(ordersUrl);
+    if (!response.ok) {
+      throw new Error(`オーダー一覧の取得に失敗しました (${response.status})`);
+    }
+
+    const orders = await response.json();
+    const groupedOrders = {
+      DELIVERY: [],
+      COORDINATE: [],
+      BACKYARD: []
+    };
+
+    for (const order of orders) {
+      const status = order.current_status;
+      if (status in groupedOrders) {
+        groupedOrders[status].push(order);
+      }
+    }
+
+    ordersByStatus.value = groupedOrders;
+  } catch (error) {
+    console.error("orders request failed:", error);
+    ordersError.value = "オーダー一覧の取得に失敗しました。";
+  } finally {
+    ordersLoading.value = false;
+  }
+};
 
 const resizeTextarea = () => {
   const textarea = inputRef.value;
@@ -316,6 +391,7 @@ const sendMessage = async () => {
 
 onMounted(() => {
   resizeTextarea();
+  fetchOrders();
 });
 
 watch(inputText, () => {
