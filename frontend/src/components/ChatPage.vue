@@ -1,12 +1,18 @@
 <template>
-  <div class="chat-page">
-    <aside class="left-sidebar">
+  <div class="chat-page" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
+    <aside class="left-sidebar" :class="{ collapsed: isSidebarCollapsed }">
       <div class="sidebar-top">
-        <h1 class="sidebar-title">日程変更エージェント</h1>
-        <button type="button" class="feature-link">別機能へ遷移</button>
+        <button
+          type="button"
+          class="sidebar-toggle-button"
+          @click="isSidebarCollapsed = !isSidebarCollapsed"
+        >
+          {{ isSidebarCollapsed ? "＞" : "＜" }}
+        </button>
+        <button v-if="!isSidebarCollapsed" type="button" class="feature-link">別機能へ遷移</button>
       </div>
 
-      <div class="sidebar-bottom">
+      <div v-if="!isSidebarCollapsed" class="sidebar-bottom">
         <section class="sidebar-section">
           <button type="button" class="section-toggle" @click="statusListCollapsed = !statusListCollapsed">
             <span class="history-title">ステータス一覧</span>
@@ -78,14 +84,12 @@
     </aside>
 
     <div class="chat-content">
-      <header class="auth-header">
-        <div class="auth-user-info">
-          <p class="auth-user-name">{{ authDisplayName }}</p>
-          <p class="auth-user-meta" v-if="authDisplayEmail">{{ authDisplayEmail }}</p>
-          <p class="auth-user-meta" v-else-if="authDisplaySub">{{ authDisplaySub }}</p>
-        </div>
-        <button type="button" class="logout-button" @click="handleLogout">ログアウト</button>
-      </header>
+      <TopHeader
+        :auth-display-name="authDisplayName"
+        :auth-display-email="authDisplayEmail"
+        :auth-display-sub="authDisplaySub"
+        @logout="handleLogout"
+      />
 
       <main class="chat-main">
         <p class="welcome-message">
@@ -142,6 +146,7 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useOptionalAuth } from "../auth";
+import TopHeader from "./TopHeader.vue";
 
 const { user, logout } = useOptionalAuth();
 
@@ -162,6 +167,7 @@ const statusSectionCollapsed = ref({
   COORDINATE: true,
   BACKYARD: true
 });
+const isSidebarCollapsed = ref(false);
 const ordersByStatus = ref({
   DELIVERY: [],
   COORDINATE: [],
