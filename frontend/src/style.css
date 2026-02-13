@@ -60,6 +60,13 @@ body {
 
 .sidebar-bottom {
   margin-top: 24px;
+  overflow-y: auto;
+}
+
+.sidebar-section + .sidebar-section {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e4ebf3;
 }
 
 .history-title {
@@ -84,6 +91,55 @@ body {
   background: #f5f8fc;
   font-size: 13px;
   color: #2d435d;
+}
+
+.history-status {
+  margin: 0;
+  font-size: 13px;
+  color: #4c647a;
+}
+
+.history-error {
+  margin: 0;
+  font-size: 13px;
+  color: #b00020;
+}
+
+.order-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.order-group-title {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: #0f2240;
+}
+
+.order-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.order-item-id,
+.order-item-session {
+  margin: 0;
+  word-break: break-all;
+}
+
+.order-item-id {
+  font-size: 13px;
+  color: #1b2a41;
+  font-weight: 600;
+}
+
+.order-item-session {
+  font-size: 12px;
+  color: #4c647a;
 }
 
 .history-toggle {
@@ -343,4 +399,3 @@ body {
     max-width: 85%;
   }
 }
-
