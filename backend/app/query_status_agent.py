@@ -27,11 +27,13 @@ class QueryStatusAgent:
         self.last_web_entry_id: str | None = None
 
     async def run(self, user_input: str) -> str:
+        # Routerプロンプトで識別子抽出とツール選択（N番号/WebエントリID）を先に決定する。
         response_text = await self._llm_client_async(
             system_prompt=QUERY_STATUS_ROUTER_AGENT_SYSTEM_PROMPT,
             user_prompt=f"latest_input:\n{user_input}",
         )
         try:
+            # LLM応答はJSON前提。崩れた場合はガイド文にフォールバックする。
             tool_call = json.loads(response_text)
         except json.JSONDecodeError:
             tool_call = {"tool": None, "arguments": {}, "message": DEFAULT_IDENTIFIER_GUIDE_MESSAGE}
@@ -50,6 +52,7 @@ class QueryStatusAgent:
             self.last_lookup_result = None
             return message or DEFAULT_IDENTIFIER_GUIDE_MESSAGE
 
+        # tool名と必要引数を対応付け、誤った呼び出しを早期に弾く。
         tool_map: dict[str, tuple[str, Callable[[str], Awaitable[dict[str, Any]]]]] = {
             "get_order_by_n_number": ("n_number", self._order_lookup_client.get_order_by_n_number),
             "get_order_by_web_entry_id": ("web_entry_id", self._order_lookup_client.get_order_by_web_entry_id),
@@ -69,6 +72,7 @@ class QueryStatusAgent:
         if tool_name == "get_order_by_n_number":
             self.last_web_entry_id = None
 
+        # 取得結果は会話継続のためインスタンスに保持し、整形Agentへ受け渡す。
         lookup_result = await tool_executor(argument_value)
         self.last_lookup_result = lookup_result
         lookup_result_json = json.dumps(lookup_result, ensure_ascii=False)

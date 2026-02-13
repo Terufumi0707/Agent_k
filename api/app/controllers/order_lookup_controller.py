@@ -26,6 +26,7 @@ class ApiError(Exception):
 
 
 def _format_order_response(order: OrderRecord) -> OrderLookupResponse:
+    # ドメインのOrderRecordをAPIレスポンス契約に変換する。
     return OrderLookupResponse(
         identifiers=IdentifiersResponse(n_number=order.n_number, web_entry_id=order.web_entry_id),
         order_status=OrderStatusResponse(status=order.status, last_updated=order.last_updated.isoformat()),
@@ -42,6 +43,7 @@ def _format_order_response(order: OrderRecord) -> OrderLookupResponse:
 
 
 def _raise_error(status_code: int, code: str, message: str) -> None:
+    # 追跡しやすいようにtrace_idを都度採番して統一エラー形式で返す。
     trace_id = str(uuid4())
     raise ApiError(
         status_code=status_code,
@@ -50,6 +52,7 @@ def _raise_error(status_code: int, code: str, message: str) -> None:
 
 
 def _lookup_n(service: OrderLookupService, n_number: str) -> OrderLookupResponse:
+    # サービス層の例外をHTTPエラーへ変換する責務をController層に寄せる。
     try:
         return _format_order_response(service.get_by_n_number(n_number))
     except InvalidIdentifierError:
@@ -63,6 +66,7 @@ def _lookup_n(service: OrderLookupService, n_number: str) -> OrderLookupResponse
 
 
 def _lookup_web_entry(service: OrderLookupService, web_entry_id: str) -> OrderLookupResponse:
+    # web_entry_id検索の例外マッピング（N番号検索と同じ方針）。
     try:
         return _format_order_response(service.get_by_web_entry_id(web_entry_id))
     except InvalidIdentifierError:
@@ -74,6 +78,7 @@ def _lookup_web_entry(service: OrderLookupService, web_entry_id: str) -> OrderLo
 
 
 def bind_routes(service: OrderLookupService) -> APIRouter:
+    # DIされたserviceをクロージャで保持し、ルータ定義と実処理を分離する。
     @router.get(
         "/v1/orders/by-n-number/{n_number}",
         response_model=OrderLookupResponse,
