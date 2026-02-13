@@ -55,7 +55,7 @@
                         @click="openOrderExecution(order)"
                       >
                         <p class="order-item-summary">{{ order.summary || "要約なし" }}</p>
-                        <p class="order-item-meta">ID: {{ order.id }}</p>
+                        <p class="order-item-meta">更新日: {{ formatCreatedAt(order.updated_at) }}</p>
                       </button>
                     </li>
                   </ul>
