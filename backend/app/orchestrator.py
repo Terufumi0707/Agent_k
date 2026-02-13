@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import asyncio
-
 from typing import Any, Callable
 
 from app.intent_classifier import IntentClassification, IntentClassifier
@@ -65,7 +63,7 @@ class CreateEntryOrchestrator:
         # 注文ステータス遷移（DELIVERY→COORDINATEなど）はOrderServiceへ集約する。
         self._order_service = order_service or OrderService(repository=order_repository or InMemoryOrderRepository())
 
-    def run(self, user_input: str, session_id: str | None = None) -> tuple[str, str]:
+    async def run(self, user_input: str, session_id: str | None = None) -> tuple[str, str]:
         # NOTE: session_id は外部から渡されない場合に新規発行し、以後の継続対話で利用する
         session_id, session_state = self._service.ensure_session(session_id)
         intent_result = self._service.classify_intent(user_input=user_input, session_state=session_state)
@@ -130,7 +128,7 @@ class CreateEntryOrchestrator:
 
         # QUERY_STATUS は照会Agentの非同期処理を同期呼び出しし、照会コンテキストをセッションへ保存する。
         if intent == "QUERY_STATUS":
-            user_message = asyncio.run(self._query_status_agent.run(user_input))
+            user_message = await self._query_status_agent.run(user_input)
             self._save_lookup_session(
                 session_id=session_id,
                 session_state=session_state,
@@ -144,7 +142,7 @@ class CreateEntryOrchestrator:
         return "ご要望の内容をもう少し詳しく教えてください。", session_id
 
     # run_stream は run と同等の業務処理に、フェーズ通知（on_phase）を追加したAPI。
-    def run_stream(
+    async def run_stream(
         self,
         user_input: str,
         session_id: str | None = None,
@@ -226,7 +224,7 @@ class CreateEntryOrchestrator:
 
         if intent == "QUERY_STATUS":
             notify("PHASE_QUERY_STATUS", "現在オーダー情報の照会を実行します。")
-            user_message = asyncio.run(self._query_status_agent.run(user_input))
+            user_message = await self._query_status_agent.run(user_input)
             self._save_lookup_session(
                 session_id=session_id,
                 session_state=session_state,

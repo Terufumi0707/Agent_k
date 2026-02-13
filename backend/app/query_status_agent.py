@@ -32,11 +32,8 @@ class QueryStatusAgent:
             system_prompt=QUERY_STATUS_ROUTER_AGENT_SYSTEM_PROMPT,
             user_prompt=f"latest_input:\n{user_input}",
         )
-        try:
-            # LLM応答はJSON前提。崩れた場合はガイド文にフォールバックする。
-            tool_call = json.loads(response_text)
-        except json.JSONDecodeError:
-            tool_call = {"tool": None, "arguments": {}, "message": DEFAULT_IDENTIFIER_GUIDE_MESSAGE}
+        # LLM応答はJSON前提。崩れた場合はガイド文にフォールバックする。
+        tool_call = self._safe_json_load(response_text)
 
         if not isinstance(tool_call, dict):
             tool_call = {"tool": None, "arguments": {}, "message": DEFAULT_IDENTIFIER_GUIDE_MESSAGE}
@@ -77,3 +74,24 @@ class QueryStatusAgent:
         self.last_lookup_result = lookup_result
         lookup_result_json = json.dumps(lookup_result, ensure_ascii=False)
         return await self._order_status_formatter.format_async(lookup_result_json)
+
+    def _safe_json_load(self, response_text: str) -> dict[str, Any]:
+        fallback = {"tool": None, "arguments": {}, "message": DEFAULT_IDENTIFIER_GUIDE_MESSAGE}
+        try:
+            parsed = json.loads(response_text)
+            return parsed if isinstance(parsed, dict) else fallback
+        except json.JSONDecodeError:
+            pass
+
+        decoder = json.JSONDecoder()
+        for index, char in enumerate(response_text):
+            if char != "{":
+                continue
+            try:
+                parsed, _ = decoder.raw_decode(response_text[index:])
+                if isinstance(parsed, dict):
+                    return parsed
+            except json.JSONDecodeError:
+                continue
+
+        return fallback

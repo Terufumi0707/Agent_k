@@ -16,8 +16,8 @@ _stream_service = CreateEntryStreamService(orchestrator=_orchestrator)
 
 
 @router.post("/create_entry", response_model=EntryResponse)
-def create_entry(request: EntryRequest) -> EntryResponse:
-    result, session_id = _orchestrator.run(request.prompt, session_id=request.session_id)
+async def create_entry(request: EntryRequest) -> EntryResponse:
+    result, session_id = await _orchestrator.run(request.prompt, session_id=request.session_id)
     return EntryResponse(result=result, session_id=session_id)
 
 
