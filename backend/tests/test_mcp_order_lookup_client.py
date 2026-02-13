@@ -8,6 +8,11 @@ class DummyContentItem:
         self.text = text
 
 
+class DummyContentItemWithJson:
+    def __init__(self, json_payload):
+        self.json = json_payload
+
+
 class DummyResponseWithContent:
     def __init__(self, content):
         self.content = content
@@ -67,3 +72,51 @@ def test_to_dict_uses_model_dump_when_available():
 
     assert result["ok"] is True
     assert result["status_code"] == 200
+
+
+def test_to_dict_parses_python_dict_string_from_content_text():
+    client = MCPOrderLookupClient(base_url="http://example.com", timeout_seconds=1)
+    response = DummyResponseWithContent(
+        [DummyContentItem("{'ok': True, 'status_code': 200, 'payload': {'order_id': '4'}}")]
+    )
+
+    result = client._to_dict(response)
+
+    assert result["ok"] is True
+    assert result["payload"]["order_id"] == "4"
+
+
+def test_to_dict_parses_json_field_from_content_item():
+    client = MCPOrderLookupClient(base_url="http://example.com", timeout_seconds=1)
+    response = DummyResponseWithContent(
+        [DummyContentItemWithJson({"ok": True, "status_code": 200, "payload": {"order_id": "5"}})]
+    )
+
+    result = client._to_dict(response)
+
+    assert result["ok"] is True
+    assert result["payload"]["order_id"] == "5"
+
+
+def test_to_dict_parses_result_field_from_dict_response():
+    client = MCPOrderLookupClient(base_url="http://example.com", timeout_seconds=1)
+
+    result = client._to_dict({"result": {"ok": True, "status_code": 200, "payload": {"order_id": "6"}}})
+
+    assert result["ok"] is True
+    assert result["payload"]["order_id"] == "6"
+
+
+def test_to_dict_parses_top_level_textcontent_list_response():
+    client = MCPOrderLookupClient(base_url="http://example.com", timeout_seconds=1)
+
+    result = client._to_dict(
+        [DummyContentItem("""{
+  "ok": true,
+  "status_code": 200,
+  "payload": {"order_id": "7"}
+}""")]
+    )
+
+    assert result["ok"] is True
+    assert result["payload"]["order_id"] == "7"
