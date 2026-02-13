@@ -256,36 +256,26 @@ class DummyOrderStatusFormatter:
         return f"formatted:{payload.get('status_code')}"
 
 
-def test_orchestrator_query_status_calls_web_entry_lookup_and_formats_result(monkeypatch):
+def test_orchestrator_query_status_delegates_to_agent_and_saves_lookup():
     class DummyIntentClassifier:
         def classify(self, user_input: str, session_state: SessionState | None = None) -> IntentClassification:
             return IntentClassification(intent="QUERY_STATUS", confidence=0.9, reason="照会")
 
-    class DummyOrderLookupClient:
-        async def get_order_by_n_number(self, n_number: str) -> dict[str, object]:
-            raise AssertionError("web_entry_id should be preferred")
+    class DummyQueryStatusAgent:
+        def __init__(self) -> None:
+            self.last_lookup_result = {"ok": True, "status_code": 200}
+            self.last_n_number = "N123456789"
+            self.last_web_entry_id = "UN1234567890"
 
-        async def get_order_by_web_entry_id(self, web_entry_id: str) -> dict[str, object]:
-            assert web_entry_id == "UN1234567890"
-            return {"ok": True, "status_code": 200, "payload": {"identifiers": {"web_entry_id": web_entry_id}}}
-
-    monkeypatch.setattr(
-        orchestrator.CreateEntryService,
-        "route_query_status",
-        lambda self, user_input: {
-            "n_number": "N123456789",
-            "web_entry_id": "UN1234567890",
-            "action": "LOOKUP_BY_WEB_ENTRY_ID",
-            "reason": "both",
-        },
-    )
+        async def run(self, user_input: str) -> str:
+            assert user_input == "N123456789 と UN1234567890 の現在状況を教えて"
+            return "formatted:200"
 
     store = InMemorySessionStore()
     result, session_id = orchestrator.CreateEntryOrchestrator(
         session_store=store,
         intent_classifier=DummyIntentClassifier(),
-        order_lookup_client=DummyOrderLookupClient(),
-        order_status_formatter=DummyOrderStatusFormatter(),
+        query_status_agent=DummyQueryStatusAgent(),
     ).run("N123456789 と UN1234567890 の現在状況を教えて")
 
     assert result == "formatted:200"
@@ -295,64 +285,48 @@ def test_orchestrator_query_status_calls_web_entry_lookup_and_formats_result(mon
     assert '"web_entry_id": "UN1234567890"' in state.last_lookup
 
 
-def test_orchestrator_query_status_without_identifier_returns_guide_message(monkeypatch):
+def test_orchestrator_query_status_without_identifier_returns_guide_message():
     class DummyIntentClassifier:
         def classify(self, user_input: str, session_state: SessionState | None = None) -> IntentClassification:
             return IntentClassification(intent="QUERY_STATUS", confidence=0.9, reason="照会")
 
-    monkeypatch.setattr(
-        orchestrator.CreateEntryService,
-        "route_query_status",
-        lambda self, user_input: {
-            "n_number": None,
-            "web_entry_id": None,
-            "action": "NEED_IDENTIFIER",
-            "reason": "missing",
-        },
-    )
+    class DummyQueryStatusAgent:
+        def __init__(self) -> None:
+            self.last_lookup_result = None
+            self.last_n_number = None
+            self.last_web_entry_id = None
+
+        async def run(self, user_input: str) -> str:
+            return "N番号（N+9桁）またはWebエントリID（UN+10桁）を本文に記載してください。"
 
     result, session_id = orchestrator.CreateEntryOrchestrator(
         session_store=InMemorySessionStore(),
         intent_classifier=DummyIntentClassifier(),
+        query_status_agent=DummyQueryStatusAgent(),
     ).run("現在の工事予定を確認したい")
 
     assert result == "N番号（N+9桁）またはWebエントリID（UN+10桁）を本文に記載してください。"
     assert isinstance(session_id, str)
 
 
-def test_orchestrator_query_status_formats_error_response(monkeypatch):
+def test_orchestrator_query_status_formats_error_response():
     class DummyIntentClassifier:
         def classify(self, user_input: str, session_state: SessionState | None = None) -> IntentClassification:
             return IntentClassification(intent="QUERY_STATUS", confidence=0.9, reason="照会")
 
-    class DummyOrderLookupClient:
-        async def get_order_by_n_number(self, n_number: str) -> dict[str, object]:
-            assert n_number == "N123456789"
-            return {
-                "ok": False,
-                "status_code": 404,
-                "payload": {"error": {"message": "not found"}},
-            }
+    class DummyQueryStatusAgent:
+        def __init__(self) -> None:
+            self.last_lookup_result = {"ok": False, "status_code": 404}
+            self.last_n_number = "N123456789"
+            self.last_web_entry_id = None
 
-        async def get_order_by_web_entry_id(self, web_entry_id: str) -> dict[str, object]:
-            raise AssertionError("n_number path should be called")
-
-    monkeypatch.setattr(
-        orchestrator.CreateEntryService,
-        "route_query_status",
-        lambda self, user_input: {
-            "n_number": "N123456789",
-            "web_entry_id": None,
-            "action": "LOOKUP_BY_N_NUMBER",
-            "reason": "n-only",
-        },
-    )
+        async def run(self, user_input: str) -> str:
+            return "formatted:404"
 
     result, _ = orchestrator.CreateEntryOrchestrator(
         session_store=InMemorySessionStore(),
         intent_classifier=DummyIntentClassifier(),
-        order_lookup_client=DummyOrderLookupClient(),
-        order_status_formatter=DummyOrderStatusFormatter(),
+        query_status_agent=DummyQueryStatusAgent(),
     ).run("N123456789 のステータス確認")
 
     assert result == "formatted:404"
