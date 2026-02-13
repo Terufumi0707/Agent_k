@@ -130,7 +130,7 @@ class CreateEntryOrchestrator:
 
         # QUERY_STATUS は照会Agentの非同期処理を同期呼び出しし、照会コンテキストをセッションへ保存する。
         if intent == "QUERY_STATUS":
-            user_message = self._run_async(self._query_status_agent.run(user_input))
+            user_message = asyncio.run(self._query_status_agent.run(user_input))
             self._save_lookup_session(
                 session_id=session_id,
                 session_state=session_state,
@@ -226,7 +226,7 @@ class CreateEntryOrchestrator:
 
         if intent == "QUERY_STATUS":
             notify("PHASE_QUERY_STATUS", "現在オーダー情報の照会を実行します。")
-            user_message = self._run_async(self._query_status_agent.run(user_input))
+            user_message = asyncio.run(self._query_status_agent.run(user_input))
             self._save_lookup_session(
                 session_id=session_id,
                 session_state=session_state,
@@ -256,14 +256,6 @@ class CreateEntryOrchestrator:
         if session_id is not None:
             session_state = self._service.get_session_state(session_id)
         return self._service.classify_intent(user_input=user_input, session_state=session_state)
-
-    def _run_async(self, coroutine: Any) -> Any:
-        # 同期APIからasync Agentを使うため、都度イベントループを作成して実行する。
-        loop = asyncio.new_event_loop()
-        try:
-            return loop.run_until_complete(coroutine)
-        finally:
-            loop.close()
 
     def _save_lookup_session(
         self,
