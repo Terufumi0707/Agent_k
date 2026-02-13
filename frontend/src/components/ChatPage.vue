@@ -44,8 +44,15 @@
                       :key="order.id"
                       class="order-item"
                     >
-                      <p class="order-item-id">{{ order.id }}</p>
-                      <p class="order-item-session">session: {{ order.session_id }}</p>
+                      <button
+                        type="button"
+                        class="order-item-button"
+                        :class="{ 'order-item-button-active': activeOrderId === order.id }"
+                        @click="openOrderExecution(order)"
+                      >
+                        <p class="order-item-id">{{ order.id }}</p>
+                        <p class="order-item-session">session: {{ order.session_id }}</p>
+                      </button>
                     </li>
                   </ul>
                   <p v-if="ordersByStatus[status].length === 0" class="history-status">
@@ -85,8 +92,15 @@
                     :key="request.id"
                     class="order-item"
                   >
-                    <p class="order-item-id">{{ request.id }}</p>
-                    <p class="order-item-session">{{ request.summary }}</p>
+                    <button
+                      type="button"
+                      class="order-item-button"
+                      :class="{ 'order-item-button-active': activeOrderId === request.id }"
+                      @click="openRequestExecution(request)"
+                    >
+                      <p class="order-item-id">{{ request.id }}</p>
+                      <p class="order-item-session">{{ request.summary }}</p>
+                    </button>
                   </li>
                 </ul>
               </template>
@@ -156,10 +170,13 @@
 
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 import { useOptionalAuth } from "../auth";
 import TopHeader from "./TopHeader.vue";
 
 const { user, logout } = useOptionalAuth();
+const router = useRouter();
+const route = useRoute();
 
 const inputText = ref("");
 const inputRef = ref(null);
@@ -186,6 +203,7 @@ const ordersByStatus = ref({
   COORDINATE: [],
   BACKYARD: []
 });
+const activeOrderId = ref(null);
 
 const placeholderText =
   "指示してください";
@@ -231,6 +249,21 @@ const toggleStatusSection = (status) => {
     ...statusSectionCollapsed.value,
     [status]: !isStatusCollapsed(status)
   };
+};
+
+const openOrderExecution = (order) => {
+  activeOrderId.value = order.id;
+  const nextQuery = { ...route.query, order_id: order.id };
+  if (order.session_id) {
+    nextQuery.session_id = order.session_id;
+  }
+  router.push({ name: "chat", query: nextQuery });
+};
+
+const openRequestExecution = (request) => {
+  activeOrderId.value = request.id;
+  const nextQuery = { ...route.query, order_id: request.id };
+  router.push({ name: "chat", query: nextQuery });
 };
 
 const handleLogout = () => {
@@ -296,6 +329,10 @@ const fetchOrders = async () => {
       if (status in groupedOrders) {
         groupedOrders[status].push(order);
       }
+    }
+
+    for (const status of orderStatuses) {
+      groupedOrders[status].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
     }
 
     ordersByStatus.value = groupedOrders;
@@ -460,6 +497,12 @@ const sendMessage = async () => {
 
 onMounted(() => {
   resizeTextarea();
+  if (typeof route.query.order_id === "string") {
+    activeOrderId.value = route.query.order_id;
+  }
+  if (typeof route.query.session_id === "string") {
+    sessionId.value = route.query.session_id;
+  }
   fetchOrders();
 });
 
