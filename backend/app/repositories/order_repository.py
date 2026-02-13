@@ -18,22 +18,45 @@ class OrderRepository(Protocol):
 
 class InMemoryOrderRepository:
     def __init__(self) -> None:
-        self.orders: dict[str, Order] = {}
-        self._session_index: dict[str, str] = {}
+        self._orders = [
+            Order(id="order-delivery-001", session_id="session-delivery-001", current_status=OrderStatus.DELIVERY),
+            Order(id="order-delivery-002", session_id="session-delivery-002", current_status=OrderStatus.DELIVERY),
+            Order(id="order-delivery-003", session_id="session-delivery-003", current_status=OrderStatus.DELIVERY),
+            Order(
+                id="order-coordinate-001",
+                session_id="session-coordinate-001",
+                current_status=OrderStatus.COORDINATE,
+            ),
+            Order(
+                id="order-coordinate-002",
+                session_id="session-coordinate-002",
+                current_status=OrderStatus.COORDINATE,
+            ),
+            Order(
+                id="order-coordinate-003",
+                session_id="session-coordinate-003",
+                current_status=OrderStatus.COORDINATE,
+            ),
+            Order(id="order-backyard-001", session_id="session-backyard-001", current_status=OrderStatus.BACKYARD),
+            Order(id="order-backyard-002", session_id="session-backyard-002", current_status=OrderStatus.BACKYARD),
+            Order(id="order-backyard-003", session_id="session-backyard-003", current_status=OrderStatus.BACKYARD),
+        ]
 
     def find_by_session_id(self, session_id: str) -> Optional[Order]:
-        order_id = self._session_index.get(session_id)
-        if order_id is None:
-            return None
-        return self.orders.get(order_id)
+        for order in self._orders:
+            if order.session_id == session_id:
+                return order
+        return None
 
     def find_by_status(self, status: OrderStatus) -> list[Order]:
-        return [order for order in self.orders.values() if order.current_status == status]
+        return [order for order in self._orders if order.current_status == status]
 
     def save(self, order: Order) -> None:
-        self.orders[order.id] = order
-        self._session_index[order.session_id] = order.id
+        for index, existing_order in enumerate(self._orders):
+            if existing_order.id == order.id:
+                self._orders[index] = order
+                return
+        self._orders.append(order)
 
     def clear(self) -> None:
-        self.orders.clear()
-        self._session_index.clear()
+        self._orders.clear()
