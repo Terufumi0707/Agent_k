@@ -25,6 +25,15 @@
     </aside>
 
     <div class="chat-content">
+      <header class="auth-header">
+        <div class="auth-user-info">
+          <p class="auth-user-name">{{ authDisplayName }}</p>
+          <p class="auth-user-meta" v-if="authDisplayEmail">{{ authDisplayEmail }}</p>
+          <p class="auth-user-meta" v-else-if="authDisplaySub">{{ authDisplaySub }}</p>
+        </div>
+        <button type="button" class="logout-button" @click="handleLogout">ログアウト</button>
+      </header>
+
       <main class="chat-main">
         <p class="welcome-message">
           お手伝いできることはありますか？<br />
@@ -79,6 +88,9 @@
 
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { useAuth0 } from "@auth0/auth0-vue";
+
+const { user, logout } = useAuth0();
 
 const inputText = ref("");
 const inputRef = ref(null);
@@ -122,9 +134,22 @@ const visibleHistoryItems = computed(() => {
 const historyToggleLabel = computed(() =>
   historyCollapsed.value ? "履歴をもっと見る" : "履歴を閉じる"
 );
+const authDisplayName = computed(
+  () => user.value?.name || user.value?.nickname || "認証済みユーザー"
+);
+const authDisplayEmail = computed(() => user.value?.email || "");
+const authDisplaySub = computed(() => user.value?.sub || "");
 
 const toggleHistory = () => {
   historyCollapsed.value = !historyCollapsed.value;
+};
+
+const handleLogout = () => {
+  logout({
+    logoutParams: {
+      returnTo: window.location.origin
+    }
+  });
 };
 
 const backendBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL
