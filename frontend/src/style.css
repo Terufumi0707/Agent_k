@@ -384,8 +384,8 @@ body {
 }
 
 .message-bubble {
-  width: 70%;
-  max-width: 70%;
+  width: fit-content;
+  max-width: min(70%, 920px);
   padding: 10px 14px;
   border-radius: 14px;
   background: #ffffff;
@@ -399,7 +399,9 @@ body {
 }
 
 .message-text {
+  display: block;
   white-space: pre-wrap;
+  overflow-wrap: anywhere;
   line-height: 1.7;
 }
 
