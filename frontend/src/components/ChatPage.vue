@@ -411,12 +411,28 @@ const fetchOrders = async () => {
       monthState[month] = index !== 0;
     });
     requestMonthCollapsed.value = monthState;
+    return orders;
   } catch (error) {
     console.error("orders request failed:", error);
     ordersError.value = "オーダー一覧の取得に失敗しました。";
+    return [];
   } finally {
     ordersLoading.value = false;
   }
+};
+
+const refreshOrdersAfterCompletion = async () => {
+  const latestOrders = await fetchOrders();
+  if (!sessionId.value || !Array.isArray(latestOrders) || latestOrders.length === 0) {
+    return;
+  }
+
+  const matchedOrder = latestOrders.find((order) => order.session_id === sessionId.value);
+  if (!matchedOrder) {
+    return;
+  }
+
+  activeOrderId.value = matchedOrder.id;
 };
 
 const mapHistoryMessage = (message) => {
@@ -527,6 +543,7 @@ const sendMessage = async () => {
       sessionId.value = payload.session_id ?? sessionId.value;
       messages.value.push({ role: "ai", text: payload.message ?? "" });
       currentPhase.value = "完了しました。";
+      void refreshOrdersAfterCompletion();
     } else if (eventType === "error") {
       streamError.value = payload.error ?? "ストリーミングでエラーが発生しました。";
       messages.value.push({
@@ -553,6 +570,7 @@ const sendMessage = async () => {
     sessionId.value = data.session_id ?? sessionId.value;
     messages.value.push({ role: "ai", text: data.result ?? "" });
     currentPhase.value = "完了しました。";
+    await refreshOrdersAfterCompletion();
   };
 
   try {
