@@ -61,7 +61,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from "vue";
+import { onMounted, ref, watch } from "vue";
 import OrderCard from "./OrderCard.vue";
 import StatusSection from "./StatusSection.vue";
 import MessageTimeline from "./MessageTimeline.vue";
@@ -159,10 +159,20 @@ const fetchMessages = async (orderId) => {
   }
 };
 
+const resetProgressPanel = () => {
+  selectedOrderId.value = null;
+  messages.value = [];
+  messagesError.value = "";
+};
+
 const selectOrder = (orderId) => {
   selectedOrderId.value = orderId;
   fetchMessages(orderId);
 };
+
+watch(activeView, () => {
+  resetProgressPanel();
+});
 
 onMounted(() => {
   fetchOrders();
