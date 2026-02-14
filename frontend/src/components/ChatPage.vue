@@ -55,7 +55,7 @@
                         @click="openOrderExecution(order)"
                       >
                         <p class="order-item-summary">{{ order.summary || "要約なし" }}</p>
-                        <p class="order-item-meta">ID: {{ order.id }}</p>
+                        <p class="order-item-meta">更新日: {{ formatCreatedAt(order.updated_at) }}</p>
                       </button>
                     </li>
                   </ul>
@@ -103,7 +103,7 @@
                       @click="openRequestExecution(request)"
                     >
                       <p class="order-item-summary">{{ request.summary || "要約なし" }}</p>
-                      <p class="order-item-meta">ID: {{ request.id }}</p>
+                      <p class="order-item-meta">作成日: {{ formatCreatedAt(request.created_at) }}</p>
                     </button>
                   </li>
                 </ul>
@@ -236,6 +236,21 @@ const formatMonthLabel = (value) => {
     return "不明";
   }
   return `${date.getFullYear()}年${date.getMonth() + 1}月`;
+};
+
+const formatCreatedAt = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "不明";
+  }
+
+  return new Intl.DateTimeFormat("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
 };
 
 const buildRequestsByMonth = (orders) => {
