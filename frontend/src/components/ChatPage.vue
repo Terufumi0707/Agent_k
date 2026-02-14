@@ -324,12 +324,12 @@ const openRequestExecution = async (request) => {
   await fetchOrderMessages(request.id);
 };
 
-const handleLogout = () => {
-  logout({
-    logoutParams: {
-      returnTo: window.location.origin
-    }
+const handleLogout = async () => {
+  await logout({
+    localOnly: true
   });
+  await router.replace({ name: "chat", query: {} });
+  window.location.reload();
 };
 
 const startNewRequest = async () => {
