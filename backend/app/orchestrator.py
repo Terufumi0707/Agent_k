@@ -205,21 +205,21 @@ class CreateEntryOrchestrator:
                 on_phase(phase, detail, session_id)
 
         session_id, session_state = self._service.ensure_session(session_id)
-        notify("PHASE1_SESSION_READY", "session_id を確定しました。")
+        notify("PHASE1_SESSION_READY", "受付を実施しました。")
 
-        notify("PHASE2_INTENT_CLASSIFY", "IntentClassifier を実行します。")
+        notify("PHASE2_INTENT_CLASSIFY", "エージェントがご要望の意図を考えています。")
         intent_result = self._service.classify_intent(user_input=user_input, session_state=session_state)
 
         intent = intent_result.intent
 
         if intent == "NEW":
-            notify("PHASE0_EXTRACT", "情報抽出エージェントを実行します。")
+            notify("PHASE0_EXTRACT", "エージェントが必要な情報を整理しています。")
             extracted_text = self._service.extract(user_input)
             extracted_json = self._service.parse_extracted_json(extracted_text)
-            notify("PHASE0_JUDGE", "Judge エージェントを実行します。")
+            notify("PHASE0_JUDGE", "内容に不足や矛盾がないか確認しています。")
             judge_text = self._service.judge(extracted_text)
 
-            notify("PHASE0_FORMAT", "Formatter でユーザー表示文を生成します。")
+            notify("PHASE0_FORMAT", "ユーザー向けの分かりやすい文面を作成しています。")
             user_message = self._service.format_user_message(
                 extracted_json=extracted_text,
                 judge_json=judge_text,
@@ -227,7 +227,7 @@ class CreateEntryOrchestrator:
             if user_message is None:
                 user_message = "応答の生成に失敗しました。設定を確認した上で再度お試しください。"
 
-            notify("PHASE1_SAVE", "セッションを保存します。")
+            notify("PHASE1_SAVE", "対応内容を保存しています。")
             self._service.save_session(
                 session_id=session_id,
                 extracted_json=extracted_json,
@@ -247,19 +247,19 @@ class CreateEntryOrchestrator:
 
         if intent == "CHANGE":
             if session_state is None:
-                notify("PHASE0_FORMAT", "変更対象がないためメッセージを返します。")
+                notify("PHASE0_FORMAT", "変更対象が見つからないためご案内を作成しています。")
                 return "変更対象となる情報がありません。", session_id
 
-            notify("PHASE3_CHANGE_PREVIEW", "変更指示からプレビューJSONを生成します。")
+            notify("PHASE3_CHANGE_PREVIEW", "ご希望の変更内容を反映したプレビューを作成しています。")
             preview_extracted_json = self._service.build_preview_extracted_json_direct(
                 extracted_json=session_state.extracted_json,
                 user_change_input=user_input,
             )
-            notify("PHASE0_FORMAT", "変更後内容の確認メッセージを生成します。")
+            notify("PHASE0_FORMAT", "変更後の確認メッセージを作成しています。")
             user_message = self._service.format_change_preview_message(
                 preview_extracted_json=preview_extracted_json,
             )
-            notify("PHASE1_SAVE", "変更内容のプレビューを保存します。")
+            notify("PHASE1_SAVE", "変更内容のプレビューを保存しています。")
             self._service.save_change_session(
                 session_id=session_id,
                 session_state=session_state,
@@ -299,7 +299,7 @@ class CreateEntryOrchestrator:
             return user_message, session_id
 
         if intent == "QUERY_STATUS":
-            notify("PHASE_QUERY_STATUS", "現在オーダー情報の照会を実行します。")
+            notify("PHASE_QUERY_STATUS", "オーダー情報を照会しています。")
             user_message = await self._query_status_agent.run(user_input)
             self._save_lookup_session(
                 session_id=session_id,

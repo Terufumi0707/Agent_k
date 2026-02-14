@@ -134,7 +134,7 @@
           <p v-if="currentPhase" class="progress-current">{{ currentPhase }}</p>
           <ul v-if="progressLogs.length" class="progress-list">
             <li v-for="(log, index) in progressLogs" :key="index">
-              <span class="progress-phase">{{ log.phase }}</span>
+              <span class="progress-phase">{{ log.phaseLabel }}</span>
               <span class="progress-detail">{{ log.detail }}</span>
             </li>
           </ul>
@@ -222,6 +222,19 @@ const requestsByMonth = ref({});
 const requestMonths = computed(() => Object.keys(requestsByMonth.value));
 const requestMonthCollapsed = ref({});
 const historySectionCollapsed = ref(true);
+
+const phaseLabels = {
+  PHASE1_SESSION_READY: "1. 受付",
+  PHASE2_INTENT_CLASSIFY: "2. ご要望の理解",
+  PHASE0_EXTRACT: "3. 情報整理",
+  PHASE0_JUDGE: "4. 内容確認",
+  PHASE0_FORMAT: "5. 文面作成",
+  PHASE1_SAVE: "6. 保存",
+  PHASE3_CHANGE_PREVIEW: "3. 変更プレビュー作成",
+  PHASE_QUERY_STATUS: "3. オーダー照会"
+};
+
+const getPhaseLabel = (phase) => phaseLabels[phase] ?? "処理中";
 
 const canSend = computed(() => inputText.value.trim().length > 0);
 const authDisplayName = computed(
@@ -501,10 +514,14 @@ const sendMessage = async () => {
     }
 
     if (eventType === "phase") {
-      currentPhase.value = payload.detail ?? payload.phase ?? "";
+      const phase = payload.phase ?? "";
+      const detail = payload.detail ?? "";
+      const phaseLabel = getPhaseLabel(phase);
+      currentPhase.value = detail ? `${phaseLabel}: ${detail}` : phaseLabel;
       progressLogs.value.push({
-        phase: payload.phase ?? "",
-        detail: payload.detail ?? ""
+        phase,
+        phaseLabel,
+        detail
       });
     } else if (eventType === "done") {
       sessionId.value = payload.session_id ?? sessionId.value;
