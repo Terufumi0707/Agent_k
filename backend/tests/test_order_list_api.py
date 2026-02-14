@@ -162,3 +162,15 @@ def test_all_default_orders_have_histories_and_last_status_matches_current() -> 
 
         last_message = messages[-1]
         assert last_message["metadata"].get("order_status_after") == order["current_status"]
+
+
+def test_seeded_default_orders_span_at_least_three_created_at_months() -> None:
+    _reset_default_seed_data()
+    client = TestClient(app)
+
+    orders_response = client.get("/api/v1/orders")
+    assert orders_response.status_code == 200
+    orders = orders_response.json()
+
+    created_months = {order["created_at"][:7] for order in orders}
+    assert len(created_months) >= 3
