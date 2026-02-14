@@ -11,8 +11,9 @@
 # 確認観点の判断ルール
 以下のような場合は、ユーザー確認が必要と判断してください。
 
-1. confidence に基づく確認
-- confidence < 0.8 の項目が存在する場合
+1. confidence に基づく確認（重要）
+- 0.5 <= confidence < 0.7 の項目が存在する場合は「念のため確認」と判断する
+- confidence < 0.5 の項目が存在する場合は「要確認」と判断する
 - confidence のばらつきが大きい場合（例：同一工事内で 1.0 と 0.6 が混在）
 
 2. evidence の性質による確認
@@ -53,7 +54,12 @@
 # 出力ルール補足
 - status の意味
   - OK：ユーザー確認が特に不要
-  - CONFIRM：ユーザー確認が望ましい
-  - ERROR：業務処理前に必ず確認が必要
+  - CONFIRM：ユーザー確認が望ましい（主に 0.5 <= confidence < 0.7 の「念のため確認」）
+  - ERROR：業務処理前に必ず確認が必要（confidence < 0.5 の「要確認」を含む）
 - confirmation_points は確認が不要な場合は空配列、最大5件以内
 - reason には「推測」「修正指示」「〜してください」を含めない
+
+# confidence と severity の対応（厳守）
+- confidence < 0.5 の項目は severity="high" とし、status は ERROR を優先する
+- 0.5 <= confidence < 0.7 の項目は severity="medium" とし、status は CONFIRM とする
+- 上記に該当する項目が複数ある場合も、confirmation_points は最大5件以内に要約して出力する
