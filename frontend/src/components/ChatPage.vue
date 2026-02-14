@@ -296,7 +296,14 @@ const toggleStatusSection = (status) => {
   };
 };
 
+const resetProgressState = () => {
+  progressLogs.value = [];
+  currentPhase.value = "";
+  streamError.value = "";
+};
+
 const openOrderExecution = async (order) => {
+  resetProgressState();
   activeOrderId.value = order.id;
   const nextQuery = { ...route.query, order_id: order.id };
   if (order.session_id) {
@@ -307,6 +314,7 @@ const openOrderExecution = async (order) => {
 };
 
 const openRequestExecution = async (request) => {
+  resetProgressState();
   activeOrderId.value = request.id;
   const nextQuery = { ...route.query, order_id: request.id };
   if (request.session_id) {
@@ -329,9 +337,7 @@ const startNewRequest = async () => {
   activeOrderId.value = null;
   sessionId.value = null;
   inputText.value = "";
-  progressLogs.value = [];
-  currentPhase.value = "";
-  streamError.value = "";
+  resetProgressState();
   messages.value = [{ role: "ai", text: greetingMessage, isGreeting: true }];
 
   await router.push({ name: "chat", query: {} });
@@ -495,9 +501,7 @@ const sendMessage = async () => {
     return;
   }
 
-  progressLogs.value = [];
-  currentPhase.value = "";
-  streamError.value = "";
+  resetProgressState();
 
   messages.value.push({ role: "user", text: userText });
   inputText.value = "";
@@ -646,6 +650,7 @@ onMounted(() => {
   }
   fetchOrders();
   if (activeOrderId.value) {
+    resetProgressState();
     fetchOrderMessages(activeOrderId.value);
   }
 });
