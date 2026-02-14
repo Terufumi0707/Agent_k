@@ -508,6 +508,7 @@ const sendMessage = async () => {
       });
     } else if (eventType === "done") {
       sessionId.value = payload.session_id ?? sessionId.value;
+      messages.value.push({ role: "ai", text: payload.message ?? "" });
     } else if (eventType === "error") {
       streamError.value = payload.error ?? "ストリーミングでエラーが発生しました。";
       messages.value.push({
@@ -517,7 +518,25 @@ const sendMessage = async () => {
     }
   };
 
-  const streamPromise = (async () => {
+  const requestCreateEntry = async () => {
+    const response = await fetchWithRelativeFallback(createEntryUrl, "/api/create_entry", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({ prompt: userText, session_id: sessionId.value })
+    });
+
+    if (!response.ok) {
+      throw new Error(`HTTP ${response.status}`);
+    }
+
+    const data = await response.json();
+    sessionId.value = data.session_id ?? sessionId.value;
+    messages.value.push({ role: "ai", text: data.result ?? "" });
+  };
+
+  try {
     try {
       const response = await fetchWithRelativeFallback(createEntryStreamUrl, "/api/create_entry/stream", {
         method: "POST",
@@ -559,37 +578,17 @@ const sendMessage = async () => {
       }
     } catch (error) {
       console.error("create_entry stream request failed:", error);
-      streamError.value = "ストリーミングの接続に失敗しました。";
+      streamError.value = "ストリーミングの接続に失敗したため通常応答へフォールバックします。";
+      await requestCreateEntry();
     }
-  })();
+  } catch (error) {
+    console.error("create_entry request failed:", error);
+    messages.value.push({
+      role: "ai",
+      text: "エラーが発生しました。時間をおいて再度お試しください。"
+    });
+  }
 
-  const resultPromise = (async () => {
-    try {
-      const response = await fetchWithRelativeFallback(createEntryUrl, "/api/create_entry", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ prompt: userText, session_id: sessionId.value })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const data = await response.json();
-      sessionId.value = data.session_id ?? sessionId.value;
-      messages.value.push({ role: "ai", text: data.result ?? "" });
-    } catch (error) {
-      console.error("create_entry request failed:", error);
-      messages.value.push({
-        role: "ai",
-        text: "エラーが発生しました。時間をおいて再度お試しください。"
-      });
-    }
-  })();
-
-  await Promise.allSettled([streamPromise, resultPromise]);
   isSending.value = false;
 };
 
