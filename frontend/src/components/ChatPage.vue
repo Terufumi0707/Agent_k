@@ -526,6 +526,7 @@ const sendMessage = async () => {
     } else if (eventType === "done") {
       sessionId.value = payload.session_id ?? sessionId.value;
       messages.value.push({ role: "ai", text: payload.message ?? "" });
+      currentPhase.value = "完了しました。";
     } else if (eventType === "error") {
       streamError.value = payload.error ?? "ストリーミングでエラーが発生しました。";
       messages.value.push({
@@ -551,6 +552,7 @@ const sendMessage = async () => {
     const data = await response.json();
     sessionId.value = data.session_id ?? sessionId.value;
     messages.value.push({ role: "ai", text: data.result ?? "" });
+    currentPhase.value = "完了しました。";
   };
 
   try {
