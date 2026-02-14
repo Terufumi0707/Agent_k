@@ -398,3 +398,53 @@ def test_orchestrator_confirm_intent_updates_order_status_to_coordinate():
     assert result == "ステータスをCOORDINATEに更新しました。"
     assert saved_order is not None
     assert saved_order.current_status.value == "COORDINATE"
+
+
+def test_orchestrator_saves_greeting_message_once_for_new_session(monkeypatch):
+    def mock_generate_with_system_and_user(system_prompt: str, user_prompt: str) -> str:
+        if system_prompt == orchestrator.AGENT_SYSTEM_PROMPT:
+            return '{"extracted": true}'
+        if system_prompt == orchestrator.JUDGE_AGENT_SYSTEM_PROMPT:
+            return '{"judge": "ok"}'
+        if system_prompt == orchestrator.FORMATTER_AGENT_SYSTEM_PROMPT:
+            return "display-message"
+        raise AssertionError("unexpected system prompt")
+
+    monkeypatch.setattr(orchestrator, "generate_with_system_and_user", mock_generate_with_system_and_user)
+
+    class DummyIntentClassifier:
+        def classify(self, user_input: str, session_state: SessionState | None = None) -> IntentClassification:
+            return IntentClassification(intent="NEW", confidence=0.8, reason="新規入力")
+
+    order_repository = InMemoryOrderRepository()
+    order_service = OrderService(order_repository, llm_client=lambda _system, _user: "新規依頼の要約")
+    conversation_repository = orchestrator.InMemoryConversationRepository()
+
+    _, session_id = asyncio.run(
+        orchestrator.CreateEntryOrchestrator(
+            session_store=InMemorySessionStore(),
+            intent_classifier=DummyIntentClassifier(),
+            order_service=order_service,
+            conversation_repository=conversation_repository,
+        ).run("初回の依頼")
+    )
+
+    order = order_repository.find_by_session_id(session_id)
+    assert order is not None
+    messages = conversation_repository.list_messages_for_order(order.id)
+    assert messages[0].role == "system"
+    assert messages[0].content == orchestrator.GREETING_MESSAGE
+    assert messages[0].metadata.get("greeting") is True
+
+    _, _ = asyncio.run(
+        orchestrator.CreateEntryOrchestrator(
+            session_store=InMemorySessionStore(),
+            intent_classifier=DummyIntentClassifier(),
+            order_service=order_service,
+            conversation_repository=conversation_repository,
+        ).run("2回目の依頼", session_id=session_id)
+    )
+
+    messages_after_second_turn = conversation_repository.list_messages_for_order(order.id)
+    greeting_messages = [m for m in messages_after_second_turn if m.role == "system" and m.metadata.get("greeting") is True]
+    assert len(greeting_messages) == 1
