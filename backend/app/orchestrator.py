@@ -27,6 +27,9 @@ from app.services.conversation_service import ConversationService
 from app.session_store import InMemorySessionStore, SessionState, SessionStore
 
 
+
+GREETING_MESSAGE = "日程変更依頼のメール、もしくは変更対象の確認したいオーダーをN番号かWebエントリIDで教えてください。"
+
 class CreateEntryOrchestrator:
     """
     Phase構成に基づいて create_entry の処理順序を制御するオーケストレーター。
@@ -382,6 +385,7 @@ class CreateEntryOrchestrator:
         status_before: str | None = None,
         status_after: str | None = None,
     ) -> None:
+        self._ensure_greeting_message(order)
         self._conversation_service.add_order_message(
             order=order,
             role="user",
@@ -411,4 +415,21 @@ class CreateEntryOrchestrator:
             session_id=order.session_id,
             user_input=user_input,
             assistant_message=user_message,
+        )
+
+    def _ensure_greeting_message(self, order: Any) -> None:
+        messages = self._conversation_service.list_order_messages(order_id=order.id, limit=1, offset=0)
+        if messages:
+            return
+        self._conversation_service.add_order_message(
+            order=order,
+            role="system",
+            content=GREETING_MESSAGE,
+            metadata={
+                "intent": "GREETING",
+                "status_event": False,
+                "order_status_before": None,
+                "order_status_after": None,
+                "greeting": True,
+            },
         )

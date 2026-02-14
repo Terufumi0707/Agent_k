@@ -440,7 +440,8 @@ const mapHistoryMessage = (message) => {
     return { role: "user", text: message.content };
   }
   if (message.role === "system") {
-    return { role: "ai", text: `[system] ${message.content}` };
+    const isGreeting = Boolean(message.metadata?.greeting);
+    return { role: "ai", text: message.content, isGreeting };
   }
   return { role: "ai", text: message.content };
 };
@@ -504,6 +505,8 @@ const sendMessage = async () => {
   await nextTick();
   resizeTextarea();
 
+  let shouldRefreshOrdersAfterCompletion = false;
+
   const handleSseEvent = (eventBlock) => {
     const lines = eventBlock.split(/\r?\n/);
     let eventType = "message";
@@ -543,7 +546,7 @@ const sendMessage = async () => {
       sessionId.value = payload.session_id ?? sessionId.value;
       messages.value.push({ role: "ai", text: payload.message ?? "" });
       currentPhase.value = "完了しました。";
-      void refreshOrdersAfterCompletion();
+      shouldRefreshOrdersAfterCompletion = true;
     } else if (eventType === "error") {
       streamError.value = payload.error ?? "ストリーミングでエラーが発生しました。";
       messages.value.push({
@@ -612,6 +615,10 @@ const sendMessage = async () => {
 
       if (buffer.trim()) {
         handleSseEvent(buffer.trim());
+      }
+
+      if (shouldRefreshOrdersAfterCompletion) {
+        await refreshOrdersAfterCompletion();
       }
     } catch (error) {
       console.error("create_entry stream request failed:", error);
