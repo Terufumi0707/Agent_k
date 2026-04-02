@@ -28,7 +28,7 @@ from app.session_store import InMemorySessionStore, SessionState, SessionStore
 
 
 
-GREETING_MESSAGE = "日程変更依頼のメール、もしくは変更対象の確認したいオーダーをN番号かWebエントリIDで教えてください。"
+GREETING_MESSAGE = "指示を入力してください"
 
 class CreateEntryOrchestrator:
     """
