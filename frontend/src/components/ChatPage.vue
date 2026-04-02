@@ -17,58 +17,6 @@
         </button>
 
         <section class="sidebar-section">
-          <button type="button" class="section-toggle" @click="statusListCollapsed = !statusListCollapsed">
-            <span class="history-title">ステータス一覧</span>
-            <span class="section-toggle-icon">{{ statusListCollapsed ? "＋" : "－" }}</span>
-          </button>
-
-          <template v-if="!statusListCollapsed">
-            <p v-if="ordersLoading" class="history-status">読み込み中...</p>
-            <p v-else-if="ordersError" class="history-error">{{ ordersError }}</p>
-
-            <template v-else>
-              <div
-                v-for="status in orderStatuses"
-                :key="status"
-                class="order-group"
-              >
-                <button
-                  type="button"
-                  class="order-group-toggle"
-                  @click="toggleStatusSection(status)"
-                >
-                  <span class="order-group-title">{{ statusLabels[status] ?? status }}</span>
-                  <span class="order-group-icon">{{ isStatusCollapsed(status) ? "＋" : "－" }}</span>
-                </button>
-
-                <template v-if="!isStatusCollapsed(status)">
-                  <ul class="history-list">
-                    <li
-                      v-for="order in ordersByStatus[status]"
-                      :key="order.id"
-                      class="order-item"
-                    >
-                      <button
-                        type="button"
-                        class="order-item-button"
-                        :class="{ 'order-item-button-active': activeOrderId === order.id }"
-                        @click="openOrderExecution(order)"
-                      >
-                        <p class="order-item-summary">{{ order.summary || "要約なし" }}</p>
-                        <p class="order-item-meta">更新日: {{ formatCreatedAt(order.updated_at) }}</p>
-                      </button>
-                    </li>
-                  </ul>
-                  <p v-if="ordersByStatus[status].length === 0" class="history-status">
-                    該当オーダーはありません。
-                  </p>
-                </template>
-              </div>
-            </template>
-          </template>
-        </section>
-
-        <section class="sidebar-section">
           <button type="button" class="section-toggle" @click="historySectionCollapsed = !historySectionCollapsed">
             <span class="history-title">依頼一覧</span>
             <span class="section-toggle-icon">{{ historySectionCollapsed ? "＋" : "－" }}</span>
@@ -186,24 +134,7 @@ const streamError = ref("");
 const sessionId = ref(null);
 const ordersLoading = ref(false);
 const ordersError = ref("");
-const orderStatuses = ["DELIVERY", "COORDINATE", "BACKYARD"];
-const statusLabels = {
-  DELIVERY: "デリバリー",
-  COORDINATE: "コーディネート",
-  BACKYARD: "バックヤード"
-};
-const statusListCollapsed = ref(true);
-const statusSectionCollapsed = ref({
-  DELIVERY: true,
-  COORDINATE: true,
-  BACKYARD: true
-});
 const isSidebarCollapsed = ref(false);
-const ordersByStatus = ref({
-  DELIVERY: [],
-  COORDINATE: [],
-  BACKYARD: []
-});
 const activeOrderId = ref(null);
 const messageFetchRequestId = ref(0);
 
@@ -273,30 +204,10 @@ const toggleRequestMonthSection = (month) => {
   };
 };
 
-const isStatusCollapsed = (status) => Boolean(statusSectionCollapsed.value[status]);
-
-const toggleStatusSection = (status) => {
-  statusSectionCollapsed.value = {
-    ...statusSectionCollapsed.value,
-    [status]: !isStatusCollapsed(status)
-  };
-};
-
 const resetProgressState = () => {
   progressLogs.value = [];
   currentPhase.value = "";
   streamError.value = "";
-};
-
-const openOrderExecution = async (order) => {
-  resetProgressState();
-  activeOrderId.value = order.id;
-  const nextQuery = { ...route.query, order_id: order.id };
-  if (order.session_id) {
-    nextQuery.session_id = order.session_id;
-  }
-  await router.push({ name: "chat", query: nextQuery });
-  await fetchOrderMessages(order.id);
 };
 
 const openRequestExecution = async (request) => {
@@ -370,24 +281,6 @@ const fetchOrders = async () => {
     }
 
     const orders = await response.json();
-    const groupedOrders = {
-      DELIVERY: [],
-      COORDINATE: [],
-      BACKYARD: []
-    };
-
-    for (const order of orders) {
-      const status = order.current_status;
-      if (status in groupedOrders) {
-        groupedOrders[status].push(order);
-      }
-    }
-
-    for (const status of orderStatuses) {
-      groupedOrders[status].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
-    }
-
-    ordersByStatus.value = groupedOrders;
     const monthly = buildRequestsByMonth(orders);
     requestsByMonth.value = monthly;
     const monthState = {};

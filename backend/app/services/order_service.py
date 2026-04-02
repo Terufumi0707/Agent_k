@@ -73,26 +73,6 @@ class OrderService:
             return self._repository.list_all()
         return self._repository.find_by_status(status)
 
-    def list_orders_by_status_group(
-        self,
-        limit: int = 100,
-        offset: int = 0,
-    ) -> list[dict[str, object]]:
-        groups: list[dict[str, object]] = []
-        for status in [OrderStatus.DELIVERY, OrderStatus.COORDINATE, OrderStatus.BACKYARD]:
-            groups.append(
-                {
-                    "status": status,
-                    "orders": self._repository.list_orders_by_status(
-                        status=status,
-                        sort="updated_at_desc",
-                        limit=limit,
-                        offset=offset,
-                    ),
-                }
-            )
-        return groups
-
     def get_by_session_id(self, session_id: str) -> Order | None:
         return self._repository.find_by_session_id(session_id)
 

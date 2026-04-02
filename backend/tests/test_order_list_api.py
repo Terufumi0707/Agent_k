@@ -53,28 +53,6 @@ def test_v1_orders_returns_updated_at_desc() -> None:
     assert all("通信事業者工事の日程調整" in item["summary"] for item in payload)
 
 
-def test_v1_status_groups_returns_three_groups_and_sorted_orders() -> None:
-    client = TestClient(app)
-    repository = agent_controller._order_repository
-    repository.clear()
-
-    repository.save(_make_order("d-old", "d1", OrderStatus.DELIVERY, 8))
-    repository.save(_make_order("d-new", "d2", OrderStatus.DELIVERY, 2))
-    repository.save(_make_order("c-old", "c1", OrderStatus.COORDINATE, 7))
-    repository.save(_make_order("c-new", "c2", OrderStatus.COORDINATE, 1))
-    repository.save(_make_order("b-old", "b1", OrderStatus.BACKYARD, 9))
-    repository.save(_make_order("b-new", "b2", OrderStatus.BACKYARD, 3))
-
-    response = client.get("/api/v1/orders/status-groups")
-
-    assert response.status_code == 200
-    body = response.json()
-    assert [group["status"] for group in body] == ["DELIVERY", "COORDINATE", "BACKYARD"]
-    assert [order["id"] for order in body[0]["orders"]] == ["d-new", "d-old"]
-    assert [order["id"] for order in body[1]["orders"]] == ["c-new", "c-old"]
-    assert [order["id"] for order in body[2]["orders"]] == ["b-new", "b-old"]
-
-
 def test_v1_order_messages_returns_created_at_asc_and_status_event() -> None:
     client = TestClient(app)
     repository = agent_controller._order_repository

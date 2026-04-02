@@ -29,11 +29,6 @@ class OrderResponse(BaseModel):
     web_entry_id: str | None = None
 
 
-class OrderStatusGroupResponse(BaseModel):
-    status: OrderStatus
-    orders: list[OrderResponse]
-
-
 class MessageResponse(BaseModel):
     id: str
     conversation_id: str

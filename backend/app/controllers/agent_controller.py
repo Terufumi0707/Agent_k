@@ -3,7 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
 
-from app.models.entry_api_models import EntryRequest, EntryResponse, MessageResponse, OrderResponse, OrderStatusGroupResponse
+from app.models.entry_api_models import EntryRequest, EntryResponse, MessageResponse, OrderResponse
 from app.orchestrator import CreateEntryOrchestrator
 from app.repositories.conversation_repository import InMemoryConversationRepository
 from app.repositories.order_repository import InMemoryOrderRepository
@@ -51,11 +51,6 @@ def get_orders(limit: int = 100, offset: int = 0, sort: str = "updated_at_desc")
 @router.get("/orders", response_model=list[OrderResponse])
 def get_orders_legacy(status: OrderStatus | None = None) -> list[OrderResponse]:
     return _order_query_service.get_orders_legacy(status=status)
-
-
-@router.get("/v1/orders/status-groups", response_model=list[OrderStatusGroupResponse])
-def get_order_status_groups(limit: int = 100, offset: int = 0) -> list[OrderStatusGroupResponse]:
-    return _order_query_service.get_order_status_groups(limit=limit, offset=offset)
 
 
 @router.get("/v1/orders/{order_id}/messages", response_model=list[MessageResponse])
