@@ -1,1 +1,1 @@
-"""Service layer modules."""
+"""Legacy placeholder package kept only for directory compatibility."""

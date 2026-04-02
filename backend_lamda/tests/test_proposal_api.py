@@ -15,15 +15,19 @@ def test_health():
 def test_create_proposal():
     client = TestClient(app)
     payload = {
-        "theme": "新規顧客向けオンボーディング改善",
-        "objective": "初回契約から稼働までの期間短縮",
-        "constraints": ["予算据え置き", "3か月以内に実施"],
-        "audience": "営業本部",
+        "theme": "営業提案の標準化",
+        "target_company": "株式会社サンプル",
+        "background": "案件化率が低下している",
+        "issues": "提案品質のばらつき",
+        "goal": "受注率の改善",
+        "additional_requirements": "初回はA4 5ページ想定",
     }
 
-    response = client.post("/api/proposals", json=payload)
+    response = client.post("/api/proposal/create", json=payload)
 
     assert response.status_code == 200
     body = response.json()
-    assert "提案書（ドラフト）" in body["title"]
-    assert len(body["sections"]) == 5
+    assert body["status"] == "success"
+    assert "looker_data" in body["data"]
+    assert "gemini_summary" in body["data"]
+    assert "gas_result" in body["data"]
