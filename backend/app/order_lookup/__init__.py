@@ -1,4 +1,5 @@
-from app.order_lookup.mcp_order_lookup_client import MCPOrderLookupClient
-from app.order_lookup.order_status_formatter import OrderStatusFormatter
+"""Order lookup package is intentionally left as a placeholder.
 
-__all__ = ["MCPOrderLookupClient", "OrderStatusFormatter"]
+The previous schedule-change specific implementation was removed during the
+proposal-agent migration.
+"""
