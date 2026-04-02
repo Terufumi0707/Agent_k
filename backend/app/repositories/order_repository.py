@@ -22,15 +22,6 @@ class OrderRepository(Protocol):
     def list_orders(self, sort: str = "updated_at_desc", limit: int = 100, offset: int = 0) -> list[Order]:
         ...
 
-    def list_orders_by_status(
-        self,
-        status: OrderStatus,
-        sort: str = "updated_at_desc",
-        limit: int = 100,
-        offset: int = 0,
-    ) -> list[Order]:
-        ...
-
     def save(self, order: Order) -> None:
         ...
 
@@ -139,18 +130,6 @@ class InMemoryOrderRepository:
 
     def list_orders(self, sort: str = "updated_at_desc", limit: int = 100, offset: int = 0) -> list[Order]:
         orders = list(self._orders)
-        if sort == "updated_at_desc":
-            orders.sort(key=lambda order: order.updated_at, reverse=True)
-        return orders[offset : offset + limit]
-
-    def list_orders_by_status(
-        self,
-        status: OrderStatus,
-        sort: str = "updated_at_desc",
-        limit: int = 100,
-        offset: int = 0,
-    ) -> list[Order]:
-        orders = self.find_by_status(status)
         if sort == "updated_at_desc":
             orders.sort(key=lambda order: order.updated_at, reverse=True)
         return orders[offset : offset + limit]

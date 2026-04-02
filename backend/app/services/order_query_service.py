@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from app.domain.order import Order, OrderStatus
 from app.domain.conversation import Message
-from app.models.entry_api_models import MessageResponse, OrderResponse, OrderStatusGroupResponse
+from app.models.entry_api_models import MessageResponse, OrderResponse
 from app.services.conversation_service import ConversationService
 from app.services.order_service import OrderService
 
@@ -21,16 +21,6 @@ class OrderQueryService:
     def get_orders_legacy(self, status: OrderStatus | None = None) -> list[OrderResponse]:
         orders = self._order_service.list_orders_legacy(status=status)
         return [self._to_order_response(order) for order in orders]
-
-    def get_order_status_groups(self, limit: int = 100, offset: int = 0) -> list[OrderStatusGroupResponse]:
-        groups = self._order_service.list_orders_by_status_group(limit=limit, offset=offset)
-        return [
-            OrderStatusGroupResponse(
-                status=group["status"],
-                orders=[self._to_order_response(order) for order in group["orders"]],
-            )
-            for group in groups
-        ]
 
     def get_order_messages(self, order_id: str, limit: int = 100, offset: int = 0) -> list[MessageResponse]:
         messages = self._conversation_service.list_order_messages(order_id=order_id, limit=limit, offset=offset)

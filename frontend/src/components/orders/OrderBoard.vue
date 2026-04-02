@@ -1,26 +1,7 @@
 <template>
   <div class="order-board">
     <aside class="order-list-column">
-      <div class="view-switcher" role="tablist" aria-label="order views">
-        <button
-          type="button"
-          class="view-switcher-button"
-          :class="{ active: activeView === 'timeline' }"
-          @click="activeView = 'timeline'"
-        >
-          依頼一覧
-        </button>
-        <button
-          type="button"
-          class="view-switcher-button"
-          :class="{ active: activeView === 'status' }"
-          @click="activeView = 'status'"
-        >
-          ステータス一覧
-        </button>
-      </div>
-
-      <section v-if="activeView === 'timeline'" class="panel">
+      <section class="panel">
         <h2 class="panel-title">依頼一覧（時系列）</h2>
         <p v-if="ordersLoading" class="panel-message">Loading...</p>
         <p v-else-if="ordersError" class="panel-error">{{ ordersError }}</p>
@@ -34,19 +15,6 @@
             @select="selectOrder"
           />
         </div>
-      </section>
-
-      <section v-else class="status-list">
-        <StatusSection
-          v-for="status in statuses"
-          :key="status"
-          :status="status"
-          :orders="ordersByStatus[status] ?? []"
-          :loading="statusLoading"
-          :error="statusError"
-          :selected-order-id="selectedOrderId"
-          @select-order="selectOrder"
-        />
       </section>
     </aside>
 
@@ -63,24 +31,13 @@
 <script setup>
 import { onMounted, ref, watch } from "vue";
 import OrderCard from "./OrderCard.vue";
-import StatusSection from "./StatusSection.vue";
 import MessageTimeline from "./MessageTimeline.vue";
 
-const statuses = ["DELIVERY", "COORDINATE", "BACKYARD"];
-const activeView = ref("timeline");
 const selectedOrderId = ref(null);
 
 const orders = ref([]);
 const ordersLoading = ref(false);
 const ordersError = ref("");
-
-const statusLoading = ref(false);
-const statusError = ref("");
-const ordersByStatus = ref({
-  DELIVERY: [],
-  COORDINATE: [],
-  BACKYARD: []
-});
 
 const messages = ref([]);
 const messagesLoading = ref(false);
@@ -115,33 +72,6 @@ const fetchOrders = async () => {
   }
 };
 
-const fetchStatusGroups = async () => {
-  try {
-    statusLoading.value = true;
-    statusError.value = "";
-    const response = await fetch(buildApiUrl("/v1/orders/status-groups?limit=100&offset=0"));
-    if (!response.ok) {
-      throw new Error(`Failed to fetch status groups: ${response.status}`);
-    }
-    const groups = await response.json();
-    const merged = {
-      DELIVERY: [],
-      COORDINATE: [],
-      BACKYARD: []
-    };
-    for (const group of groups) {
-      if (merged[group.status]) {
-        merged[group.status] = sortByUpdatedAtDesc(group.orders ?? []);
-      }
-    }
-    ordersByStatus.value = merged;
-  } catch (err) {
-    statusError.value = err instanceof Error ? err.message : "An unexpected error occurred.";
-  } finally {
-    statusLoading.value = false;
-  }
-};
-
 const fetchMessages = async (orderId) => {
   try {
     messagesLoading.value = true;
@@ -170,13 +100,8 @@ const selectOrder = (orderId) => {
   fetchMessages(orderId);
 };
 
-watch(activeView, () => {
-  resetProgressPanel();
-});
-
 onMounted(() => {
   fetchOrders();
-  fetchStatusGroups();
 });
 </script>
 
@@ -193,28 +118,6 @@ onMounted(() => {
 .order-list-column {
   display: grid;
   gap: 12px;
-}
-
-.view-switcher {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
-}
-
-.view-switcher-button {
-  border: 1px solid #d0dbfa;
-  border-radius: 10px;
-  background: #fff;
-  padding: 10px 12px;
-  color: #2f4270;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.view-switcher-button.active {
-  border-color: #3152ff;
-  color: #1f35ab;
-  background: #edf1ff;
 }
 
 .panel {
@@ -245,8 +148,7 @@ onMounted(() => {
   color: #c62828;
 }
 
-.order-list,
-.status-list {
+.order-list {
   display: grid;
   gap: 8px;
 }
