@@ -124,7 +124,7 @@ const route = useRoute();
 
 const inputText = ref("");
 const inputRef = ref(null);
-const greetingMessage = `日程変更依頼のメール、もしくは変更対象の確認したいオーダーをN番号かWebエントリIDで教えてください。`;
+const greetingMessage = `指示を入力してください`;
 
 const messages = ref([{ role: "ai", text: greetingMessage, isGreeting: true }]);
 const isSending = ref(false);
@@ -139,7 +139,7 @@ const activeOrderId = ref(null);
 const messageFetchRequestId = ref(0);
 
 const placeholderText =
-  "指示してください";
+  "指示を入力してください";
 
 const requestsByMonth = ref({});
 const requestMonths = computed(() => Object.keys(requestsByMonth.value));
