@@ -115,12 +115,7 @@
     </aside>
 
     <div class="chat-content">
-      <TopHeader
-        :auth-display-name="authDisplayName"
-        :auth-display-email="authDisplayEmail"
-        :auth-display-sub="authDisplaySub"
-        @logout="handleLogout"
-      />
+      <TopHeader />
 
       <main class="chat-main">
         <div
@@ -175,10 +170,7 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
-import { useOptionalAuth } from "../auth";
 import TopHeader from "./TopHeader.vue";
-
-const { user, logout } = useOptionalAuth();
 const router = useRouter();
 const route = useRoute();
 
@@ -237,12 +229,6 @@ const phaseLabels = {
 const getPhaseLabel = (phase) => phaseLabels[phase] ?? "処理中";
 
 const canSend = computed(() => inputText.value.trim().length > 0);
-const authDisplayName = computed(
-  () => user.value?.name || user.value?.nickname || "認証済みユーザー"
-);
-const authDisplayEmail = computed(() => user.value?.email || "");
-const authDisplaySub = computed(() => user.value?.sub || "");
-
 const formatMonthLabel = (value) => {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
@@ -322,14 +308,6 @@ const openRequestExecution = async (request) => {
   }
   await router.push({ name: "chat", query: nextQuery });
   await fetchOrderMessages(request.id);
-};
-
-const handleLogout = async () => {
-  await logout({
-    localOnly: true
-  });
-  await router.replace({ name: "chat", query: {} });
-  window.location.reload();
 };
 
 const startNewRequest = async () => {
