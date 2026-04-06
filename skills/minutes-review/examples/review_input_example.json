@@ -1,0 +1,5 @@
+{
+  "candidates": [{"title": "議事録案 1"}, {"title": "議事録案 2"}],
+  "selected_index": 0,
+  "instruction": "決定事項を箇条書きで明確化"
+}
