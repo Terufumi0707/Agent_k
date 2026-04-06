@@ -1,32 +1,17 @@
 from datetime import datetime
-from typing import Any
 
 from pydantic import BaseModel
 
-from src.domain.enums.input_type import InputType
-from src.domain.enums.job_status import JobStatus
-
-
-class ErrorResponse(BaseModel):
-    code: str
-    message: str
+from src.domain.models import InputType, JobStatus
 
 
 class JobResponse(BaseModel):
     id: str
-    status: JobStatus
     input_type: InputType
-    workflow_name: str
+    status: JobStatus
     created_at: datetime
     updated_at: datetime
-
-
-class CandidateResponse(BaseModel):
-    version_no: int
-    content: dict[str, Any]
-
-
-class ArtifactResponse(BaseModel):
-    artifact_type: str
-    file_path: str
-    mime_type: str
+    transcript: str
+    candidates: list[dict]
+    selected_candidate: dict | None
+    artifact_path: str | None

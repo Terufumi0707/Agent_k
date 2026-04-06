@@ -1,0 +1,10 @@
+name: company_minutes_format
+sections:
+  - name: 会議概要
+    required: true
+  - name: 議題
+    required: true
+  - name: 決定事項
+    required: true
+  - name: ToDo
+    required: true

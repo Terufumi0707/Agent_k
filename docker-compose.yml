@@ -1,22 +1,6 @@
 services:
-  frontend:
-    build:
-      context: ./frontend
-    ports:
-      - "5173:5173"
-    environment:
-      VITE_PROXY_TARGET: http://backend:8000
-      VITE_BACKEND_BASE_URL: ${VITE_BACKEND_BASE_URL:-http://localhost:8000}
-    depends_on:
-      - backend
-
   backend:
     build:
       context: ./backend
     ports:
       - "8000:8000"
-    environment:
-      GEMINI_API_BASE_URL: https://generativelanguage.googleapis.com/v1beta
-      GEMINI_API_KEY: "your-api-key"
-      GEMINI_MODEL: gemini-2.5-flash
-      GEMINI_TIMEOUT_SECONDS: "60"

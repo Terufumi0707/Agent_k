@@ -1,0 +1,18 @@
+name: meeting_minutes_workflow
+candidate_count: 3
+steps:
+  - id: transcript_input
+    skill: minutes-workflow
+    description: transcript 入力の取り込み
+  - id: transcribe
+    skill: minutes-transcribe
+    description: audio 入力時に Whisper で文字起こし
+  - id: draft
+    skill: minutes-draft
+    description: 会社フォーマットに沿った候補を 2-3 件作成
+  - id: review
+    skill: minutes-review
+    description: 修正指示または approve を受け付ける
+  - id: export
+    skill: minutes-export-word
+    description: 最終候補を docx 出力
