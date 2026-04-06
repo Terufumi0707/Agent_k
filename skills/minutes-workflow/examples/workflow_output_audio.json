@@ -1,0 +1,4 @@
+{
+  "plan": ["transcript_input", "transcribe", "draft", "review", "export"],
+  "state": "review_pending"
+}
