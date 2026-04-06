@@ -1,0 +1,20 @@
+name: company_default_minutes_format
+version: 1
+sections:
+  - name: 会議概要
+    required: true
+  - name: 議題
+    required: true
+  - name: 決定事項
+    required: true
+  - name: ToDo
+    required: true
+  - name: 懸念点
+    required: false
+  - name: 次回アクション
+    required: true
+render_hints:
+  todo_table_columns:
+    - 担当
+    - 期限
+    - 内容
