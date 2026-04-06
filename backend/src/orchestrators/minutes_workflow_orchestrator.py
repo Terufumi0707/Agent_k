@@ -5,23 +5,23 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from app.agents.runners.workflow_runners import (
+from src.agents.runners.workflow_runners import (
     DraftGenerationRunner,
     ExportRunner,
     RevisionRunner,
     WhisperRunner,
 )
-from app.domain.entities.models import Artifact, DraftVersion, Feedback, Job, JobStep
-from app.domain.enums.feedback_type import FeedbackType
-from app.domain.enums.input_type import InputType
-from app.domain.enums.job_status import JobStatus
-from app.repositories.in_memory_repositories import (
+from src.domain.entities.models import Artifact, DraftVersion, Feedback, Job, JobStep
+from src.domain.enums.feedback_type import FeedbackType
+from src.domain.enums.input_type import InputType
+from src.domain.enums.job_status import JobStatus
+from src.repositories.in_memory_repositories import (
     InMemoryArtifactRepository,
     InMemoryDraftRepository,
     InMemoryFeedbackRepository,
     InMemoryJobRepository,
 )
-from app.services.workflow_loader_service import WorkflowLoaderService
+from src.services.workflow_loader_service import WorkflowLoaderService
 
 
 class MinutesWorkflowOrchestrator:

@@ -3,9 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from app.services.export_service import DocxExporter
-from app.services.minutes_generation_service import MinutesGenerationService
-from app.services.whisper_service import WhisperService
+from src.services.export_service import DocxExporter
+from src.services.minutes_generation_service import MinutesGenerationService
+from src.services.whisper_service import WhisperService
 
 
 class WhisperRunner:

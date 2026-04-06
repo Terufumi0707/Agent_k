@@ -3,8 +3,8 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from app.domain.enums.input_type import InputType
-from app.domain.enums.job_status import JobStatus
+from src.domain.enums.input_type import InputType
+from src.domain.enums.job_status import JobStatus
 
 
 class ErrorResponse(BaseModel):
