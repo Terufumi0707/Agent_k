@@ -1,19 +1,14 @@
 from pydantic import BaseModel, Field
 
-from src.domain.enums.input_type import InputType
+from src.domain.models import InputType
 
 
-class CreateJobRequest(BaseModel):
-    workflow_name: str = Field(default="meeting_minutes_generation")
+class StartJobRequest(BaseModel):
     input_type: InputType
     audio_path: str | None = None
-    transcript_text: str | None = None
+    transcript: str | None = None
 
 
-class FeedbackRequest(BaseModel):
-    target_version_no: int
-    feedback_text: str
-
-
-class ApproveRequest(BaseModel):
-    target_version_no: int
+class ReviewRequest(BaseModel):
+    selected_index: int = Field(ge=0)
+    instruction: str | None = None
