@@ -16,6 +16,8 @@ from src.services.workflow_loader import WorkflowLoader
 
 
 class WorkflowOrchestrator:
+    """議事録作成ワークフローの進行を管理するオーケストレーター。"""
+
     def __init__(
         self,
         store: InMemoryStore,
@@ -35,6 +37,7 @@ class WorkflowOrchestrator:
         self.artifacts_dir = artifacts_dir
 
     def start(self, input_type: InputType, transcript: str | None, audio_path: str | None) -> Job:
+        # ワークフロー定義と社内フォーマットを読み込み、各スキルに渡す共通コンテキストを組み立てる。
         workflow = self.loader.load_workflow()
         company_format = self.loader.load_company_format()
         context: dict = {
@@ -45,6 +48,7 @@ class WorkflowOrchestrator:
             "candidate_count": workflow.get("candidate_count", 3),
         }
 
+        # 入力種別に応じて実行対象ステップを絞り込みつつ、スキル実行結果を context に統合する。
         for step in workflow["steps"]:
             if step["id"] == "transcribe" and input_type != InputType.AUDIO:
                 continue
@@ -57,6 +61,7 @@ class WorkflowOrchestrator:
             elif step["id"] == "review":
                 break
 
+        # 初回作成時点ではレビュー待ち状態で Job を保存する。
         now = datetime.utcnow()
         job = Job(
             id=str(uuid.uuid4()),
@@ -70,9 +75,12 @@ class WorkflowOrchestrator:
         return self.store.save(job)
 
     def review(self, job_id: str, selected_index: int, instruction: str | None) -> Job:
+        # 対象 Job を取得し、存在しない場合は明示的にエラーとする。
         job = self.store.get(job_id)
         if not job:
             raise ValueError("job not found")
+
+        # 選択候補とユーザー指示をレビュー用スキルへ渡す。
         result = self.review_skill.run(
             {
                 "candidates": job.candidates,
@@ -81,11 +89,14 @@ class WorkflowOrchestrator:
             }
         )
         job.updated_at = datetime.utcnow()
+
+        # 未承認の場合は修正版候補を追加し、再レビュー可能な状態で保存する。
         if not result["approved"]:
             job.review_comments.append(instruction or "")
             job.candidates.append(result["revised_candidate"])
             return self.store.save(job)
 
+        # 承認済みの場合は最終版を Word 出力し、完了状態へ遷移する。
         job.selected_candidate = result["final_minutes"]
         export = self.export_skill.run(
             {
@@ -99,4 +110,5 @@ class WorkflowOrchestrator:
         return self.store.save(job)
 
     def get(self, job_id: str) -> Job | None:
+        # 読み取り専用の取得処理はストアへ委譲する。
         return self.store.get(job_id)
