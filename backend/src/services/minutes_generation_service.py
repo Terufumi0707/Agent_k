@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from app.infrastructure.llm.llm_client import LlmClient
+from src.infrastructure.llm.llm_client import LlmClient
 
 
 class MinutesGenerationService:

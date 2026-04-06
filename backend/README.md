@@ -29,7 +29,7 @@
 cd backend
 pip install -r requirements.txt
 export GEMINI_API_KEY="your-api-key"
-uvicorn app.main:app --reload --port 8000
+uvicorn src.main:app --reload --port 8000
 ```
 
 ## API

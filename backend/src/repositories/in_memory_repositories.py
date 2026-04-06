@@ -3,7 +3,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import datetime
 
-from app.domain.entities.models import Artifact, DraftVersion, Feedback, Job, JobStep
+from src.domain.entities.models import Artifact, DraftVersion, Feedback, Job, JobStep
 
 
 class InMemoryJobRepository:

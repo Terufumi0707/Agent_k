@@ -1,23 +1,23 @@
 from pathlib import Path
 
-from app.agents.runners.workflow_runners import (
+from src.agents.runners.workflow_runners import (
     DraftGenerationRunner,
     ExportRunner,
     RevisionRunner,
     WhisperRunner,
 )
-from app.infrastructure.llm.llm_client import LlmClient
-from app.orchestrators.minutes_workflow_orchestrator import MinutesWorkflowOrchestrator
-from app.repositories.in_memory_repositories import (
+from src.infrastructure.llm.llm_client import LlmClient
+from src.orchestrators.minutes_workflow_orchestrator import MinutesWorkflowOrchestrator
+from src.repositories.in_memory_repositories import (
     InMemoryArtifactRepository,
     InMemoryDraftRepository,
     InMemoryFeedbackRepository,
     InMemoryJobRepository,
 )
-from app.services.export_service import DocxExporter
-from app.services.minutes_generation_service import MinutesGenerationService
-from app.services.whisper_service import WhisperService
-from app.services.workflow_loader_service import WorkflowLoaderService
+from src.services.export_service import DocxExporter
+from src.services.minutes_generation_service import MinutesGenerationService
+from src.services.whisper_service import WhisperService
+from src.services.workflow_loader_service import WorkflowLoaderService
 
 
 class Container:

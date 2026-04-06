@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from app.domain.enums.input_type import InputType
+from src.domain.enums.input_type import InputType
 
 
 class CreateJobRequest(BaseModel):

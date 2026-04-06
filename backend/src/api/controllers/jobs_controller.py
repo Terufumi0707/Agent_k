@@ -1,8 +1,8 @@
 from fastapi import APIRouter, HTTPException
 
-from app.api.schemas.request.job_requests import ApproveRequest, CreateJobRequest, FeedbackRequest
-from app.api.schemas.response.job_responses import ArtifactResponse, CandidateResponse, JobResponse
-from app.config.container import Container
+from src.api.schemas.request.job_requests import ApproveRequest, CreateJobRequest, FeedbackRequest
+from src.api.schemas.response.job_responses import ArtifactResponse, CandidateResponse, JobResponse
+from src.config.container import Container
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
 container = Container()
