@@ -9,6 +9,8 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
+from src.infrastructure.llm.prompts import build_minutes_prompt
+
 
 @dataclass
 class GeminiConfig:
@@ -84,33 +86,12 @@ class LlmClient:
         feedback: str | None,
         base_draft: dict[str, Any] | None,
     ) -> str:
-        section_instructions = "\n".join(f"- {name}" for name in sections)
-        review_block = ""
-        if feedback:
-            review_block = f"\n修正指示: {feedback}\n"
-        if base_draft:
-            review_block += f"\n修正元ドラフト(JSON): {json.dumps(base_draft, ensure_ascii=False)}\n"
-
-        # ユーザー指定の固定プロンプトを先頭にそのまま配置
-        base_instruction = (
-            "あなたは優秀な戦略コンサルタントです。添付したのはとあるクライアントとの会議のスクリプトですが、議事メモを作成してください。\n"
-            "フォーマットは下記の通りでお願いします。 \n"
-            "◆TODO（敬称略） ・[to-do 1]（[担当者]、[締切日]〆） \n"
-            "◆決定事項 ・[決定事項]"
-        )
-
-        return (
-            f"{base_instruction}\n\n"
-            "出力要件:\n"
-            f"1) 候補を{num_candidates}件作成する\n"
-            "2) 必ずJSONのみを返す（説明文なし）\n"
-            "3) JSONスキーマ: {\"candidates\":[{\"content\":{\"<section>\":[\"...\"]}}]}\n"
-            "4) 各セクションは配列で返す\n"
-            "5) TODOセクションには可能な限り 担当/期限/内容 を含める\n"
-            "6) 下記セクションを必ず含める\n"
-            f"{section_instructions}\n"
-            f"{review_block}\n"
-            f"会議スクリプト:\n{transcript}"
+        return build_minutes_prompt(
+            transcript=transcript,
+            sections=sections,
+            num_candidates=num_candidates,
+            feedback=feedback,
+            base_draft=base_draft,
         )
 
     def _call_gemini(self, prompt: str) -> str:
