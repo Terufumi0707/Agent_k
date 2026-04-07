@@ -83,6 +83,7 @@ class WorkflowOrchestrator:
 
         # 初回作成時点ではレビュー待ち状態で Job を保存する。
         now = datetime.utcnow()
+        candidates = self._resolve_candidates(context)
         job = Job(
             id=str(uuid.uuid4()),
             input_type=input_type,
@@ -90,7 +91,7 @@ class WorkflowOrchestrator:
             created_at=now,
             updated_at=now,
             transcript=context["transcript"],
-            candidates=to_minute_candidates(context["candidates"]),
+            candidates=to_minute_candidates(candidates),
         )
         return self.store.save(job)
 
@@ -163,3 +164,24 @@ class WorkflowOrchestrator:
 
     def _handle_review_step(self, context: dict) -> bool:
         return False
+
+    def _resolve_candidates(self, context: dict) -> list[dict]:
+        raw_candidates = context.get("candidates")
+        if isinstance(raw_candidates, list) and raw_candidates:
+            return raw_candidates
+
+        transcript = (context.get("transcript") or "").strip()
+        sections = [
+            str(section.get("name"))
+            for section in context.get("company_format", {}).get("sections", [])
+            if isinstance(section, dict) and section.get("name")
+        ]
+        fallback = {
+            "会議概要": transcript[:120] if transcript else "議事録の要約を生成できませんでした。",
+            "議題": [],
+            "決定事項": [],
+            "ToDo": [],
+        }
+        for section in sections:
+            fallback.setdefault(section, "")
+        return [fallback]
