@@ -20,7 +20,7 @@ import { ref } from "vue";
 
 const textareaRef = ref(null);
 
-const emit = defineEmits(["update:inputText", "send", "resize"]);
+const emit = defineEmits(["update:input-text", "send", "resize"]);
 
 defineProps({
   inputText: {
@@ -42,7 +42,7 @@ defineProps({
 });
 
 const handleInput = (event) => {
-  emit("update:inputText", event.target.value);
+  emit("update:input-text", event.target.value);
   emit("resize", textareaRef.value);
 };
 
