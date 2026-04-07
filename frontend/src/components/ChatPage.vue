@@ -138,18 +138,9 @@ const applyUiJob = (job) => {
   appendProgressLog("レビュー待ち", "候補を確認してください。");
 };
 
-const syncJobState = async (jobId, fallbackJob = null) => {
-  try {
-    const latestJob = await getJob(jobId);
-    applyUiJob(latestJob);
-  } catch (error) {
-    if (fallbackJob) {
-      // TODO(phase1): ジョブ状態の再取得失敗時のリトライ戦略を service 層で統一する。
-      applyUiJob(fallbackJob);
-      return;
-    }
-    throw error;
-  }
+const syncJobState = async (jobId) => {
+  const latestJob = await getJob(jobId);
+  applyUiJob(latestJob);
 };
 
 const handleAudioChange = (event) => {
@@ -203,16 +194,16 @@ const sendMessage = async (promptText = "") => {
         : { input_type: "transcript", transcript: sourceText.value.trim() };
       const createdJob = await createJob(payload);
       currentJobId.value = createdJob.id;
-      await syncJobState(createdJob.id, createdJob);
+      await syncJobState(createdJob.id);
       sourceText.value = "";
     } else {
       appendProgressLog("レビュー送信", "レビュー指示を送信しています。");
       currentPhase.value = "レビュー内容を反映しています...";
-      const reviewedJob = await reviewJob(currentJobId.value, {
+      await reviewJob(currentJobId.value, {
         selected_index: selectedCandidateIndex.value,
         instruction
       });
-      await syncJobState(currentJobId.value, reviewedJob);
+      await syncJobState(currentJobId.value);
       inputText.value = "";
     }
   } catch (error) {
