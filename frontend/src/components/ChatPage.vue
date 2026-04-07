@@ -18,21 +18,9 @@
             <li>
               <button
                 type="button"
-                class="agent-menu-button"
-                :class="{ 'agent-menu-button-active': selectedAgent === 'minutes' }"
-                @click="selectedAgent = 'minutes'"
+                class="agent-menu-button agent-menu-button-active"
               >
                 議事録作成
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                class="agent-menu-button"
-                :class="{ 'agent-menu-button-active': selectedAgent === 'other' }"
-                @click="selectedAgent = 'other'"
-              >
-                その他（仮）
               </button>
             </li>
           </ul>
@@ -44,7 +32,7 @@
       <TopHeader />
 
       <main class="chat-main">
-        <section v-if="selectedAgent === 'minutes'" class="minutes-workspace">
+        <section class="minutes-workspace">
           <p class="minutes-guide-message">会議の音声ファイルまたはテキストを入力して、議事録を生成してください。</p>
           <div class="minutes-status">
             <span class="minutes-status-label">ステータス</span>
@@ -96,10 +84,7 @@
           </div>
         </section>
 
-        <div
-          v-if="selectedAgent === 'minutes' && (progressLogs.length || currentPhase || streamError || isSending)"
-          class="progress-panel"
-        >
+        <div v-if="progressLogs.length || currentPhase || streamError || isSending" class="progress-panel">
           <p class="progress-title">進捗</p>
           <p v-if="isSending && !currentPhase" class="progress-current">
             処理を開始しています...
@@ -114,14 +99,9 @@
           <p v-if="streamError" class="progress-error">{{ streamError }}</p>
         </div>
 
-        <section v-else class="under-construction-panel">
-          <p class="under-construction-title">その他（仮）</p>
-          <p class="under-construction-message">このページは作成中です。</p>
-        </section>
-
       </main>
 
-      <footer v-if="selectedAgent === 'minutes' && workflowStatus === STATUS.WAITING_FOR_REVIEW" class="chat-input-area">
+      <footer v-if="workflowStatus === STATUS.WAITING_FOR_REVIEW" class="chat-input-area">
         <label class="chat-input-label" for="minutes-instruction">修正指示を入力してください</label>
         <textarea
           id="minutes-instruction"
@@ -156,7 +136,6 @@ const currentPhase = ref("");
 const streamError = ref("");
 const sessionId = ref(null);
 const isSidebarCollapsed = ref(false);
-const selectedAgent = ref("minutes");
 const STATUS = {
   CREATED: "CREATED",
   DRAFTING: "DRAFTING",
