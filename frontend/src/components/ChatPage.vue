@@ -25,6 +25,16 @@
                 議事録作成
               </button>
             </li>
+            <li>
+              <button
+                type="button"
+                class="agent-menu-button"
+                :class="{ 'agent-menu-button-active': selectedAgent === 'other' }"
+                @click="selectedAgent = 'other'"
+              >
+                その他（仮）
+              </button>
+            </li>
           </ul>
         </section>
       </div>
@@ -34,7 +44,7 @@
       <TopHeader />
 
       <main class="chat-main">
-        <section class="minutes-workspace">
+        <section v-if="selectedAgent === 'minutes'" class="minutes-workspace">
           <p class="minutes-guide-message">会議の音声ファイルまたはテキストを入力して、議事録を生成してください。</p>
           <div class="minutes-status">
             <span class="minutes-status-label">ステータス</span>
@@ -87,7 +97,7 @@
         </section>
 
         <div
-          v-if="progressLogs.length || currentPhase || streamError || isSending"
+          v-if="selectedAgent === 'minutes' && (progressLogs.length || currentPhase || streamError || isSending)"
           class="progress-panel"
         >
           <p class="progress-title">進捗</p>
@@ -104,9 +114,14 @@
           <p v-if="streamError" class="progress-error">{{ streamError }}</p>
         </div>
 
+        <section v-else class="under-construction-panel">
+          <p class="under-construction-title">その他（仮）</p>
+          <p class="under-construction-message">このページは作成中です。</p>
+        </section>
+
       </main>
 
-      <footer v-if="workflowStatus === STATUS.WAITING_FOR_REVIEW" class="chat-input-area">
+      <footer v-if="selectedAgent === 'minutes' && workflowStatus === STATUS.WAITING_FOR_REVIEW" class="chat-input-area">
         <label class="chat-input-label" for="minutes-instruction">修正指示を入力してください</label>
         <textarea
           id="minutes-instruction"
