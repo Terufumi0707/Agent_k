@@ -141,10 +141,7 @@
 
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
 import TopHeader from "./TopHeader.vue";
-const router = useRouter();
-const route = useRoute();
 
 const inputText = ref("");
 const inputRef = ref(null);
@@ -158,11 +155,7 @@ const progressLogs = ref([]);
 const currentPhase = ref("");
 const streamError = ref("");
 const sessionId = ref(null);
-const ordersLoading = ref(false);
-const ordersError = ref("");
 const isSidebarCollapsed = ref(false);
-const activeOrderId = ref(null);
-const messageFetchRequestId = ref(0);
 const selectedAgent = ref("minutes");
 const STATUS = {
   CREATED: "CREATED",
@@ -184,11 +177,6 @@ const minuteCandidates = ref([
 
 const placeholderText =
   "指示してください";
-
-const requestsByMonth = ref({});
-const requestMonths = computed(() => Object.keys(requestsByMonth.value));
-const requestMonthCollapsed = ref({});
-const historySectionCollapsed = ref(true);
 
 const phaseLabels = {
   PHASE1_SESSION_READY: "1. 受付",
@@ -234,78 +222,10 @@ const generateMinutes = () => {
   const prompt = trimmedText || `音声ファイル: ${audioFileName.value}`;
   sendMessage(prompt);
 };
-const formatMonthLabel = (value) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "不明";
-  }
-  return `${date.getFullYear()}年${date.getMonth() + 1}月`;
-};
-
-const formatCreatedAt = (value) => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return "不明";
-  }
-
-  return new Intl.DateTimeFormat("ja-JP", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  }).format(date);
-};
-
-const buildRequestsByMonth = (orders) => {
-  const grouped = {};
-  for (const order of orders) {
-    const month = formatMonthLabel(order.updated_at);
-    if (!grouped[month]) {
-      grouped[month] = [];
-    }
-    grouped[month].push(order);
-  }
-  return grouped;
-};
-
-const isRequestMonthCollapsed = (month) => Boolean(requestMonthCollapsed.value[month]);
-
-const toggleRequestMonthSection = (month) => {
-  requestMonthCollapsed.value = {
-    ...requestMonthCollapsed.value,
-    [month]: !isRequestMonthCollapsed(month)
-  };
-};
-
 const resetProgressState = () => {
   progressLogs.value = [];
   currentPhase.value = "";
   streamError.value = "";
-};
-
-const openRequestExecution = async (request) => {
-  resetProgressState();
-  activeOrderId.value = request.id;
-  const nextQuery = { ...route.query, order_id: request.id };
-  if (request.session_id) {
-    nextQuery.session_id = request.session_id;
-  }
-  await router.push({ name: "chat", query: nextQuery });
-  await fetchOrderMessages(request.id);
-};
-
-const startNewRequest = async () => {
-  messageFetchRequestId.value += 1;
-  activeOrderId.value = null;
-  sessionId.value = null;
-  inputText.value = "";
-  resetProgressState();
-  messages.value = [{ role: "ai", text: greetingMessage, isGreeting: true }];
-
-  await router.push({ name: "chat", query: {} });
-  await nextTick();
-  resizeTextarea();
 };
 
 const backendBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL
@@ -318,13 +238,6 @@ const createEntryStreamUrl = backendBaseUrl
 const createEntryUrl = backendBaseUrl
   ? `${backendBaseUrl}/api/create_entry`
   : "/api/create_entry";
-const ordersUrl = backendBaseUrl
-  ? `${backendBaseUrl}/api/orders`
-  : "/api/orders";
-const orderMessagesBaseUrl = backendBaseUrl
-  ? `${backendBaseUrl}/api/v1/orders`
-  : "/api/v1/orders";
-
 const shouldRetryWithRelativeUrl = (error) => {
   if (!backendBaseUrl) {
     return false;
@@ -344,84 +257,6 @@ const fetchWithRelativeFallback = async (primaryUrl, relativeUrl, options) => {
   }
 };
 
-const fetchOrders = async () => {
-  ordersLoading.value = true;
-  ordersError.value = "";
-
-  try {
-    const response = await fetchWithRelativeFallback(ordersUrl, "/api/orders");
-    if (!response.ok) {
-      throw new Error(`オーダー一覧の取得に失敗しました (${response.status})`);
-    }
-
-    const orders = await response.json();
-    const monthly = buildRequestsByMonth(orders);
-    requestsByMonth.value = monthly;
-    const monthState = {};
-    requestMonths.value.forEach((month, index) => {
-      monthState[month] = index !== 0;
-    });
-    requestMonthCollapsed.value = monthState;
-    return orders;
-  } catch (error) {
-    console.error("orders request failed:", error);
-    ordersError.value = "オーダー一覧の取得に失敗しました。";
-    return [];
-  } finally {
-    ordersLoading.value = false;
-  }
-};
-
-const refreshOrdersAfterCompletion = async () => {
-  const latestOrders = await fetchOrders();
-  if (!sessionId.value || !Array.isArray(latestOrders) || latestOrders.length === 0) {
-    return;
-  }
-
-  const matchedOrder = latestOrders.find((order) => order.session_id === sessionId.value);
-  if (!matchedOrder) {
-    return;
-  }
-
-  activeOrderId.value = matchedOrder.id;
-};
-
-const mapHistoryMessage = (message) => {
-  if (message.role === "user") {
-    return { role: "user", text: message.content };
-  }
-  if (message.role === "system") {
-    const isGreeting = Boolean(message.metadata?.greeting);
-    return { role: "ai", text: message.content, isGreeting };
-  }
-  return { role: "ai", text: message.content };
-};
-
-const fetchOrderMessages = async (orderId) => {
-  const requestId = messageFetchRequestId.value + 1;
-  messageFetchRequestId.value = requestId;
-
-  try {
-    const response = await fetchWithRelativeFallback(
-      `${orderMessagesBaseUrl}/${orderId}/messages?limit=200&offset=0`,
-      `/api/v1/orders/${orderId}/messages?limit=200&offset=0`
-    );
-    if (!response.ok) {
-      throw new Error(`会話履歴の取得に失敗しました (${response.status})`);
-    }
-    const historyMessages = await response.json();
-    if (requestId !== messageFetchRequestId.value) {
-      return;
-    }
-    messages.value = historyMessages.map(mapHistoryMessage);
-  } catch (error) {
-    if (requestId !== messageFetchRequestId.value) {
-      return;
-    }
-    console.error("order messages request failed:", error);
-    messages.value = [{ role: "ai", text: "会話履歴の取得に失敗しました。" }];
-  }
-};
 
 const resizeTextarea = () => {
   const textarea = inputRef.value;
@@ -454,8 +289,6 @@ const sendMessage = async (promptText = "") => {
   isSending.value = true;
   await nextTick();
   resizeTextarea();
-
-  let shouldRefreshOrdersAfterCompletion = false;
 
   const handleSseEvent = (eventBlock) => {
     const lines = eventBlock.split(/\r?\n/);
@@ -500,7 +333,6 @@ const sendMessage = async (promptText = "") => {
       }
       workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
       currentPhase.value = "完了しました。";
-      shouldRefreshOrdersAfterCompletion = true;
     } else if (eventType === "error") {
       streamError.value = payload.error ?? "ストリーミングでエラーが発生しました。";
       messages.value.push({
@@ -531,7 +363,6 @@ const sendMessage = async (promptText = "") => {
     }
     workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
     currentPhase.value = "完了しました。";
-    await refreshOrdersAfterCompletion();
   };
 
   try {
@@ -575,9 +406,6 @@ const sendMessage = async (promptText = "") => {
         handleSseEvent(buffer.trim());
       }
 
-      if (shouldRefreshOrdersAfterCompletion) {
-        await refreshOrdersAfterCompletion();
-      }
     } catch (error) {
       console.error("create_entry stream request failed:", error);
       streamError.value = "ストリーミングの接続に失敗したため通常応答へフォールバックします。";
@@ -597,17 +425,6 @@ const sendMessage = async (promptText = "") => {
 
 onMounted(() => {
   resizeTextarea();
-  if (typeof route.query.order_id === "string") {
-    activeOrderId.value = route.query.order_id;
-  }
-  if (typeof route.query.session_id === "string") {
-    sessionId.value = route.query.session_id;
-  }
-  fetchOrders();
-  if (activeOrderId.value) {
-    resetProgressState();
-    fetchOrderMessages(activeOrderId.value);
-  }
 });
 
 watch(inputText, () => {
