@@ -18,10 +18,7 @@ from src.services.workflow_loader import WorkflowLoader
 class Container:
     def __init__(self) -> None:
         repo_root = Path(__file__).resolve().parents[3]
-        loader = WorkflowLoader(
-            workflow_path=repo_root / "workflows" / "meeting_minutes_workflow.yaml",
-            format_path=repo_root / "workflows" / "company_minutes_format.yaml",
-        )
+        loader = WorkflowLoader.from_default_paths()
         job_repository: JobRepository = InMemoryStore()
         self.orchestrator = WorkflowOrchestrator(
             store=job_repository,
