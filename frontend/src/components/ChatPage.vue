@@ -135,11 +135,14 @@ const progressLogs = ref([]);
 const currentPhase = ref("");
 const streamError = ref("");
 const sessionId = ref(null);
+const currentJobId = ref(null);
+const selectedCandidateIndex = ref(0);
 const isSidebarCollapsed = ref(false);
 const STATUS = {
   CREATED: "CREATED",
   DRAFTING: "DRAFTING",
-  WAITING_FOR_REVIEW: "WAITING_FOR_REVIEW"
+  WAITING_FOR_REVIEW: "WAITING_FOR_REVIEW",
+  COMPLETED: "COMPLETED"
 };
 const workflowStatus = ref(STATUS.CREATED);
 const adoptedMinutes = ref("");
@@ -178,11 +181,13 @@ const latestAiMessage = computed(() =>
 const displayedMinutes = computed(() => adoptedMinutes.value || latestAiMessage.value?.text || "議事録はまだ生成されていません。");
 
 const adoptCandidate = (candidate) => {
+  selectedCandidateIndex.value = candidate.index ?? 0;
   adoptedMinutes.value = candidate.text;
-  workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
+  sendMessage("approve");
 };
 
 const editCandidate = (candidate) => {
+  selectedCandidateIndex.value = candidate.index ?? 0;
   inputText.value = `以下の議事録を修正してください:\n${candidate.text}\n修正点: `;
   workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
   nextTick(() => {
@@ -217,6 +222,9 @@ const createEntryStreamUrl = backendBaseUrl
 const createEntryUrl = backendBaseUrl
   ? `${backendBaseUrl}/api/create_entry`
   : "/api/create_entry";
+const minutesJobsUrl = backendBaseUrl
+  ? `${backendBaseUrl}/minutes/jobs`
+  : "/minutes/jobs";
 const shouldRetryWithRelativeUrl = (error) => {
   if (!backendBaseUrl) {
     return false;
@@ -234,6 +242,99 @@ const fetchWithRelativeFallback = async (primaryUrl, relativeUrl, options) => {
     console.warn(`Primary API endpoint is unreachable. Falling back to ${relativeUrl}.`, error);
     return fetch(relativeUrl, options);
   }
+};
+
+const toMinutesJobUrl = (jobId) => `${minutesJobsUrl}/${jobId}`;
+const toMinutesReviewUrl = (jobId) => `${toMinutesJobUrl(jobId)}/review`;
+
+const stringifyCandidateValue = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => `- ${item}`).join("\n");
+  }
+  if (value && typeof value === "object") {
+    return JSON.stringify(value, null, 2);
+  }
+  return `${value ?? ""}`;
+};
+
+const formatCandidateText = (candidate) => Object.entries(candidate ?? {})
+  .map(([key, value]) => `${key}\n${stringifyCandidateValue(value)}`)
+  .join("\n\n")
+  .trim();
+
+const adaptJobToUiState = (job) => {
+  const candidates = (job?.candidates ?? []).map((candidate, index) => ({
+    id: index + 1,
+    index,
+    raw: candidate,
+    text: formatCandidateText(candidate)
+  }));
+  if (candidates.length) {
+    minuteCandidates.value = candidates;
+  }
+
+  if (job?.selected_candidate) {
+    adoptedMinutes.value = formatCandidateText(job.selected_candidate);
+  } else if (candidates.length) {
+    selectedCandidateIndex.value = candidates[0].index;
+    adoptedMinutes.value = candidates[0].text;
+  }
+
+  if (job?.status === STATUS.COMPLETED) {
+    workflowStatus.value = STATUS.COMPLETED;
+    currentPhase.value = "議事録が確定しました。";
+    return;
+  }
+
+  workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
+  currentPhase.value = "候補を確認し、採用または修正してください。";
+};
+
+const requestStartMinutesJob = async (userText) => {
+  const requestBody = audioFileName.value
+    ? { input_type: "audio", audio_path: audioFileName.value }
+    : { input_type: "transcript", transcript: userText };
+  const response = await fetchWithRelativeFallback(minutesJobsUrl, "/minutes/jobs", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(requestBody)
+  });
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  const job = await response.json();
+  currentJobId.value = job.id;
+  adaptJobToUiState(job);
+};
+
+const requestReviewMinutesJob = async (instruction) => {
+  if (!currentJobId.value) {
+    throw new Error("job id is missing");
+  }
+
+  const response = await fetchWithRelativeFallback(
+    toMinutesReviewUrl(currentJobId.value),
+    `/minutes/jobs/${currentJobId.value}/review`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        selected_index: selectedCandidateIndex.value,
+        instruction
+      })
+    }
+  );
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
+  }
+
+  const job = await response.json();
+  adaptJobToUiState(job);
 };
 
 
@@ -346,52 +447,60 @@ const sendMessage = async (promptText = "") => {
 
   try {
     try {
-      const response = await fetchWithRelativeFallback(createEntryStreamUrl, "/api/create_entry/stream", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ prompt: userText, session_id: sessionId.value })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
+      if (!currentJobId.value) {
+        await requestStartMinutesJob(userText);
+      } else {
+        await requestReviewMinutesJob(userText);
       }
+    } catch (minutesError) {
+      console.error("minutes API request failed, fallback to create_entry APIs:", minutesError);
+      try {
+        const response = await fetchWithRelativeFallback(createEntryStreamUrl, "/api/create_entry/stream", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({ prompt: userText, session_id: sessionId.value })
+        });
 
-      if (!response.body) {
-        throw new Error("ReadableStream is not supported in this environment.");
-      }
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder("utf-8");
-      let buffer = "";
-
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) {
-          break;
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
         }
-        buffer += decoder.decode(value, { stream: true });
-        const events = buffer.split(/\r?\n\r?\n/);
-        buffer = events.pop() ?? "";
-        for (const eventBlock of events) {
-          if (eventBlock.trim()) {
-            handleSseEvent(eventBlock.trim());
+
+        if (!response.body) {
+          throw new Error("ReadableStream is not supported in this environment.");
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) {
+            break;
+          }
+          buffer += decoder.decode(value, { stream: true });
+          const events = buffer.split(/\r?\n\r?\n/);
+          buffer = events.pop() ?? "";
+          for (const eventBlock of events) {
+            if (eventBlock.trim()) {
+              handleSseEvent(eventBlock.trim());
+            }
           }
         }
-      }
 
-      if (buffer.trim()) {
-        handleSseEvent(buffer.trim());
+        if (buffer.trim()) {
+          handleSseEvent(buffer.trim());
+        }
+      } catch (error) {
+        console.error("create_entry stream request failed:", error);
+        streamError.value = "ストリーミングの接続に失敗したため通常応答へフォールバックします。";
+        await requestCreateEntry();
       }
-
-    } catch (error) {
-      console.error("create_entry stream request failed:", error);
-      streamError.value = "ストリーミングの接続に失敗したため通常応答へフォールバックします。";
-      await requestCreateEntry();
     }
   } catch (error) {
-    console.error("create_entry request failed:", error);
+    console.error("request failed:", error);
     workflowStatus.value = STATUS.CREATED;
     messages.value.push({
       role: "ai",
