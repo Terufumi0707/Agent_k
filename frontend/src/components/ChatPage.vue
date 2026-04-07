@@ -12,52 +12,30 @@
       </div>
 
       <div v-if="!isSidebarCollapsed" class="sidebar-bottom">
-        <button type="button" class="new-request-button" @click="startNewRequest">
-          ＋ 新しい依頼へ
-        </button>
-
         <section class="sidebar-section">
-          <button type="button" class="section-toggle" @click="historySectionCollapsed = !historySectionCollapsed">
-            <span class="history-title">依頼一覧</span>
-            <span class="section-toggle-icon">{{ historySectionCollapsed ? "＋" : "－" }}</span>
-          </button>
-
-          <template v-if="!historySectionCollapsed">
-            <div
-              v-for="month in requestMonths"
-              :key="month"
-              class="order-group"
-            >
+          <p class="agent-menu-title">エージェント</p>
+          <ul class="agent-menu-list">
+            <li>
               <button
                 type="button"
-                class="order-group-toggle"
-                @click="toggleRequestMonthSection(month)"
+                class="agent-menu-button"
+                :class="{ 'agent-menu-button-active': selectedAgent === 'minutes' }"
+                @click="selectedAgent = 'minutes'"
               >
-                <span class="order-group-title">{{ month }}</span>
-                <span class="order-group-icon">{{ isRequestMonthCollapsed(month) ? "＋" : "－" }}</span>
+                議事録作成
               </button>
-
-              <template v-if="!isRequestMonthCollapsed(month)">
-                <ul class="history-list">
-                  <li
-                    v-for="request in requestsByMonth[month]"
-                    :key="request.id"
-                    class="order-item"
-                  >
-                    <button
-                      type="button"
-                      class="order-item-button"
-                      :class="{ 'order-item-button-active': activeOrderId === request.id }"
-                      @click="openRequestExecution(request)"
-                    >
-                      <p class="order-item-summary">{{ request.summary || "要約なし" }}</p>
-                      <p class="order-item-meta">作成日: {{ formatCreatedAt(request.created_at) }}</p>
-                    </button>
-                  </li>
-                </ul>
-              </template>
-            </div>
-          </template>
+            </li>
+            <li>
+              <button
+                type="button"
+                class="agent-menu-button"
+                :class="{ 'agent-menu-button-active': selectedAgent === 'other' }"
+                @click="selectedAgent = 'other'"
+              >
+                その他（仮）
+              </button>
+            </li>
+          </ul>
         </section>
       </div>
     </aside>
@@ -137,6 +115,7 @@ const ordersError = ref("");
 const isSidebarCollapsed = ref(false);
 const activeOrderId = ref(null);
 const messageFetchRequestId = ref(0);
+const selectedAgent = ref("minutes");
 
 const placeholderText =
   "指示してください";
