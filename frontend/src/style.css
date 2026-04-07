@@ -347,6 +347,130 @@ body {
   justify-content: flex-start;
 }
 
+.minutes-workspace {
+  margin-top: 28px;
+  padding: 18px;
+  border-radius: 14px;
+  border: 1px solid var(--border-soft);
+  background: linear-gradient(140deg, #ffffff 0%, #f7f9ff 100%);
+  box-shadow: 0 8px 24px rgba(12, 39, 244, 0.07);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.minutes-guide-message {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1b2f6a;
+}
+
+.minutes-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.minutes-status-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.status-chip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.status-chip-drafting {
+  background: #5f75c9;
+}
+
+.status-chip-review {
+  background: #2f7abf;
+}
+
+.status-chip-completed {
+  background: var(--success-accent);
+}
+
+.minutes-display-area {
+  border: 1px solid #d9e3ff;
+  border-radius: 10px;
+  background: #fff;
+  padding: 12px;
+}
+
+.minutes-display-title {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1b2f6a;
+}
+
+.minutes-display-text {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.7;
+  font-family: inherit;
+  color: var(--text-primary);
+}
+
+.minutes-candidates-title {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+  color: #1b2f6a;
+}
+
+.minutes-candidates-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.minutes-candidate-card {
+  border: 1px solid #d9e3ff;
+  border-radius: 10px;
+  background: #fff;
+  padding: 12px;
+}
+
+.minutes-candidate-text {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.minutes-candidate-actions {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.candidate-button {
+  border: 1px solid #b9c9f8;
+  border-radius: 8px;
+  padding: 6px 12px;
+  background: #f3f6ff;
+  color: #1d2f67;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.candidate-button-primary {
+  background: #2f54ec;
+  border-color: #2f54ec;
+  color: #fff;
+}
+
 .messages {
   margin-top: 40px;
   width: 100%;
@@ -468,15 +592,25 @@ body {
   right: 0;
   bottom: 0;
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 8px;
   padding: 16px 20px;
   border-top: 1px solid #cfdbfa;
   background: rgba(252, 253, 255, 0.98);
   backdrop-filter: blur(6px);
 }
 
+.chat-input-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1b2f6a;
+}
+
+.chat-input-area .chat-input {
+  width: 100%;
+}
+
 .chat-input {
-  flex: 1;
   border-radius: 12px;
   border: 1px solid #bfcef8;
   font-size: 16px;
@@ -498,6 +632,7 @@ body {
 }
 
 .send-button {
+  align-self: flex-end;
   min-width: 90px;
   height: 44px;
   border: none;
