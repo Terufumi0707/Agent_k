@@ -1,32 +1,6 @@
 <template>
   <div class="chat-page" :class="{ 'sidebar-collapsed': isSidebarCollapsed }">
-    <aside class="left-sidebar" :class="{ collapsed: isSidebarCollapsed }">
-      <div class="sidebar-top">
-        <button
-          type="button"
-          class="sidebar-toggle-button"
-          @click="isSidebarCollapsed = !isSidebarCollapsed"
-        >
-          {{ isSidebarCollapsed ? "＞" : "＜" }}
-        </button>
-      </div>
-
-      <div v-if="!isSidebarCollapsed" class="sidebar-bottom">
-        <section class="sidebar-section">
-          <p class="agent-menu-title">エージェント</p>
-          <ul class="agent-menu-list">
-            <li>
-              <button
-                type="button"
-                class="agent-menu-button agent-menu-button-active"
-              >
-                議事録作成
-              </button>
-            </li>
-          </ul>
-        </section>
-      </div>
-    </aside>
+    <AgentSidebar :collapsed="isSidebarCollapsed" @toggle="isSidebarCollapsed = !isSidebarCollapsed" />
 
     <div class="chat-content">
       <TopHeader />
@@ -39,102 +13,72 @@
             <span class="status-chip" :class="`status-chip-${workflowStatus.toLowerCase()}`">{{ workflowStatus }}</span>
           </div>
 
-          <div v-if="workflowStatus === STATUS.CREATED" class="minutes-source-input">
-            <label class="minutes-input-label" for="minutes-source-text">テキスト入力</label>
-            <textarea
-              id="minutes-source-text"
-              v-model="sourceText"
-              class="chat-input chat-input-textarea"
-              placeholder="会議メモや文字起こしを入力してください"
-              rows="4"
-            ></textarea>
-            <label class="minutes-input-label" for="minutes-audio-file">音声アップロード</label>
-            <input id="minutes-audio-file" type="file" accept="audio/*" class="minutes-audio-input" @change="handleAudioChange" />
-            <p v-if="audioFileName" class="minutes-audio-filename">{{ audioFileName }}</p>
-            <button type="button" class="send-button minutes-generate-button" :disabled="!canGenerate || isSending" @click="generateMinutes">
-              議事録を生成する
-            </button>
-          </div>
+          <MinutesInputPanel
+            v-if="workflowStatus === STATUS.CREATED"
+            :source-text="sourceText"
+            :audio-file-name="audioFileName"
+            :can-generate="canGenerate"
+            :is-sending="isSending"
+            @update:source-text="sourceText = $event"
+            @audio-change="handleAudioChange"
+            @generate="generateMinutes"
+          />
 
           <div v-else-if="workflowStatus === STATUS.DRAFTING" class="minutes-loading">
             <p class="minutes-loading-text">議事録を作成中です...</p>
           </div>
 
-          <div v-else class="minutes-review-block">
-            <div class="minutes-display-area">
-              <p class="minutes-display-title">議事録</p>
-              <pre class="minutes-display-text">{{ displayedMinutes }}</pre>
-            </div>
-            <div class="minutes-candidates">
-            <p class="minutes-candidates-title">議事録候補</p>
-            <ul class="minutes-candidates-list">
-              <li v-for="candidate in minuteCandidates" :key="candidate.id" class="minutes-candidate-card">
-                <p class="minutes-candidate-text">{{ candidate.text }}</p>
-                <div class="minutes-candidate-actions">
-                  <button type="button" class="candidate-button candidate-button-primary" @click="adoptCandidate(candidate)">
-                    採用
-                  </button>
-                  <button type="button" class="candidate-button" @click="editCandidate(candidate)">
-                    修正
-                  </button>
-                </div>
-              </li>
-            </ul>
-          </div>
-          </div>
+          <MinutesCandidatesPanel
+            v-else
+            :displayed-minutes="displayedMinutes"
+            :minute-candidates="minuteCandidates"
+            @adopt="adoptCandidate"
+            @edit="editCandidate"
+          />
         </section>
 
-        <div v-if="progressLogs.length || currentPhase || streamError || isSending" class="progress-panel">
-          <p class="progress-title">進捗</p>
-          <p v-if="isSending && !currentPhase" class="progress-current">
-            処理を開始しています...
-          </p>
-          <p v-if="currentPhase" class="progress-current">{{ currentPhase }}</p>
-          <ul v-if="progressLogs.length" class="progress-list">
-            <li v-for="(log, index) in progressLogs" :key="index">
-              <span class="progress-phase">{{ log.phaseLabel }}</span>
-              <span class="progress-detail">{{ log.detail }}</span>
-            </li>
-          </ul>
-          <p v-if="streamError" class="progress-error">{{ streamError }}</p>
-        </div>
-
+        <ProgressPanel
+          v-if="progressLogs.length || currentPhase || streamError || isSending"
+          :progress-logs="progressLogs"
+          :current-phase="currentPhase"
+          :stream-error="streamError"
+          :is-sending="isSending"
+        />
       </main>
 
-      <footer v-if="workflowStatus === STATUS.WAITING_FOR_REVIEW" class="chat-input-area">
-        <label class="chat-input-label" for="minutes-instruction">修正指示を入力してください</label>
-        <textarea
-          id="minutes-instruction"
-          ref="inputRef"
-          v-model="inputText"
-          class="chat-input chat-input-textarea"
-          :placeholder="placeholderText"
-          rows="3"
-          @input="handleInput"
-          @keydown.enter.exact.prevent="sendMessage"
-        ></textarea>
-        <button class="send-button" :disabled="!canSend || isSending" @click="sendMessage">送信</button>
-      </footer>
+      <MinutesReviewFooter
+        v-if="workflowStatus === STATUS.WAITING_FOR_REVIEW"
+        ref="reviewFooterRef"
+        :input-text="inputText"
+        :placeholder-text="placeholderText"
+        :can-send="canSend"
+        :is-sending="isSending"
+        @update:input-text="inputText = $event"
+        @resize="resizeTextarea"
+        @send="sendMessage"
+      />
     </div>
   </div>
 </template>
 
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from "vue";
+import AgentSidebar from "./AgentSidebar.vue";
+import MinutesCandidatesPanel from "./MinutesCandidatesPanel.vue";
+import MinutesInputPanel from "./MinutesInputPanel.vue";
+import MinutesReviewFooter from "./MinutesReviewFooter.vue";
+import ProgressPanel from "./ProgressPanel.vue";
 import TopHeader from "./TopHeader.vue";
+import { createJob, getJob, normalizeJobForUi, reviewJob } from "../services/minutesClient";
 
+const reviewFooterRef = ref(null);
 const inputText = ref("");
-const inputRef = ref(null);
 const sourceText = ref("");
 const audioFileName = ref("");
-const greetingMessage = `日程変更依頼のメール、もしくは変更対象の確認したいオーダーをN番号かWebエントリIDで教えてください。`;
-
-const messages = ref([{ role: "ai", text: greetingMessage, isGreeting: true }]);
 const isSending = ref(false);
 const progressLogs = ref([]);
 const currentPhase = ref("");
 const streamError = ref("");
-const sessionId = ref(null);
 const currentJobId = ref(null);
 const selectedCandidateIndex = ref(0);
 const isSidebarCollapsed = ref(false);
@@ -146,39 +90,76 @@ const STATUS = {
 };
 const workflowStatus = ref(STATUS.CREATED);
 const adoptedMinutes = ref("");
-const minuteCandidates = ref([
-  {
-    id: 1,
-    text: "候補A: プロジェクト進捗を共有し、来週までに課題一覧を更新することを決定。"
-  },
-  {
-    id: 2,
-    text: "候補B: 仕様確認を実施し、次回会議で見積の再提示を行う方針で合意。"
-  }
-]);
-
-const placeholderText =
-  "指示してください";
-
-const phaseLabels = {
-  PHASE1_SESSION_READY: "1. 受付",
-  PHASE2_INTENT_CLASSIFY: "2. ご要望の理解",
-  PHASE0_EXTRACT: "3. 情報整理",
-  PHASE0_JUDGE: "4. 内容確認",
-  PHASE0_FORMAT: "5. 文面作成",
-  PHASE1_SAVE: "6. 保存",
-  PHASE3_CHANGE_PREVIEW: "3. 変更プレビュー作成",
-  PHASE_QUERY_STATUS: "3. オーダー照会"
-};
-
-const getPhaseLabel = (phase) => phaseLabels[phase] ?? "処理中";
+const minuteCandidates = ref([]);
+const placeholderText = "指示してください";
 
 const canSend = computed(() => inputText.value.trim().length > 0);
 const canGenerate = computed(() => sourceText.value.trim().length > 0 || Boolean(audioFileName.value));
-const latestAiMessage = computed(() =>
-  [...messages.value].reverse().find((message) => message.role === "ai" && !message.isGreeting)
-);
-const displayedMinutes = computed(() => adoptedMinutes.value || latestAiMessage.value?.text || "議事録はまだ生成されていません。");
+const displayedMinutes = computed(() => adoptedMinutes.value || minuteCandidates.value[0]?.text || "議事録はまだ生成されていません。");
+
+const resetProgressState = () => {
+  progressLogs.value = [];
+  currentPhase.value = "";
+  streamError.value = "";
+};
+
+const appendProgressLog = (phaseLabel, detail = "") => {
+  progressLogs.value.push({ phaseLabel, detail });
+};
+
+const resizeTextarea = (textareaEl) => {
+  const textarea = textareaEl ?? reviewFooterRef.value?.textareaRef?.value ?? reviewFooterRef.value?.textareaRef;
+  if (!textarea) {
+    return;
+  }
+
+  const maxHeight = 200;
+  textarea.style.height = "auto";
+  const nextHeight = Math.min(textarea.scrollHeight, maxHeight);
+  textarea.style.height = `${nextHeight}px`;
+  textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+};
+
+const applyUiJob = (job) => {
+  const uiJob = normalizeJobForUi(job);
+  minuteCandidates.value = uiJob.candidates;
+  selectedCandidateIndex.value = uiJob.selectedIndex;
+  adoptedMinutes.value = uiJob.selectedCandidateText;
+
+  if (uiJob.status === STATUS.COMPLETED) {
+    workflowStatus.value = STATUS.COMPLETED;
+    currentPhase.value = "議事録が確定しました。";
+    appendProgressLog("完了", "議事録のレビューが完了しました。");
+    return;
+  }
+
+  workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
+  currentPhase.value = "候補を確認し、採用または修正してください。";
+  appendProgressLog("レビュー待ち", "候補を確認してください。");
+};
+
+const syncJobState = async (jobId, fallbackJob = null) => {
+  try {
+    const latestJob = await getJob(jobId);
+    applyUiJob(latestJob);
+  } catch (error) {
+    if (fallbackJob) {
+      // TODO(phase1): ジョブ状態の再取得失敗時のリトライ戦略を service 層で統一する。
+      applyUiJob(fallbackJob);
+      return;
+    }
+    throw error;
+  }
+};
+
+const handleAudioChange = (event) => {
+  const file = event.target.files?.[0];
+  audioFileName.value = file ? file.name : "";
+};
+
+const generateMinutes = () => {
+  sendMessage();
+};
 
 const adoptCandidate = (candidate) => {
   selectedCandidateIndex.value = candidate.index ?? 0;
@@ -192,323 +173,60 @@ const editCandidate = (candidate) => {
   workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
   nextTick(() => {
     resizeTextarea();
-    inputRef.value?.focus();
+    (reviewFooterRef.value?.textareaRef?.value ?? reviewFooterRef.value?.textareaRef)?.focus();
   });
-};
-
-const handleAudioChange = (event) => {
-  const file = event.target.files?.[0];
-  audioFileName.value = file ? file.name : "";
-};
-
-const generateMinutes = () => {
-  const trimmedText = sourceText.value.trim();
-  const prompt = trimmedText || `音声ファイル: ${audioFileName.value}`;
-  sendMessage(prompt);
-};
-const resetProgressState = () => {
-  progressLogs.value = [];
-  currentPhase.value = "";
-  streamError.value = "";
-};
-
-const backendBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL
-  ? import.meta.env.VITE_BACKEND_BASE_URL.replace(/\/$/, "")
-  : "";
-
-const createEntryStreamUrl = backendBaseUrl
-  ? `${backendBaseUrl}/api/create_entry/stream`
-  : "/api/create_entry/stream";
-const createEntryUrl = backendBaseUrl
-  ? `${backendBaseUrl}/api/create_entry`
-  : "/api/create_entry";
-const minutesJobsUrl = backendBaseUrl
-  ? `${backendBaseUrl}/minutes/jobs`
-  : "/minutes/jobs";
-const shouldRetryWithRelativeUrl = (error) => {
-  if (!backendBaseUrl) {
-    return false;
-  }
-  return error instanceof TypeError;
-};
-
-const fetchWithRelativeFallback = async (primaryUrl, relativeUrl, options) => {
-  try {
-    return await fetch(primaryUrl, options);
-  } catch (error) {
-    if (!shouldRetryWithRelativeUrl(error)) {
-      throw error;
-    }
-    console.warn(`Primary API endpoint is unreachable. Falling back to ${relativeUrl}.`, error);
-    return fetch(relativeUrl, options);
-  }
-};
-
-const toMinutesJobUrl = (jobId) => `${minutesJobsUrl}/${jobId}`;
-const toMinutesReviewUrl = (jobId) => `${toMinutesJobUrl(jobId)}/review`;
-
-const stringifyCandidateValue = (value) => {
-  if (Array.isArray(value)) {
-    return value.map((item) => `- ${item}`).join("\n");
-  }
-  if (value && typeof value === "object") {
-    return JSON.stringify(value, null, 2);
-  }
-  return `${value ?? ""}`;
-};
-
-const formatCandidateText = (candidate) => Object.entries(candidate ?? {})
-  .map(([key, value]) => `${key}\n${stringifyCandidateValue(value)}`)
-  .join("\n\n")
-  .trim();
-
-const adaptJobToUiState = (job) => {
-  const candidates = (job?.candidates ?? []).map((candidate, index) => ({
-    id: index + 1,
-    index,
-    raw: candidate,
-    text: formatCandidateText(candidate)
-  }));
-  if (candidates.length) {
-    minuteCandidates.value = candidates;
-  }
-
-  if (job?.selected_candidate) {
-    adoptedMinutes.value = formatCandidateText(job.selected_candidate);
-  } else if (candidates.length) {
-    selectedCandidateIndex.value = candidates[0].index;
-    adoptedMinutes.value = candidates[0].text;
-  }
-
-  if (job?.status === STATUS.COMPLETED) {
-    workflowStatus.value = STATUS.COMPLETED;
-    currentPhase.value = "議事録が確定しました。";
-    return;
-  }
-
-  workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
-  currentPhase.value = "候補を確認し、採用または修正してください。";
-};
-
-const requestStartMinutesJob = async (userText) => {
-  const requestBody = audioFileName.value
-    ? { input_type: "audio", audio_path: audioFileName.value }
-    : { input_type: "transcript", transcript: userText };
-  const response = await fetchWithRelativeFallback(minutesJobsUrl, "/minutes/jobs", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(requestBody)
-  });
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-
-  const job = await response.json();
-  currentJobId.value = job.id;
-  adaptJobToUiState(job);
-};
-
-const requestReviewMinutesJob = async (instruction) => {
-  if (!currentJobId.value) {
-    throw new Error("job id is missing");
-  }
-
-  const response = await fetchWithRelativeFallback(
-    toMinutesReviewUrl(currentJobId.value),
-    `/minutes/jobs/${currentJobId.value}/review`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        selected_index: selectedCandidateIndex.value,
-        instruction
-      })
-    }
-  );
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-
-  const job = await response.json();
-  adaptJobToUiState(job);
-};
-
-
-const resizeTextarea = () => {
-  const textarea = inputRef.value;
-  if (!textarea) {
-    return;
-  }
-
-  const maxHeight = 200;
-  textarea.style.height = "auto";
-  const nextHeight = Math.min(textarea.scrollHeight, maxHeight);
-  textarea.style.height = `${nextHeight}px`;
-  textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
-};
-
-const handleInput = () => {
-  resizeTextarea();
 };
 
 const sendMessage = async (promptText = "") => {
-  const userText = (promptText || inputText.value).trim();
-  if (!userText || isSending.value) {
+  if (isSending.value) {
+    return;
+  }
+
+  const instruction = (promptText || inputText.value).trim();
+  if (currentJobId.value && !instruction) {
+    return;
+  }
+  if (!currentJobId.value && !canGenerate.value) {
     return;
   }
 
   resetProgressState();
-
-  messages.value.push({ role: "user", text: userText });
   workflowStatus.value = STATUS.DRAFTING;
-  inputText.value = "";
   isSending.value = true;
-  await nextTick();
-  resizeTextarea();
-
-  const handleSseEvent = (eventBlock) => {
-    const lines = eventBlock.split(/\r?\n/);
-    let eventType = "message";
-    let dataPayload = null;
-
-    for (const line of lines) {
-      if (line.startsWith("event:")) {
-        eventType = line.replace("event:", "").trim();
-      } else if (line.startsWith("data:")) {
-        dataPayload = line.replace("data:", "").trim();
-      }
-    }
-
-    if (!dataPayload) {
-      return;
-    }
-
-    let payload = null;
-    try {
-      payload = JSON.parse(dataPayload);
-    } catch (error) {
-      console.error("SSE payload parse failed:", error);
-      return;
-    }
-
-    if (eventType === "phase") {
-      const phase = payload.phase ?? "";
-      const detail = payload.detail ?? "";
-      const phaseLabel = getPhaseLabel(phase);
-      currentPhase.value = detail ? `${phaseLabel}: ${detail}` : phaseLabel;
-      progressLogs.value.push({
-        phase,
-        phaseLabel,
-        detail
-      });
-    } else if (eventType === "done") {
-      sessionId.value = payload.session_id ?? sessionId.value;
-      messages.value.push({ role: "ai", text: payload.message ?? "" });
-      if (payload.message) {
-        adoptedMinutes.value = payload.message;
-      }
-      workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
-      currentPhase.value = "完了しました。";
-    } else if (eventType === "error") {
-      streamError.value = payload.error ?? "ストリーミングでエラーが発生しました。";
-      messages.value.push({
-        role: "ai",
-        text: "エラーが発生しました。時間をおいて再度お試しください。"
-      });
-    }
-  };
-
-  const requestCreateEntry = async () => {
-    const response = await fetchWithRelativeFallback(createEntryUrl, "/api/create_entry", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({ prompt: userText, session_id: sessionId.value })
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    sessionId.value = data.session_id ?? sessionId.value;
-    messages.value.push({ role: "ai", text: data.result ?? "" });
-    if (data.result) {
-      adoptedMinutes.value = data.result;
-    }
-    workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
-    currentPhase.value = "完了しました。";
-  };
 
   try {
-    try {
-      if (!currentJobId.value) {
-        await requestStartMinutesJob(userText);
-      } else {
-        await requestReviewMinutesJob(userText);
-      }
-    } catch (minutesError) {
-      console.error("minutes API request failed, fallback to create_entry APIs:", minutesError);
-      try {
-        const response = await fetchWithRelativeFallback(createEntryStreamUrl, "/api/create_entry/stream", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({ prompt: userText, session_id: sessionId.value })
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        if (!response.body) {
-          throw new Error("ReadableStream is not supported in this environment.");
-        }
-
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder("utf-8");
-        let buffer = "";
-
-        while (true) {
-          const { value, done } = await reader.read();
-          if (done) {
-            break;
-          }
-          buffer += decoder.decode(value, { stream: true });
-          const events = buffer.split(/\r?\n\r?\n/);
-          buffer = events.pop() ?? "";
-          for (const eventBlock of events) {
-            if (eventBlock.trim()) {
-              handleSseEvent(eventBlock.trim());
-            }
-          }
-        }
-
-        if (buffer.trim()) {
-          handleSseEvent(buffer.trim());
-        }
-      } catch (error) {
-        console.error("create_entry stream request failed:", error);
-        streamError.value = "ストリーミングの接続に失敗したため通常応答へフォールバックします。";
-        await requestCreateEntry();
-      }
+    if (!currentJobId.value) {
+      appendProgressLog("ジョブ作成", "議事録作成ジョブを開始します。");
+      currentPhase.value = "議事録ジョブを作成しています...";
+      const payload = audioFileName.value
+        ? { input_type: "audio", audio_path: audioFileName.value }
+        : { input_type: "transcript", transcript: sourceText.value.trim() };
+      const createdJob = await createJob(payload);
+      currentJobId.value = createdJob.id;
+      await syncJobState(createdJob.id, createdJob);
+      sourceText.value = "";
+    } else {
+      appendProgressLog("レビュー送信", "レビュー指示を送信しています。");
+      currentPhase.value = "レビュー内容を反映しています...";
+      const reviewedJob = await reviewJob(currentJobId.value, {
+        selected_index: selectedCandidateIndex.value,
+        instruction
+      });
+      await syncJobState(currentJobId.value, reviewedJob);
+      inputText.value = "";
     }
   } catch (error) {
-    console.error("request failed:", error);
-    workflowStatus.value = STATUS.CREATED;
-    messages.value.push({
-      role: "ai",
-      text: "エラーが発生しました。時間をおいて再度お試しください。"
-    });
-  }
+    console.error("minutes request failed:", error);
+    streamError.value = "議事録 API の呼び出しに失敗しました。時間をおいて再度お試しください。";
+    currentPhase.value = "エラー";
+    workflowStatus.value = currentJobId.value ? STATUS.WAITING_FOR_REVIEW : STATUS.CREATED;
 
-  isSending.value = false;
+    // NOTE(phase0): 旧 create_entry API へのフォールバックは minutes API 契約に集中するため一時的に無効化。
+  } finally {
+    isSending.value = false;
+    await nextTick();
+    resizeTextarea();
+  }
 };
 
 onMounted(() => {
