@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from src.domain.models import InputType
+from src.domain.models import InputType, ReviewAction
 
 
 class StartJobRequest(BaseModel):
@@ -11,4 +11,5 @@ class StartJobRequest(BaseModel):
 
 class ReviewRequest(BaseModel):
     selected_index: int = Field(ge=0)
+    action: ReviewAction
     instruction: str | None = None

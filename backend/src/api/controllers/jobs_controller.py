@@ -27,7 +27,9 @@ def start_job(req: StartJobRequest) -> JobResponse:
 @router.post("/jobs/{job_id}/review", response_model=JobResponse)
 def review_job(job_id: str, req: ReviewRequest) -> JobResponse:
     try:
-        job = container.orchestrator.review(job_id, req.selected_index, req.instruction)
+        if req.action.value == "revise" and not (req.instruction or "").strip():
+            raise ValueError("instruction is required when action is revise")
+        job = container.orchestrator.review(job_id, req.selected_index, req.action, req.instruction)
         return JobResponse.from_domain(job)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

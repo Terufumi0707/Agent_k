@@ -10,6 +10,7 @@ from src.domain.models import (
     Job,
     JobStatus,
     MinuteCandidate,
+    ReviewAction,
     minute_candidates_to_dicts,
     to_minute_candidates,
 )
@@ -93,25 +94,33 @@ class WorkflowOrchestrator:
         )
         return self.store.save(job)
 
-    def review(self, job_id: str, selected_index: int, instruction: str | None) -> Job:
+    def review(
+        self, job_id: str, selected_index: int, action: ReviewAction, instruction: str | None
+    ) -> Job:
         # 対象 Job を取得し、存在しない場合は明示的にエラーとする。
         job = self.store.get(job_id)
         if not job:
             raise ValueError("job not found")
+        if selected_index < 0 or selected_index >= len(job.candidates):
+            raise ValueError("selected_index is out of range")
+        normalized_instruction = (instruction or "").strip()
+        if action == ReviewAction.REVISE and not normalized_instruction:
+            raise ValueError("instruction is required when action is revise")
 
         # 選択候補とユーザー指示をレビュー用スキルへ渡す。
         result = self.review_skill.run(
             {
                 "candidates": minute_candidates_to_dicts(job.candidates),
                 "selected_index": selected_index,
-                "instruction": instruction,
+                "action": action.value,
+                "instruction": normalized_instruction or None,
             }
         )
         job.updated_at = datetime.utcnow()
 
         # 未承認の場合は修正版候補を追加し、再レビュー可能な状態で保存する。
-        if not result["approved"]:
-            job.review_comments.append(instruction or "")
+        if action == ReviewAction.REVISE:
+            job.review_comments.append(normalized_instruction)
             job.candidates.append(MinuteCandidate.from_dict(result["revised_candidate"]))
             return self.store.save(job)
 
