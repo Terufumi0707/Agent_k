@@ -6,36 +6,22 @@
       <TopHeader />
 
       <main class="chat-main">
-        <section class="minutes-workspace">
-          <p class="minutes-guide-message">会議の音声ファイルまたはテキストを入力して、議事録を生成してください。</p>
-          <div class="minutes-status">
-            <span class="minutes-status-label">ステータス</span>
-            <span class="status-chip" :class="`status-chip-${workflowStatus.toLowerCase()}`">{{ workflowStatus }}</span>
-          </div>
-
-          <MinutesInputPanel
-            v-if="workflowStatus === STATUS.CREATED"
-            :source-text="sourceText"
-            :audio-file-name="audioFileName"
-            :can-generate="canGenerate"
-            :is-sending="isSending"
-            @update:source-text="sourceText = $event"
-            @audio-change="handleAudioChange"
-            @generate="generateMinutes"
-          />
-
-          <div v-else-if="workflowStatus === STATUS.DRAFTING" class="minutes-loading">
-            <p class="minutes-loading-text">議事録を作成中です...</p>
-          </div>
-
-          <MinutesCandidatesPanel
-            v-else
-            :displayed-minutes="displayedMinutes"
-            :minute-candidates="minuteCandidates"
-            @adopt="adoptCandidate"
-            @edit="editCandidate"
-          />
-        </section>
+        <MinutesWorkflowPanel
+          :workflow-status="workflowStatus"
+          :status-created="STATUS.CREATED"
+          :status-drafting="STATUS.DRAFTING"
+          :source-text="sourceText"
+          :audio-file-name="audioFileName"
+          :can-generate="canGenerate"
+          :is-sending="isSending"
+          :displayed-minutes="displayedMinutes"
+          :minute-candidates="minuteCandidates"
+          @update:source-text="sourceText = $event"
+          @audio-change="handleAudioChange"
+          @generate="generateMinutes"
+          @adopt="adoptCandidate"
+          @edit="editCandidate"
+        />
 
         <ProgressPanel
           v-if="progressLogs.length || currentPhase || streamError || isSending"
@@ -64,9 +50,8 @@
 <script setup>
 import { computed, nextTick, onMounted, ref, watch } from "vue";
 import AgentSidebar from "./AgentSidebar.vue";
-import MinutesCandidatesPanel from "./MinutesCandidatesPanel.vue";
-import MinutesInputPanel from "./MinutesInputPanel.vue";
 import MinutesReviewFooter from "./MinutesReviewFooter.vue";
+import MinutesWorkflowPanel from "./MinutesWorkflowPanel.vue";
 import ProgressPanel from "./ProgressPanel.vue";
 import TopHeader from "./TopHeader.vue";
 import { createJob, getJob, JOB_STATUS, normalizeJobForUi, reviewJob } from "../services/minutesClient";
