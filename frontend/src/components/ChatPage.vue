@@ -60,11 +60,9 @@ const loading = ref(false);
 const error = ref("");
 const result = ref(null);
 
-const backendBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL
-  ? import.meta.env.VITE_BACKEND_BASE_URL.replace(/\/$/, "")
-  : "";
+const apiBasePath = (import.meta.env.VITE_API_BASE_PATH || "/api").replace(/\/$/, "");
 
-const endpoint = backendBaseUrl ? `${backendBaseUrl}/api/proposal/create` : "/api/proposal/create";
+const endpoint = `${apiBasePath}/minutes/jobs`;
 
 const submitProposal = async () => {
   loading.value = true;
@@ -76,7 +74,19 @@ const submitProposal = async () => {
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(form)
+      body: JSON.stringify({
+        input_type: "transcript",
+        transcript: [
+          form.theme,
+          form.target_company,
+          form.background,
+          form.issues,
+          form.goal,
+          form.additional_requirements
+        ]
+          .filter(Boolean)
+          .join("\n")
+      })
     });
 
     if (!response.ok) {
