@@ -12,7 +12,7 @@ class MinutesReviewSkill:
         action = (payload.get("action") or "").strip().lower()
         base = candidates[selected_index]
         if not action:
-            action = "approve" if instruction.lower() == "approve" or not instruction else "revise"
+            raise ValueError("action is required")
         if action == "revise":
             if not instruction:
                 raise ValueError("instruction is required when action is revise")
