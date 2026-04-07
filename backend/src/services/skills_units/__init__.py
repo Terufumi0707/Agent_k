@@ -1,6 +1,3 @@
-from __future__ import annotations
-
-# 既存 import 経路を維持する facade。
 from src.services.skills_units.draft import MinutesDraftSkill
 from src.services.skills_units.export_word import MinutesExportWordSkill
 from src.services.skills_units.review import MinutesReviewSkill
