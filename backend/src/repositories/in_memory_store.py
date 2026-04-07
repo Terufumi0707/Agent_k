@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 from src.domain.models import Job
+from src.repositories.job_repository import JobRepository
 
 
-class InMemoryStore:
+class InMemoryStore(JobRepository):
     def __init__(self) -> None:
         self.jobs: dict[str, Job] = {}
 
