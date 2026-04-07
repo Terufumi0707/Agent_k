@@ -27,12 +27,20 @@ class LlmClient:
         return parsed if isinstance(parsed, dict) else None
 
     def generate_text(self, prompt: str, response_mime_type: str = "text/plain") -> str | None:
-        if not prompt.strip() or not self.api_key:
+        if not prompt.strip():
+            print("[llm] skip request reason=empty_prompt", flush=True)
+            return None
+        if not self.api_key:
+            print("[llm] skip request reason=missing_gemini_api_key", flush=True)
             return None
 
         endpoint = (
             "https://generativelanguage.googleapis.com/v1beta/models/"
             f"{self.model}:generateContent?key={self.api_key}"
+        )
+        print(
+            f"[llm] request start model={self.model} mime={response_mime_type} timeout={self.timeout}",
+            flush=True,
         )
         payload: dict[str, Any] = {
             "contents": [
@@ -57,10 +65,15 @@ class LlmClient:
         try:
             with request.urlopen(req, timeout=self.timeout) as res:
                 body = json.loads(res.read().decode("utf-8"))
-        except (error.URLError, TimeoutError, json.JSONDecodeError):
+        except (error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+            print(f"[llm] request failed error={exc}", flush=True)
             return None
 
         text = self._extract_text(body)
+        print(
+            f"[llm] request done has_text={bool(text)} text_len={len(text)}",
+            flush=True,
+        )
         return text or None
 
     def _extract_text(self, response: dict[str, Any]) -> str:
