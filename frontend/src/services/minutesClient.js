@@ -8,6 +8,11 @@ export const JOB_STATUS = {
   COMPLETED: "COMPLETED"
 };
 
+export const REVIEW_ACTION = {
+  APPROVE: "approve",
+  REVISE: "revise"
+};
+
 const normalizePath = (path) => (path.startsWith("/") ? path : `/${path}`);
 
 const buildUrl = (path) => {

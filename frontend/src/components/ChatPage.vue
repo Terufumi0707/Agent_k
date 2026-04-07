@@ -41,7 +41,7 @@
         :is-sending="isSending"
         @update:input-text="inputText = $event"
         @resize="resizeTextarea"
-        @send="sendMessage"
+        @send="sendRevision"
       />
     </div>
   </div>
@@ -54,7 +54,14 @@ import MinutesReviewFooter from "./MinutesReviewFooter.vue";
 import MinutesWorkflowPanel from "./MinutesWorkflowPanel.vue";
 import ProgressPanel from "./ProgressPanel.vue";
 import TopHeader from "./TopHeader.vue";
-import { createJob, getJob, JOB_STATUS, normalizeJobForUi, reviewJob } from "../services/minutesClient";
+import {
+  createJob,
+  getJob,
+  JOB_STATUS,
+  normalizeJobForUi,
+  REVIEW_ACTION,
+  reviewJob
+} from "../services/minutesClient";
 
 const reviewFooterRef = ref(null);
 const inputText = ref("");
@@ -138,14 +145,10 @@ const handleAudioChange = (event) => {
   audioFileName.value = file ? file.name : "";
 };
 
-const generateMinutes = () => {
-  sendMessage();
-};
-
 const adoptCandidate = (candidate) => {
   selectedCandidateIndex.value = candidate.index ?? 0;
   adoptedMinutes.value = candidate.text;
-  sendMessage("approve");
+  submitReview(REVIEW_ACTION.APPROVE);
 };
 
 const editCandidate = (candidate) => {
@@ -158,16 +161,11 @@ const editCandidate = (candidate) => {
   });
 };
 
-const sendMessage = async (promptText = "") => {
+const generateMinutes = async () => {
   if (isSending.value) {
     return;
   }
-
-  const instruction = (promptText || inputText.value).trim();
-  if (currentJobId.value && !instruction) {
-    return;
-  }
-  if (!currentJobId.value && !canGenerate.value) {
+  if (!canGenerate.value) {
     return;
   }
 
@@ -186,22 +184,52 @@ const sendMessage = async (promptText = "") => {
       currentJobId.value = createdJob.id;
       await syncJobState(createdJob.id);
       sourceText.value = "";
-    } else {
-      appendProgressLog("レビュー送信", "レビュー指示を送信しています。");
-      currentPhase.value = "レビュー内容を反映しています...";
-      await reviewJob(currentJobId.value, {
-        selected_index: selectedCandidateIndex.value,
-        instruction
-      });
-      await syncJobState(currentJobId.value);
-      inputText.value = "";
     }
   } catch (error) {
     console.error("minutes request failed:", error);
     streamError.value = "議事録 API の呼び出しに失敗しました。時間をおいて再度お試しください。";
     currentPhase.value = "エラー";
-    workflowStatus.value = currentJobId.value ? STATUS.WAITING_FOR_REVIEW : STATUS.CREATED;
+    workflowStatus.value = STATUS.CREATED;
+  } finally {
+    isSending.value = false;
+    await nextTick();
+    resizeTextarea();
+  }
+};
 
+const sendRevision = () => {
+  submitReview(REVIEW_ACTION.REVISE);
+};
+
+const submitReview = async (action) => {
+  if (isSending.value || !currentJobId.value) {
+    return;
+  }
+
+  const instruction = inputText.value.trim();
+  if (action === REVIEW_ACTION.REVISE && !instruction) {
+    return;
+  }
+
+  resetProgressState();
+  workflowStatus.value = STATUS.DRAFTING;
+  isSending.value = true;
+
+  try {
+    appendProgressLog("レビュー送信", "レビュー指示を送信しています。");
+    currentPhase.value = "レビュー内容を反映しています...";
+    await reviewJob(currentJobId.value, {
+      selected_index: selectedCandidateIndex.value,
+      action,
+      ...(instruction ? { instruction } : {})
+    });
+    await syncJobState(currentJobId.value);
+    inputText.value = "";
+  } catch (error) {
+    console.error("minutes request failed:", error);
+    streamError.value = "議事録 API の呼び出しに失敗しました。時間をおいて再度お試しください。";
+    currentPhase.value = "エラー";
+    workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
   } finally {
     isSending.value = false;
     await nextTick();

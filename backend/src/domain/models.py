@@ -19,6 +19,11 @@ class JobStatus(str, Enum):
     COMPLETED = "COMPLETED"
 
 
+class ReviewAction(str, Enum):
+    APPROVE = "approve"
+    REVISE = "revise"
+
+
 @dataclass
 class MinuteCandidate:
     sections: dict[str, Any] = field(default_factory=dict)
