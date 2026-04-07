@@ -11,24 +11,8 @@ const buildUrl = (path) => {
     : `${basePath}${normalizedPath}`;
 };
 
-const shouldRetryWithRelativeUrl = (error) => backendBaseUrl && error instanceof TypeError;
-
-const fetchWithRelativeFallback = async (path, options) => {
-  const primaryUrl = buildUrl(path);
-  try {
-    return await fetch(primaryUrl, options);
-  } catch (error) {
-    if (!shouldRetryWithRelativeUrl(error)) {
-      throw error;
-    }
-    const fallbackUrl = `${apiBasePath ? normalizePath(apiBasePath) : ""}${normalizePath(path)}`;
-    console.warn(`Primary API endpoint is unreachable. Falling back to ${fallbackUrl}.`, error);
-    return fetch(fallbackUrl, options);
-  }
-};
-
 const fetchJson = async (path, options = {}) => {
-  const response = await fetchWithRelativeFallback(path, options);
+  const response = await fetch(buildUrl(path), options);
   if (!response.ok) {
     const detail = await response.text();
     throw new Error(`HTTP ${response.status}: ${detail}`);
