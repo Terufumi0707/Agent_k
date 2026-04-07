@@ -29,5 +29,11 @@ docker compose up --build
 ## 補足
 
 - backend は `0.0.0.0:8000` で listen します。
-- `workflows` は backend コンテナに read-only マウントしています。
+- workflow / format YAML は `backend/workflows/` を実行時 truth source として管理します。
 - 生成物は `./artifacts` に出力されます。
+
+## Workflow YAML の truth source
+
+- 実行時に backend が参照する workflow 定義は `backend/workflows/meeting_minutes_workflow.yaml` です。
+- 実行時に backend が参照する format 定義は `backend/workflows/company_minutes_format.yaml` です。
+- `skills/` 配下の YAML・記述は運用ドキュメント／テンプレート用途であり、実行時定義としては読み込みません。
