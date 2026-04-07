@@ -1,39 +1,117 @@
 # Minutes Workflow Agent
 
-## Docker Compose での開発起動
+議事録作成ワークフローを、**Vue (frontend)** + **FastAPI (backend)** でローカル実行できるアプリです。
 
-frontend / backend を同時に起動するには、リポジトリルートで以下を実行します。
+---
+
+## 1. 前提条件
+
+- Docker で実行する場合
+  - Docker Engine
+  - Docker Compose (`docker compose`)
+- Docker を使わずに実行する場合
+  - Python 3.11 以上（推奨）
+  - Node.js 20 以上（推奨）
+  - npm
+
+---
+
+## 2. Gemini API キーの準備（共通）
+
+このアプリのドラフト生成では Gemini API を利用します。backend は `GEMINI_API_KEY` 環境変数を参照します。
+
+### 2-1. API キー取得
+
+1. Google AI Studio などで Gemini API キーを発行
+2. 取得したキーを控える
+
+### 2-2. 環境変数設定（例）
+
+#### macOS / Linux (bash, zsh)
+
+```bash
+export GEMINI_API_KEY="your_api_key_here"
+```
+
+#### Windows PowerShell
+
+```powershell
+$env:GEMINI_API_KEY="your_api_key_here"
+```
+
+> 補足: 必要に応じて以下も設定可能です。
+>
+> - `GEMINI_MODEL`（default: `gemini-2.0-flash`）
+> - `GEMINI_TIMEOUT_SECONDS`（default: `20`）
+
+---
+
+## 3. Docker で起動する
+
+frontend / backend を同時に起動します。
 
 ```bash
 docker compose up --build
 ```
 
-### 起動後のアクセス先
+### アクセス先
 
-- Frontend: http://localhost:5173
-- Backend API: http://localhost:8000
+- Frontend: <http://localhost:5173>
+- Backend API: <http://localhost:8000>
 
-## コンテナ間通信の構成
+### Docker 実行時のポイント
 
-- `frontend` と `backend` は同じ Docker Compose ネットワーク上で起動します。
-- frontend の開発サーバ (Vite) で `/api` を `http://backend:8000` へプロキシしています。
-- フロントエンドコードは `VITE_API_BASE_PATH=/api` を使って API を呼び出すため、ブラウザからは service 名を意識せずに利用できます。
+- frontend は `/api` を `http://backend:8000` にプロキシします。
+- ブラウザからは `/api` 経由で backend にアクセスします。
+- 生成物（docx 等）は `./artifacts` に出力されます。
 
-## 主な環境変数
+### 停止
 
-- Frontend
-  - `VITE_API_BASE_PATH` (default: `/api`)
-- Backend
-  - `PROJECT_ROOT` (default: `/app` in compose)
+```bash
+docker compose down
+```
 
-## 補足
+---
 
-- backend は `0.0.0.0:8000` で listen します。
-- workflow / format YAML は `backend/workflows/` を実行時 truth source として管理します。
-- 生成物は `./artifacts` に出力されます。
+## 4. Docker を使わずに起動する
 
-## Workflow YAML の truth source
+backend と frontend をそれぞれ別ターミナルで起動します。
 
-- 実行時に backend が参照する workflow 定義は `backend/workflows/meeting_minutes_workflow.yaml` です。
-- 実行時に backend が参照する format 定義は `backend/workflows/company_minutes_format.yaml` です。
-- `skills/` 配下の YAML・記述は運用ドキュメント／テンプレート用途であり、実行時定義としては読み込みません。
+### 4-1. Backend 起動
+
+```bash
+cd backend
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+export GEMINI_API_KEY="your_api_key_here"
+uvicorn src.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### 4-2. Frontend 起動
+
+別ターミナルで実行:
+
+```bash
+cd frontend
+npm install
+VITE_BACKEND_BASE_URL=http://localhost:8000 VITE_API_BASE_PATH= npm run dev -- --host 0.0.0.0 --port 5173
+```
+
+### アクセス先
+
+- Frontend: <http://localhost:5173>
+- Backend API: <http://localhost:8000>
+
+> `VITE_BACKEND_BASE_URL=http://localhost:8000` を指定すると、frontend から backend へ直接アクセスできます。`VITE_API_BASE_PATH` は空文字にしています（`/minutes/jobs` へ直接リクエスト）。
+
+---
+
+## 5. ワークフロー定義（truth source）
+
+実行時に backend が参照する定義ファイル:
+
+- `backend/workflows/meeting_minutes_workflow.yaml`
+- `backend/workflows/company_minutes_format.yaml`
+
+`skills/` 配下の YAML や記述はテンプレート/運用ドキュメント用途であり、実行時定義としては読み込みません。
