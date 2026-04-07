@@ -5,6 +5,7 @@ from pathlib import Path
 from src.infrastructure.llm.llm_client import LlmClient
 from src.orchestrators.workflow_orchestrator import WorkflowOrchestrator
 from src.repositories.in_memory_store import InMemoryStore
+from src.repositories.job_repository import JobRepository
 from src.services.skills import (
     MinutesDraftSkill,
     MinutesExportWordSkill,
@@ -21,8 +22,9 @@ class Container:
             workflow_path=repo_root / "workflows" / "meeting_minutes_workflow.yaml",
             format_path=repo_root / "workflows" / "company_minutes_format.yaml",
         )
+        job_repository: JobRepository = InMemoryStore()
         self.orchestrator = WorkflowOrchestrator(
-            store=InMemoryStore(),
+            store=job_repository,
             loader=loader,
             transcribe_skill=MinutesTranscribeSkill(),
             draft_skill=MinutesDraftSkill(LlmClient()),
