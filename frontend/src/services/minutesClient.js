@@ -1,6 +1,13 @@
 const backendBaseUrl = (import.meta.env.VITE_BACKEND_BASE_URL ?? "").replace(/\/$/, "");
 const apiBasePath = (import.meta.env.VITE_API_BASE_PATH ?? "").replace(/\/$/, "");
 
+export const JOB_STATUS = {
+  CREATED: "CREATED",
+  DRAFTING: "DRAFTING",
+  WAITING_FOR_REVIEW: "WAITING_FOR_REVIEW",
+  COMPLETED: "COMPLETED"
+};
+
 const normalizePath = (path) => (path.startsWith("/") ? path : `/${path}`);
 
 const buildUrl = (path) => {
@@ -49,6 +56,7 @@ export const normalizeJobForUi = (job) => {
 
   return {
     ...job,
+    status: Object.values(JOB_STATUS).includes(job?.status) ? job.status : JOB_STATUS.CREATED,
     candidates,
     selectedIndex,
     selectedCandidateText: job?.selected_candidate
