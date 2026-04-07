@@ -6,7 +6,7 @@ from datetime import datetime
 from pathlib import Path
 
 from src.domain.models import InputType, Job, JobStatus
-from src.repositories.in_memory_store import InMemoryStore
+from src.repositories.job_repository import JobRepository
 from src.services.skills import (
     MinutesDraftSkill,
     MinutesExportWordSkill,
@@ -23,7 +23,7 @@ class WorkflowOrchestrator:
 
     def __init__(
         self,
-        store: InMemoryStore,
+        store: JobRepository,
         loader: WorkflowLoader,
         transcribe_skill: MinutesTranscribeSkill,
         draft_skill: MinutesDraftSkill,
