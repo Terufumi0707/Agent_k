@@ -41,3 +41,20 @@ def test_draft_skill_returns_empty_candidates_when_llm_returns_none():
     )
 
     assert result == {"candidates": []}
+
+
+def test_draft_skill_falls_back_to_raw_text_when_json_parse_fails():
+    llm_client = Mock()
+    llm_client.generate_json.return_value = None
+    llm_client.generate_text.return_value = "LLMの返答本文"
+    skill = MinutesDraftSkill(llm_client)
+
+    result = skill.run(
+        {
+            "transcript": "会議内容",
+            "company_format": {"sections": [{"name": "ToDo", "required": True}]},
+            "candidate_count": 2,
+        }
+    )
+
+    assert result == {"candidates": [{"raw_content": "LLMの返答本文"}]}

@@ -15,6 +15,18 @@ class LlmClient:
         self.timeout = float(os.getenv("GEMINI_TIMEOUT_SECONDS", "20"))
 
     def generate_json(self, prompt: str) -> dict[str, Any] | None:
+        text = self.generate_text(prompt, response_mime_type="application/json")
+        if not text:
+            return None
+
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            return None
+
+        return parsed if isinstance(parsed, dict) else None
+
+    def generate_text(self, prompt: str, response_mime_type: str = "text/plain") -> str | None:
         if not prompt.strip() or not self.api_key:
             return None
 
@@ -30,7 +42,7 @@ class LlmClient:
                 }
             ],
             "generationConfig": {
-                "responseMimeType": "application/json",
+                "responseMimeType": response_mime_type,
                 "temperature": 0.4,
             },
         }
@@ -49,15 +61,7 @@ class LlmClient:
             return None
 
         text = self._extract_text(body)
-        if not text:
-            return None
-
-        try:
-            parsed = json.loads(text)
-        except json.JSONDecodeError:
-            return None
-
-        return parsed if isinstance(parsed, dict) else None
+        return text or None
 
     def _extract_text(self, response: dict[str, Any]) -> str:
         candidates = response.get("candidates", [])

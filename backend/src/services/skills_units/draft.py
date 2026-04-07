@@ -21,7 +21,17 @@ class MinutesDraftSkill:
         )
 
         parsed = self.llm_client.generate_json(prompt)
-        return parsed if isinstance(parsed, dict) else {"candidates": []}
+        if isinstance(parsed, dict):
+            return parsed
+
+        raw_response = None
+        generate_text = getattr(self.llm_client, "generate_text", None)
+        if callable(generate_text):
+            raw_response = generate_text(prompt)
+
+        if isinstance(raw_response, str) and raw_response.strip():
+            return {"candidates": [{"raw_content": raw_response}]}
+        return {"candidates": []}
 
     def _build_prompt(self, transcript: str, num_candidates: int) -> str:
         return "\n".join(
