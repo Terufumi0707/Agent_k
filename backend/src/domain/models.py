@@ -13,6 +13,8 @@ class InputType(str, Enum):
 
 
 class JobStatus(str, Enum):
+    CREATED = "CREATED"
+    DRAFTING = "DRAFTING"
     WAITING_FOR_REVIEW = "WAITING_FOR_REVIEW"
     COMPLETED = "COMPLETED"
 

@@ -69,7 +69,7 @@ import MinutesInputPanel from "./MinutesInputPanel.vue";
 import MinutesReviewFooter from "./MinutesReviewFooter.vue";
 import ProgressPanel from "./ProgressPanel.vue";
 import TopHeader from "./TopHeader.vue";
-import { createJob, getJob, normalizeJobForUi, reviewJob } from "../services/minutesClient";
+import { createJob, getJob, JOB_STATUS, normalizeJobForUi, reviewJob } from "../services/minutesClient";
 
 const reviewFooterRef = ref(null);
 const inputText = ref("");
@@ -82,12 +82,7 @@ const streamError = ref("");
 const currentJobId = ref(null);
 const selectedCandidateIndex = ref(0);
 const isSidebarCollapsed = ref(false);
-const STATUS = {
-  CREATED: "CREATED",
-  DRAFTING: "DRAFTING",
-  WAITING_FOR_REVIEW: "WAITING_FOR_REVIEW",
-  COMPLETED: "COMPLETED"
-};
+const STATUS = JOB_STATUS;
 const workflowStatus = ref(STATUS.CREATED);
 const adoptedMinutes = ref("");
 const minuteCandidates = ref([]);
@@ -126,16 +121,26 @@ const applyUiJob = (job) => {
   selectedCandidateIndex.value = uiJob.selectedIndex;
   adoptedMinutes.value = uiJob.selectedCandidateText;
 
-  if (uiJob.status === STATUS.COMPLETED) {
-    workflowStatus.value = STATUS.COMPLETED;
-    currentPhase.value = "議事録が確定しました。";
-    appendProgressLog("完了", "議事録のレビューが完了しました。");
-    return;
+  switch (uiJob.status) {
+    case STATUS.COMPLETED:
+      workflowStatus.value = STATUS.COMPLETED;
+      currentPhase.value = "議事録が確定しました。";
+      appendProgressLog("完了", "議事録のレビューが完了しました。");
+      return;
+    case STATUS.WAITING_FOR_REVIEW:
+      workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
+      currentPhase.value = "候補を確認し、採用または修正してください。";
+      appendProgressLog("レビュー待ち", "候補を確認してください。");
+      return;
+    case STATUS.DRAFTING:
+      workflowStatus.value = STATUS.DRAFTING;
+      currentPhase.value = "議事録を作成中です...";
+      return;
+    case STATUS.CREATED:
+    default:
+      workflowStatus.value = STATUS.CREATED;
+      currentPhase.value = "入力内容を準備してください。";
   }
-
-  workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
-  currentPhase.value = "候補を確認し、採用または修正してください。";
-  appendProgressLog("レビュー待ち", "候補を確認してください。");
 };
 
 const syncJobState = async (jobId) => {
