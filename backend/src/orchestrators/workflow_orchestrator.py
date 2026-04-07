@@ -27,6 +27,7 @@ class WorkflowOrchestrator:
     """議事録作成ワークフローの進行を管理するオーケストレーター。"""
 
     StepHandler = Callable[[dict], bool]
+    StepEligibility = Callable[[InputType], bool]
 
     def __init__(
         self,
@@ -45,11 +46,13 @@ class WorkflowOrchestrator:
         self.review_skill = review_skill
         self.export_skill = export_skill
         self.artifacts_dir = artifacts_dir
-        self._step_handlers: dict[str, WorkflowOrchestrator.StepHandler] = {
-            "transcribe": self._handle_transcribe_step,
-            "transcript_input": self._handle_transcript_input_step,
-            "draft": self._handle_draft_step,
-            "review": self._handle_review_step,
+        self._step_dispatch_table: dict[
+            str, tuple[WorkflowOrchestrator.StepEligibility, WorkflowOrchestrator.StepHandler]
+        ] = {
+            "transcribe": (self._is_audio_input, self._handle_transcribe_step),
+            "transcript_input": (self._is_transcript_input, self._handle_transcript_input_step),
+            "draft": (self._always_run_step, self._handle_draft_step),
+            "review": (self._always_run_step, self._handle_review_step),
         }
 
     def start(self, input_type: InputType, transcript: str | None, audio_path: str | None) -> Job:
@@ -67,10 +70,14 @@ class WorkflowOrchestrator:
         # 入力種別に応じて実行対象ステップを絞り込みつつ、スキル実行結果を context に統合する。
         for step in workflow["steps"]:
             step_id = step["id"]
-            if self._should_skip_step(step_id, input_type):
+            dispatch = self._step_dispatch_table.get(step_id)
+            if not dispatch:
                 continue
-            handler = self._step_handlers.get(step_id)
-            if handler and not handler(context):
+
+            can_run, handler = dispatch
+            if not can_run(input_type):
+                continue
+            if not handler(context):
                 break
 
         # 初回作成時点ではレビュー待ち状態で Job を保存する。
@@ -125,12 +132,14 @@ class WorkflowOrchestrator:
         # 読み取り専用の取得処理はストアへ委譲する。
         return self.store.get(job_id)
 
-    def _should_skip_step(self, step_id: str, input_type: InputType) -> bool:
-        if step_id == "transcribe" and input_type != InputType.AUDIO:
-            return True
-        if step_id == "transcript_input" and input_type != InputType.TRANSCRIPT:
-            return True
-        return False
+    def _always_run_step(self, _: InputType) -> bool:
+        return True
+
+    def _is_audio_input(self, input_type: InputType) -> bool:
+        return input_type == InputType.AUDIO
+
+    def _is_transcript_input(self, input_type: InputType) -> bool:
+        return input_type == InputType.TRANSCRIPT
 
     def _handle_transcribe_step(self, context: dict) -> bool:
         context.update(self.transcribe_skill.run(context))
