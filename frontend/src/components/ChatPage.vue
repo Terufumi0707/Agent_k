@@ -25,7 +25,8 @@
                 議事録作成
               </button>
             </li>
-            <li>
+            <!-- minutes のときは非表示 -->
+            <li v-if="selectedAgent !== 'minutes'">
               <button
                 type="button"
                 class="agent-menu-button"
