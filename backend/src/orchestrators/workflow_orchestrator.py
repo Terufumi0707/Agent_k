@@ -5,7 +5,14 @@ from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
 
-from src.domain.models import InputType, Job, JobStatus
+from src.domain.models import (
+    InputType,
+    Job,
+    JobStatus,
+    MinuteCandidate,
+    minute_candidates_to_dicts,
+    to_minute_candidates,
+)
 from src.repositories.in_memory_store import InMemoryStore
 from src.services.skills import (
     MinutesDraftSkill,
@@ -75,7 +82,7 @@ class WorkflowOrchestrator:
             created_at=now,
             updated_at=now,
             transcript=context["transcript"],
-            candidates=context["candidates"],
+            candidates=to_minute_candidates(context["candidates"]),
         )
         return self.store.save(job)
 
@@ -88,7 +95,7 @@ class WorkflowOrchestrator:
         # 選択候補とユーザー指示をレビュー用スキルへ渡す。
         result = self.review_skill.run(
             {
-                "candidates": job.candidates,
+                "candidates": minute_candidates_to_dicts(job.candidates),
                 "selected_index": selected_index,
                 "instruction": instruction,
             }
@@ -98,15 +105,15 @@ class WorkflowOrchestrator:
         # 未承認の場合は修正版候補を追加し、再レビュー可能な状態で保存する。
         if not result["approved"]:
             job.review_comments.append(instruction or "")
-            job.candidates.append(result["revised_candidate"])
+            job.candidates.append(MinuteCandidate.from_dict(result["revised_candidate"]))
             return self.store.save(job)
 
         # 承認済みの場合は最終版を Word 出力し、完了状態へ遷移する。
-        job.selected_candidate = result["final_minutes"]
+        job.selected_candidate = MinuteCandidate.from_dict(result["final_minutes"])
         export = self.export_skill.run(
             {
                 "job_id": job.id,
-                "final_minutes": job.selected_candidate,
+                "final_minutes": job.selected_candidate.to_dict(),
                 "output_dir": str(self.artifacts_dir),
             }
         )

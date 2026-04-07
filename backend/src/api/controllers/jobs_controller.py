@@ -21,14 +21,14 @@ def start_job(req: StartJobRequest) -> JobResponse:
         transcript=req.transcript,
         audio_path=req.audio_path,
     )
-    return JobResponse(**job.__dict__)
+    return JobResponse.from_domain(job)
 
 
 @router.post("/jobs/{job_id}/review", response_model=JobResponse)
 def review_job(job_id: str, req: ReviewRequest) -> JobResponse:
     try:
         job = container.orchestrator.review(job_id, req.selected_index, req.instruction)
-        return JobResponse(**job.__dict__)
+        return JobResponse.from_domain(job)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
@@ -38,4 +38,4 @@ def get_job(job_id: str) -> JobResponse:
     job = container.orchestrator.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
-    return JobResponse(**job.__dict__)
+    return JobResponse.from_domain(job)
