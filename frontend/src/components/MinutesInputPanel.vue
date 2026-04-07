@@ -7,7 +7,7 @@
       class="chat-input chat-input-textarea"
       placeholder="会議メモや文字起こしを入力してください"
       rows="4"
-      @input="$emit('update:sourceText', $event.target.value)"
+      @input="$emit('update:source-text', $event.target.value)"
     ></textarea>
     <label class="minutes-input-label" for="minutes-audio-file">音声アップロード</label>
     <input id="minutes-audio-file" type="file" accept="audio/*" class="minutes-audio-input" @change="$emit('audio-change', $event)" />
@@ -38,5 +38,5 @@ defineProps({
   }
 });
 
-defineEmits(["update:sourceText", "audio-change", "generate"]);
+defineEmits(["update:source-text", "audio-change", "generate"]);
 </script>

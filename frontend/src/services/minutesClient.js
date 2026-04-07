@@ -1,8 +1,15 @@
-const backendBaseUrl = import.meta.env.VITE_BACKEND_BASE_URL
-  ? import.meta.env.VITE_BACKEND_BASE_URL.replace(/\/$/, "")
-  : "";
+const backendBaseUrl = (import.meta.env.VITE_BACKEND_BASE_URL ?? "").replace(/\/$/, "");
+const apiBasePath = (import.meta.env.VITE_API_BASE_PATH ?? "").replace(/\/$/, "");
 
-const buildUrl = (path) => (backendBaseUrl ? `${backendBaseUrl}${path}` : path);
+const normalizePath = (path) => (path.startsWith("/") ? path : `/${path}`);
+
+const buildUrl = (path) => {
+  const normalizedPath = normalizePath(path);
+  const basePath = apiBasePath ? normalizePath(apiBasePath) : "";
+  return backendBaseUrl
+    ? `${backendBaseUrl}${basePath}${normalizedPath}`
+    : `${basePath}${normalizedPath}`;
+};
 
 const shouldRetryWithRelativeUrl = (error) => backendBaseUrl && error instanceof TypeError;
 
@@ -14,8 +21,9 @@ const fetchWithRelativeFallback = async (path, options) => {
     if (!shouldRetryWithRelativeUrl(error)) {
       throw error;
     }
-    console.warn(`Primary API endpoint is unreachable. Falling back to ${path}.`, error);
-    return fetch(path, options);
+    const fallbackUrl = `${apiBasePath ? normalizePath(apiBasePath) : ""}${normalizePath(path)}`;
+    console.warn(`Primary API endpoint is unreachable. Falling back to ${fallbackUrl}.`, error);
+    return fetch(fallbackUrl, options);
   }
 };
 

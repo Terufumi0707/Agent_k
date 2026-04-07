@@ -221,7 +221,6 @@ const sendMessage = async (promptText = "") => {
     currentPhase.value = "エラー";
     workflowStatus.value = currentJobId.value ? STATUS.WAITING_FOR_REVIEW : STATUS.CREATED;
 
-    // NOTE(phase0): 旧 create_entry API へのフォールバックは minutes API 契約に集中するため一時的に無効化。
   } finally {
     isSending.value = false;
     await nextTick();
