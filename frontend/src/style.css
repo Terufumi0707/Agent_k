@@ -389,12 +389,57 @@ body {
   background: #5f75c9;
 }
 
-.status-chip-review {
+.status-chip-created {
+  background: #6b7280;
+}
+
+.status-chip-waiting_for_review {
   background: #2f7abf;
 }
 
-.status-chip-completed {
-  background: var(--success-accent);
+.minutes-source-input {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.minutes-input-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #1b2f6a;
+}
+
+.minutes-audio-input {
+  font-size: 13px;
+}
+
+.minutes-audio-filename {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.minutes-generate-button {
+  align-self: flex-start;
+}
+
+.minutes-loading {
+  border: 1px dashed #bfd0ff;
+  border-radius: 10px;
+  padding: 16px;
+  background: #f7f9ff;
+}
+
+.minutes-loading-text {
+  margin: 0;
+  font-size: 14px;
+  color: #1b2f6a;
+}
+
+.minutes-review-block {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .minutes-display-area {

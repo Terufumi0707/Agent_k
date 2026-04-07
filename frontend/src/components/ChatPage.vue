@@ -45,16 +45,39 @@
 
       <main class="chat-main">
         <section class="minutes-workspace">
-          <p class="minutes-guide-message">音声またはテキストを入力してください</p>
+          <p class="minutes-guide-message">会議の音声ファイルまたはテキストを入力して、議事録を生成してください。</p>
           <div class="minutes-status">
             <span class="minutes-status-label">ステータス</span>
-            <span class="status-chip" :class="`status-chip-${workflowStatus}`">{{ workflowStatus }}</span>
+            <span class="status-chip" :class="`status-chip-${workflowStatus.toLowerCase()}`">{{ workflowStatus }}</span>
           </div>
-          <div class="minutes-display-area">
-            <p class="minutes-display-title">議事録</p>
-            <pre class="minutes-display-text">{{ displayedMinutes }}</pre>
+
+          <div v-if="workflowStatus === STATUS.CREATED" class="minutes-source-input">
+            <label class="minutes-input-label" for="minutes-source-text">テキスト入力</label>
+            <textarea
+              id="minutes-source-text"
+              v-model="sourceText"
+              class="chat-input chat-input-textarea"
+              placeholder="会議メモや文字起こしを入力してください"
+              rows="4"
+            ></textarea>
+            <label class="minutes-input-label" for="minutes-audio-file">音声アップロード</label>
+            <input id="minutes-audio-file" type="file" accept="audio/*" class="minutes-audio-input" @change="handleAudioChange" />
+            <p v-if="audioFileName" class="minutes-audio-filename">{{ audioFileName }}</p>
+            <button type="button" class="send-button minutes-generate-button" :disabled="!canGenerate || isSending" @click="generateMinutes">
+              議事録を生成する
+            </button>
           </div>
-          <div class="minutes-candidates">
+
+          <div v-else-if="workflowStatus === STATUS.DRAFTING" class="minutes-loading">
+            <p class="minutes-loading-text">議事録を作成中です...</p>
+          </div>
+
+          <div v-else class="minutes-review-block">
+            <div class="minutes-display-area">
+              <p class="minutes-display-title">議事録</p>
+              <pre class="minutes-display-text">{{ displayedMinutes }}</pre>
+            </div>
+            <div class="minutes-candidates">
             <p class="minutes-candidates-title">議事録候補</p>
             <ul class="minutes-candidates-list">
               <li v-for="candidate in minuteCandidates" :key="candidate.id" class="minutes-candidate-card">
@@ -69,6 +92,7 @@
                 </div>
               </li>
             </ul>
+          </div>
           </div>
         </section>
 
@@ -92,7 +116,7 @@
 
       </main>
 
-      <footer class="chat-input-area">
+      <footer v-if="workflowStatus === STATUS.WAITING_FOR_REVIEW" class="chat-input-area">
         <label class="chat-input-label" for="minutes-instruction">修正指示を入力してください</label>
         <textarea
           id="minutes-instruction"
@@ -119,6 +143,8 @@ const route = useRoute();
 
 const inputText = ref("");
 const inputRef = ref(null);
+const sourceText = ref("");
+const audioFileName = ref("");
 const greetingMessage = `日程変更依頼のメール、もしくは変更対象の確認したいオーダーをN番号かWebエントリIDで教えてください。`;
 
 const messages = ref([{ role: "ai", text: greetingMessage, isGreeting: true }]);
@@ -133,7 +159,12 @@ const isSidebarCollapsed = ref(false);
 const activeOrderId = ref(null);
 const messageFetchRequestId = ref(0);
 const selectedAgent = ref("minutes");
-const workflowStatus = ref("drafting");
+const STATUS = {
+  CREATED: "CREATED",
+  DRAFTING: "DRAFTING",
+  WAITING_FOR_REVIEW: "WAITING_FOR_REVIEW"
+};
+const workflowStatus = ref(STATUS.CREATED);
 const adoptedMinutes = ref("");
 const minuteCandidates = ref([
   {
@@ -168,6 +199,7 @@ const phaseLabels = {
 const getPhaseLabel = (phase) => phaseLabels[phase] ?? "処理中";
 
 const canSend = computed(() => inputText.value.trim().length > 0);
+const canGenerate = computed(() => sourceText.value.trim().length > 0 || Boolean(audioFileName.value));
 const latestAiMessage = computed(() =>
   [...messages.value].reverse().find((message) => message.role === "ai" && !message.isGreeting)
 );
@@ -175,16 +207,27 @@ const displayedMinutes = computed(() => adoptedMinutes.value || latestAiMessage.
 
 const adoptCandidate = (candidate) => {
   adoptedMinutes.value = candidate.text;
-  workflowStatus.value = "completed";
+  workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
 };
 
 const editCandidate = (candidate) => {
   inputText.value = `以下の議事録を修正してください:\n${candidate.text}\n修正点: `;
-  workflowStatus.value = "review";
+  workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
   nextTick(() => {
     resizeTextarea();
     inputRef.value?.focus();
   });
+};
+
+const handleAudioChange = (event) => {
+  const file = event.target.files?.[0];
+  audioFileName.value = file ? file.name : "";
+};
+
+const generateMinutes = () => {
+  const trimmedText = sourceText.value.trim();
+  const prompt = trimmedText || `音声ファイル: ${audioFileName.value}`;
+  sendMessage(prompt);
 };
 const formatMonthLabel = (value) => {
   const date = new Date(value);
@@ -392,8 +435,8 @@ const handleInput = () => {
   resizeTextarea();
 };
 
-const sendMessage = async () => {
-  const userText = inputText.value.trim();
+const sendMessage = async (promptText = "") => {
+  const userText = (promptText || inputText.value).trim();
   if (!userText || isSending.value) {
     return;
   }
@@ -401,7 +444,7 @@ const sendMessage = async () => {
   resetProgressState();
 
   messages.value.push({ role: "user", text: userText });
-  workflowStatus.value = "drafting";
+  workflowStatus.value = STATUS.DRAFTING;
   inputText.value = "";
   isSending.value = true;
   await nextTick();
@@ -450,7 +493,7 @@ const sendMessage = async () => {
       if (payload.message) {
         adoptedMinutes.value = payload.message;
       }
-      workflowStatus.value = "review";
+      workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
       currentPhase.value = "完了しました。";
       shouldRefreshOrdersAfterCompletion = true;
     } else if (eventType === "error") {
@@ -481,7 +524,7 @@ const sendMessage = async () => {
     if (data.result) {
       adoptedMinutes.value = data.result;
     }
-    workflowStatus.value = "review";
+    workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
     currentPhase.value = "完了しました。";
     await refreshOrdersAfterCompletion();
   };
@@ -537,6 +580,7 @@ const sendMessage = async () => {
     }
   } catch (error) {
     console.error("create_entry request failed:", error);
+    workflowStatus.value = STATUS.CREATED;
     messages.value.push({
       role: "ai",
       text: "エラーが発生しました。時間をおいて再度お試しください。"
