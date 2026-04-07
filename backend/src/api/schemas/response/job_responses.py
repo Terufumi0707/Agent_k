@@ -1,15 +1,34 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, RootModel
+from pydantic import BaseModel, ConfigDict, RootModel, model_validator
 
 from src.domain.models import InputType, Job, JobStatus, MinuteCandidate
 
 
-class MinuteCandidateResponse(RootModel[dict[str, Any]]):
+class MinuteCandidatePayload(BaseModel):
+    sections: dict[str, Any] | None = None
+    raw_content: str | None = None
+
+    model_config = ConfigDict(extra="allow")
+
+    @model_validator(mode="before")
+    @classmethod
+    def infer_sections_from_legacy_shape(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+
+        if "sections" in value:
+            return value
+
+        legacy_sections = {k: v for k, v in value.items() if k != "raw_content"}
+        return {**value, "sections": legacy_sections}
+
+
+class MinuteCandidateResponse(RootModel[MinuteCandidatePayload]):
     @classmethod
     def from_domain(cls, candidate: MinuteCandidate) -> MinuteCandidateResponse:
-        return cls(candidate.to_dict())
+        return cls(MinuteCandidatePayload.model_validate(candidate.to_dict()))
 
 
 class JobResponse(BaseModel):
