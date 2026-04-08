@@ -10,6 +10,8 @@ from src.config import direct_settings
 class FasterWhisperTranscriptionService:
     """faster-whisper を利用した最小の文字起こしサービス。"""
 
+    SUPPORTED_EXTENSIONS = {".mp3", ".mp4"}
+
     def __init__(self) -> None:
         self.model_size = os.getenv("WHISPER_MODEL_SIZE", direct_settings.WHISPER_MODEL_SIZE)
         self.device = os.getenv("WHISPER_DEVICE", direct_settings.WHISPER_DEVICE)
@@ -18,6 +20,8 @@ class FasterWhisperTranscriptionService:
 
     def transcribe_audio(self, audio_path: str) -> str:
         target = Path(audio_path)
+        if target.suffix.lower() not in self.SUPPORTED_EXTENSIONS:
+            raise ValueError("unsupported audio format. only .mp3 and .mp4 are supported")
         if not target.exists() or not target.is_file():
             raise FileNotFoundError(f"audio file not found: {audio_path}")
 

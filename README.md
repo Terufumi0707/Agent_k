@@ -75,9 +75,9 @@ docker compose down
 
 ### Docker での音声文字起こし検証
 
-Docker でも `faster-whisper` の検証が可能です。`backend` コンテナから参照できるパスを `audio_path` に指定してください。
+Docker でも `faster-whisper` の検証が可能です。`backend` コンテナから参照できるパスを `audio_path` に指定してください。対応形式は `.mp3` と `.mp4` のみです。
 
-1. ホスト側の `./artifacts` に音声ファイルを配置（例: `./artifacts/meeting.wav`）
+1. ホスト側の `./artifacts` に音声ファイルを配置（例: `./artifacts/meeting.mp3`）
 2. `docker compose up --build` で起動
 3. 以下を実行（`/app/artifacts` は `./artifacts` がマウントされています）
 
@@ -86,7 +86,7 @@ curl -X POST http://localhost:8000/minutes/jobs \
   -H 'Content-Type: application/json' \
   -d '{
     "input_type": "audio",
-    "audio_path": "/app/artifacts/meeting.wav"
+    "audio_path": "/app/artifacts/meeting.mp3"
   }'
 ```
 
@@ -170,7 +170,7 @@ curl -X POST http://localhost:8000/minutes/jobs \
   -H 'Content-Type: application/json' \
   -d '{
     "input_type": "audio",
-    "audio_path": "/absolute/path/to/meeting.wav"
+    "audio_path": "/absolute/path/to/meeting.mp3"
   }'
 ```
 
@@ -182,3 +182,4 @@ curl -X POST http://localhost:8000/minutes/jobs \
 - 初回実行時は Whisper モデル（`small`）のダウンロードが発生する場合があります。
 - 長時間音声は処理に時間がかかります。
 - `audio_path` のファイルが存在しない場合はエラーになります。
+- 対応する音声形式は `.mp3` / `.mp4` のみです。
