@@ -29,6 +29,6 @@ class Container:
             transcribe_skill=MinutesTranscribeSkill(),
             draft_skill=MinutesDraftSkill(llm_client),
             review_skill=MinutesReviewSkill(llm_client),
-            export_skill=MinutesExportWordSkill(),
+            export_skill=MinutesExportWordSkill(llm_client),
             artifacts_dir=repo_root / "artifacts",
         )
