@@ -1,4 +1,7 @@
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import FileResponse
 
 from src.api.schemas.request.job_requests import ReviewRequest, StartJobRequest
 from src.api.schemas.response.job_responses import JobResponse
@@ -54,3 +57,22 @@ def get_job(job_id: str) -> JobResponse:
     if not job:
         raise HTTPException(status_code=404, detail="job not found")
     return JobResponse.from_domain(job)
+
+
+@router.get("/jobs/{job_id}/artifact")
+def download_job_artifact(job_id: str) -> FileResponse:
+    job = container.orchestrator.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="job not found")
+    if not job.artifact_path:
+        raise HTTPException(status_code=404, detail="artifact not found")
+
+    artifact_path = Path(job.artifact_path)
+    if not artifact_path.exists() or not artifact_path.is_file():
+        raise HTTPException(status_code=404, detail="artifact not found")
+
+    return FileResponse(
+        path=artifact_path,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        filename=artifact_path.name,
+    )

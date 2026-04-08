@@ -122,3 +122,6 @@ export const reviewJob = (jobId, payload) => fetchJson(`/minutes/jobs/${jobId}/r
   },
   body: JSON.stringify(payload)
 });
+
+
+export const buildArtifactDownloadUrl = (jobId) => buildUrl(`/minutes/jobs/${jobId}/artifact`);
