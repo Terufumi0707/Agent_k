@@ -32,20 +32,40 @@ const fetchJson = async (path, options = {}) => {
   return response.json();
 };
 
-const stringifyCandidateValue = (value) => {
+const stringifyCandidateValue = (value, depth = 0) => {
+  const indent = "  ".repeat(depth);
   if (Array.isArray(value)) {
-    return value.map((item) => `- ${item}`).join("\n");
+    return value
+      .map((item) => {
+        if (item && typeof item === "object") {
+          return `${indent}-\n${stringifyCandidateValue(item, depth + 1)}`;
+        }
+        return `${indent}- ${item}`;
+      })
+      .join("\n");
   }
   if (value && typeof value === "object") {
-    return JSON.stringify(value, null, 2);
+    return Object.entries(value)
+      .map(([key, nested]) => `${indent}${key}\n${stringifyCandidateValue(nested, depth + 1)}`)
+      .join("\n");
   }
-  return `${value ?? ""}`;
+  return `${indent}${value ?? ""}`;
 };
 
-const formatCandidateText = (candidate) => Object.entries(candidate ?? {})
-  .map(([key, value]) => `${key}\n${stringifyCandidateValue(value)}`)
-  .join("\n\n")
-  .trim();
+const formatCandidateText = (candidate) => {
+  if (!candidate || typeof candidate !== "object") {
+    return "";
+  }
+
+  const sections = candidate.sections && typeof candidate.sections === "object"
+    ? candidate.sections
+    : candidate;
+  const formattedSections = Object.entries(sections)
+    .map(([key, value]) => `${key}\n${stringifyCandidateValue(value)}`)
+    .join("\n\n")
+    .trim();
+  return formattedSections;
+};
 
 export const normalizeJobForUi = (job) => {
   const candidates = (job?.candidates ?? []).map((candidate, index) => ({

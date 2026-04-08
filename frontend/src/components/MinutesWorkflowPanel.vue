@@ -26,7 +26,6 @@
       :displayed-minutes="displayedMinutes"
       :minute-candidates="minuteCandidates"
       @adopt="$emit('adopt', $event)"
-      @edit="$emit('edit', $event)"
     />
   </section>
 </template>
@@ -74,5 +73,5 @@ defineProps({
   }
 });
 
-defineEmits(["update:source-text", "audio-change", "generate", "adopt", "edit"]);
+defineEmits(["update:source-text", "audio-change", "generate", "adopt"]);
 </script>

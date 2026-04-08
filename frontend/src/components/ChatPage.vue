@@ -20,7 +20,6 @@
           @audio-change="handleAudioChange"
           @generate="generateMinutes"
           @adopt="adoptCandidate"
-          @edit="editCandidate"
         />
 
         <ProgressPanel
@@ -146,19 +145,13 @@ const handleAudioChange = (event) => {
 };
 
 const adoptCandidate = (candidate) => {
-  selectedCandidateIndex.value = candidate.index ?? 0;
-  adoptedMinutes.value = candidate.text;
+  const targetCandidate = candidate ?? minuteCandidates.value[0];
+  if (!targetCandidate) {
+    return;
+  }
+  selectedCandidateIndex.value = targetCandidate.index ?? 0;
+  adoptedMinutes.value = targetCandidate.text;
   submitReview(REVIEW_ACTION.APPROVE);
-};
-
-const editCandidate = (candidate) => {
-  selectedCandidateIndex.value = candidate.index ?? 0;
-  inputText.value = `以下の議事録を修正してください:\n${candidate.text}\n修正点: `;
-  workflowStatus.value = STATUS.WAITING_FOR_REVIEW;
-  nextTick(() => {
-    resizeTextarea();
-    (reviewFooterRef.value?.textareaRef?.value ?? reviewFooterRef.value?.textareaRef)?.focus();
-  });
 };
 
 const generateMinutes = async () => {

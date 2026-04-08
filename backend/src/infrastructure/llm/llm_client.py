@@ -2,20 +2,27 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 from typing import Any
 from urllib import error, request
+
+from src.config import direct_settings
 
 
 class LlmClient:
     """Gemini API を呼び出す薄いクライアント。"""
 
     def __init__(self) -> None:
-        self.api_key = os.getenv("GEMINI_API_KEY")
-        self.model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-        self.timeout = float(os.getenv("GEMINI_TIMEOUT_SECONDS", "20"))
+        self.api_key = os.getenv("GEMINI_API_KEY") or direct_settings.GEMINI_API_KEY
+        self.model = os.getenv("GEMINI_MODEL", direct_settings.GEMINI_MODEL)
+        self.timeout = float(os.getenv("GEMINI_TIMEOUT_SECONDS", direct_settings.GEMINI_TIMEOUT_SECONDS))
 
     def generate_json(self, prompt: str) -> dict[str, Any] | None:
-        if not prompt.strip() or not self.api_key:
+        if not prompt.strip():
+            print("[LlmClient] skipped generate_json: prompt is empty")
+            return None
+        if not self.api_key:
+            print("[LlmClient] skipped generate_json: GEMINI_API_KEY is not set")
             return None
 
         endpoint = (
@@ -41,21 +48,50 @@ class LlmClient:
             headers={"Content-Type": "application/json"},
             data=json.dumps(payload).encode("utf-8"),
         )
+        print(
+            "[LlmClient] sending request: "
+            f"model={self.model}, timeout={self.timeout}s, prompt_length={len(prompt)}"
+        )
 
         try:
             with request.urlopen(req, timeout=self.timeout) as res:
                 body = json.loads(res.read().decode("utf-8"))
-        except (error.URLError, TimeoutError, json.JSONDecodeError):
+        except error.HTTPError as exc:
+            response_body = exc.read().decode("utf-8", errors="replace")
+            print(
+                "[LlmClient] request failed: "
+                f"HTTPError status={exc.code}, reason={exc.reason}, body={response_body}"
+            )
             return None
+        except error.URLError as exc:
+            print(
+                "[LlmClient] request failed: "
+                f"URLError reason={exc.reason}, type={type(exc.reason).__name__}"
+            )
+            return None
+        except (TimeoutError, socket.timeout) as exc:
+            print(f"[LlmClient] request failed: timeout after {self.timeout}s ({exc})")
+            return None
+        except json.JSONDecodeError as exc:
+            print(f"[LlmClient] response decode failed: {exc}")
+            return None
+        except Exception as exc:
+            print(f"[LlmClient] request failed: unexpected {type(exc).__name__}: {exc}")
+            return None
+        print(f"[LlmClient] raw response: {json.dumps(body, ensure_ascii=False)}")
 
         text = self._extract_text(body)
         if not text:
+            print("[LlmClient] extracted text is empty")
             return None
+        print(f"[LlmClient] extracted text: {text}")
 
         try:
             parsed = json.loads(text)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as exc:
+            print(f"[LlmClient] failed to parse extracted text as JSON: {exc}")
             return None
+        print(f"[LlmClient] parsed json: {json.dumps(parsed, ensure_ascii=False)}")
 
         return parsed if isinstance(parsed, dict) else None
 

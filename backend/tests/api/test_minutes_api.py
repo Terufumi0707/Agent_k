@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-def test_post_minutes_jobs_creates_minutes_from_transcript(api_client):
+def test_post_minutes_jobs_creates_job_from_transcript(api_client):
     response = api_client.post(
         "/minutes/jobs",
         json={"transcript": "定例会議の記録"},
@@ -9,19 +9,19 @@ def test_post_minutes_jobs_creates_minutes_from_transcript(api_client):
 
     assert response.status_code == 200
     body = response.json()
-    assert body["minutes"]
-    assert body["summary"]
-    assert isinstance(body["action_items"], list)
+    assert body["id"]
+    assert body["status"] == "WAITING_FOR_REVIEW"
+    assert len(body["candidates"]) > 0
 
 
-def test_post_minutes_jobs_empty_transcript_returns_400(api_client):
+def test_post_minutes_jobs_empty_transcript_returns_422(api_client):
     response = api_client.post(
         "/minutes/jobs",
         json={"transcript": "   "},
     )
 
-    assert response.status_code == 400
-    assert "transcript is required" in response.json()["detail"]
+    assert response.status_code == 422
+    assert "transcript is required" in str(response.json()["detail"])
 
 
 def test_get_minutes_jobs_not_found_returns_404(api_client):
