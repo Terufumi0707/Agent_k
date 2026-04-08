@@ -5,14 +5,16 @@ import os
 from typing import Any
 from urllib import error, request
 
+from src.config import direct_settings
+
 
 class LlmClient:
     """Gemini API を呼び出す薄いクライアント。"""
 
     def __init__(self) -> None:
-        self.api_key = os.getenv("GEMINI_API_KEY")
-        self.model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
-        self.timeout = float(os.getenv("GEMINI_TIMEOUT_SECONDS", "20"))
+        self.api_key = os.getenv("GEMINI_API_KEY") or direct_settings.GEMINI_API_KEY
+        self.model = os.getenv("GEMINI_MODEL", direct_settings.GEMINI_MODEL)
+        self.timeout = float(os.getenv("GEMINI_TIMEOUT_SECONDS", direct_settings.GEMINI_TIMEOUT_SECONDS))
 
     def generate_json(self, prompt: str) -> dict[str, Any] | None:
         if not prompt.strip():
