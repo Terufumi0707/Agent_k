@@ -136,7 +136,9 @@ class WorkflowOrchestrator:
         # 未承認の場合は修正版候補を追加し、再レビュー可能な状態で保存する。
         if action == ReviewAction.REVISE:
             job.review_comments.append(normalized_instruction)
-            job.candidates.append(MinuteCandidate.from_dict(result["revised_candidate"]))
+            revised_candidate = MinuteCandidate.from_dict(result["revised_candidate"])
+            job.candidates.append(revised_candidate)
+            job.selected_candidate = revised_candidate
             print(
                 "[WorkflowOrchestrator.review] revise applied: "
                 f"job_id={job_id}, candidates_count={len(job.candidates)}",

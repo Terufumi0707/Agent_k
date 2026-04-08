@@ -65,7 +65,9 @@ class MinutesReviewSkill:
         if not isinstance(parsed, dict):
             return None
         revised = parsed.get("revised_candidate")
-        return revised if isinstance(revised, dict) else None
+        if not isinstance(revised, dict):
+            return None
+        return self._normalize_revised_candidate(revised)
 
     def _build_revision_prompt(
         self,
@@ -83,8 +85,8 @@ class MinutesReviewSkill:
                 "選択された候補をベースに、レビュー指示を反映した改訂版を作成してください。",
                 "過去候補・レビュー履歴・会話ログを必要に応じて参照し、指示の意図を最大限反映してください。",
                 "返答は必ずJSONのみで返し、次の形式を厳守してください。",
-                '{"revised_candidate": {"raw_content": "...", "sections": {"決定事項": ["..."], "ToDo": ["..."]}}}',
-                "sections には、必要なら「参照した過去議事メモ」「構造化会話ログ」「レビュー履歴」を含めてください。",
+                '{"revised_candidate": {"raw_content": "...", "sections": {"議事メモ": "..."}}}',
+                "sections は「議事メモ」の1フィールドのみを使い、表示用テキストをそのまま入れてください。",
                 "",
                 f"レビュー指示:\n{instruction}",
                 "",
@@ -101,3 +103,20 @@ class MinutesReviewSkill:
                 transcript,
             ]
         )
+
+    def _normalize_revised_candidate(self, candidate: dict[str, Any]) -> dict[str, Any]:
+        raw_content = str(candidate.get("raw_content") or "").strip()
+        if not raw_content:
+            sections = candidate.get("sections")
+            if isinstance(sections, dict) and sections:
+                merged_lines = [f"{key}\n{value}" for key, value in sections.items()]
+                raw_content = "\n\n".join(merged_lines)
+            else:
+                raw_content = json.dumps(candidate, ensure_ascii=False)
+
+        return {
+            "raw_content": raw_content,
+            "sections": {
+                "議事メモ": raw_content,
+            },
+        }

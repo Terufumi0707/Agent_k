@@ -32,14 +32,9 @@ def test_review_skill_revise_can_attach_past_minutes_reference_and_structured_lo
     llm = FakeLlmClient(
         {
             "revised_candidate": {
+                "raw_content": "修正済み議事メモ本文",
                 "sections": {
                     "会議概要": "候補2を改善",
-                    "参照した過去議事メモ": [{"candidate_index": 0, "summary_keys": ["会議概要", "ToDo"]}],
-                    "構造化会話ログ": [
-                        {"speaker": "田中", "utterance": "進捗を共有します"},
-                        {"speaker": "佐藤", "utterance": "レビューをお願いします"},
-                    ],
-                    "レビュー履歴": ["前回の差し戻しコメント"],
                 }
             }
         }
@@ -62,9 +57,6 @@ def test_review_skill_revise_can_attach_past_minutes_reference_and_structured_lo
 
     assert result["approved"] is False
     revised = result["revised_candidate"]["sections"]
-    assert "参照した過去議事メモ" in revised
-    assert revised["参照した過去議事メモ"][0]["candidate_index"] == 0
-    assert revised["構造化会話ログ"][0]["speaker"] == "田中"
-    assert revised["構造化会話ログ"][1]["speaker"] == "佐藤"
-    assert revised["レビュー履歴"] == ["前回の差し戻しコメント"]
+    assert list(revised.keys()) == ["議事メモ"]
+    assert revised["議事メモ"] == "修正済み議事メモ本文"
     assert "過去の議事メモも参照して、会話ログも構造化して残しておいて" in llm.last_prompt
