@@ -59,6 +59,7 @@ import {
   JOB_STATUS,
   normalizeJobForUi,
   REVIEW_ACTION,
+  buildArtifactDownloadUrl,
   reviewJob
 } from "../services/minutesClient";
 
@@ -77,6 +78,7 @@ const STATUS = JOB_STATUS;
 const workflowStatus = ref(STATUS.CREATED);
 const adoptedMinutes = ref("");
 const minuteCandidates = ref([]);
+const lastDownloadedArtifactUrl = ref("");
 const placeholderText = "指示してください";
 
 const canSend = computed(() => inputText.value.trim().length > 0);
@@ -106,6 +108,25 @@ const resizeTextarea = (textareaEl) => {
   textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
 };
 
+const triggerArtifactDownload = (job) => {
+  if (!job?.artifact_path || !currentJobId.value) {
+    return;
+  }
+  const artifactUrl = buildArtifactDownloadUrl(currentJobId.value);
+  if (lastDownloadedArtifactUrl.value === artifactUrl) {
+    return;
+  }
+
+  const link = document.createElement("a");
+  link.href = artifactUrl;
+  link.download = "";
+  link.style.display = "none";
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  lastDownloadedArtifactUrl.value = artifactUrl;
+};
+
 const applyUiJob = (job) => {
   const uiJob = normalizeJobForUi(job);
   minuteCandidates.value = uiJob.candidates;
@@ -117,6 +138,7 @@ const applyUiJob = (job) => {
       workflowStatus.value = STATUS.COMPLETED;
       currentPhase.value = "議事録が確定しました。";
       appendProgressLog("完了", "議事録のレビューが完了しました。");
+      triggerArtifactDownload(uiJob);
       return;
     case STATUS.WAITING_FOR_REVIEW:
       workflowStatus.value = STATUS.WAITING_FOR_REVIEW;

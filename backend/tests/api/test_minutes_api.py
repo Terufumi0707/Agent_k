@@ -69,3 +69,25 @@ def test_review_api_invalid_action_returns_validation_error(api_client, started_
     )
 
     assert response.status_code == 422
+
+
+def test_download_artifact_after_approve(api_client, started_job):
+    review_response = api_client.post(
+        f"/minutes/jobs/{started_job.id}/review",
+        json={"selected_index": 0, "action": "approve"},
+    )
+    assert review_response.status_code == 200
+
+    download = api_client.get(f"/minutes/jobs/{started_job.id}/artifact")
+
+    assert download.status_code == 200
+    assert (
+        download.headers["content-type"]
+        == "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+
+
+def test_download_artifact_returns_404_when_not_completed(api_client, started_job):
+    response = api_client.get(f"/minutes/jobs/{started_job.id}/artifact")
+
+    assert response.status_code == 404
