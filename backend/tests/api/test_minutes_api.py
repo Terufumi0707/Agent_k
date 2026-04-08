@@ -1,30 +1,23 @@
 from __future__ import annotations
 
 
-def test_post_minutes_jobs_starts_job_with_transcript(api_client):
+def test_post_minutes_jobs_creates_minutes_from_transcript(api_client):
     response = api_client.post(
         "/minutes/jobs",
-        json={"input_type": "transcript", "transcript": "定例会議の記録"},
+        json={"transcript": "定例会議の記録"},
     )
 
     assert response.status_code == 200
     body = response.json()
-    assert body["id"]
-    assert body["transcript"] == "定例会議の記録"
-    assert len(body["candidates"]) == 2
-
-
-def test_post_minutes_jobs_audio_without_path_returns_400(api_client):
-    response = api_client.post("/minutes/jobs", json={"input_type": "audio"})
-
-    assert response.status_code == 400
-    assert "audio_path is required" in response.json()["detail"]
+    assert body["minutes"]
+    assert body["summary"]
+    assert isinstance(body["action_items"], list)
 
 
 def test_post_minutes_jobs_empty_transcript_returns_400(api_client):
     response = api_client.post(
         "/minutes/jobs",
-        json={"input_type": "transcript", "transcript": "   "},
+        json={"transcript": "   "},
     )
 
     assert response.status_code == 400
