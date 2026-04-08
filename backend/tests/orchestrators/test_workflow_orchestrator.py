@@ -127,3 +127,5 @@ def test_review_revise_goes_back_to_review_flow(tmp_path):
     assert review.run.called
     assert reviewed.status.value == "WAITING_FOR_REVIEW"
     assert reviewed.candidates[-1].sections["会議概要"] == "修正案"
+    assert reviewed.selected_candidate is not None
+    assert reviewed.selected_candidate.sections["会議概要"] == "修正案"
