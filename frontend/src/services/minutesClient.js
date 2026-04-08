@@ -24,11 +24,26 @@ const buildUrl = (path) => {
 };
 
 const fetchJson = async (path, options = {}) => {
+  console.log("[minutesClient.fetchJson] request start", {
+    path,
+    method: options.method ?? "GET"
+  });
   const response = await fetch(buildUrl(path), options);
   if (!response.ok) {
     const detail = await response.text();
+    console.error("[minutesClient.fetchJson] request failed", {
+      path,
+      method: options.method ?? "GET",
+      status: response.status,
+      detail
+    });
     throw new Error(`HTTP ${response.status}: ${detail}`);
   }
+  console.log("[minutesClient.fetchJson] request success", {
+    path,
+    method: options.method ?? "GET",
+    status: response.status
+  });
   return response.json();
 };
 

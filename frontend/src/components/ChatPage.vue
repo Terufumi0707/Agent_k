@@ -196,11 +196,17 @@ const sendRevision = () => {
 
 const submitReview = async (action) => {
   if (isSending.value || !currentJobId.value) {
+    console.log("[ChatPage.submitReview] skipped", {
+      reason: isSending.value ? "already_sending" : "missing_job_id"
+    });
     return;
   }
 
   const instruction = inputText.value.trim();
   if (action === REVIEW_ACTION.REVISE && !instruction) {
+    console.log("[ChatPage.submitReview] skipped", {
+      reason: "missing_instruction_for_revise"
+    });
     return;
   }
 
@@ -209,12 +215,20 @@ const submitReview = async (action) => {
   isSending.value = true;
 
   try {
+    console.log("[ChatPage.submitReview] review request start", {
+      jobId: currentJobId.value,
+      selectedIndex: selectedCandidateIndex.value,
+      action
+    });
     appendProgressLog("レビュー送信", "レビュー指示を送信しています。");
     currentPhase.value = "レビュー内容を反映しています...";
     await reviewJob(currentJobId.value, {
       selected_index: selectedCandidateIndex.value,
       action,
       ...(instruction ? { instruction } : {})
+    });
+    console.log("[ChatPage.submitReview] review request success", {
+      jobId: currentJobId.value
     });
     await syncJobState(currentJobId.value);
     inputText.value = "";

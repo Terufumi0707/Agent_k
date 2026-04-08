@@ -100,6 +100,11 @@ class WorkflowOrchestrator:
     def review(
         self, job_id: str, selected_index: int, action: ReviewAction, instruction: str | None
     ) -> Job:
+        print(
+            "[WorkflowOrchestrator.review] start: "
+            f"job_id={job_id}, selected_index={selected_index}, action={action.value}",
+            flush=True,
+        )
         # 対象 Job を取得し、存在しない場合は明示的にエラーとする。
         job = self.store.get(job_id)
         if not job:
@@ -119,12 +124,22 @@ class WorkflowOrchestrator:
                 "instruction": normalized_instruction or None,
             }
         )
+        print(
+            "[WorkflowOrchestrator.review] skill result received: "
+            f"approved={result.get('approved')}, has_revised_candidate={'revised_candidate' in result}",
+            flush=True,
+        )
         job.updated_at = datetime.utcnow()
 
         # 未承認の場合は修正版候補を追加し、再レビュー可能な状態で保存する。
         if action == ReviewAction.REVISE:
             job.review_comments.append(normalized_instruction)
             job.candidates.append(MinuteCandidate.from_dict(result["revised_candidate"]))
+            print(
+                "[WorkflowOrchestrator.review] revise applied: "
+                f"job_id={job_id}, candidates_count={len(job.candidates)}",
+                flush=True,
+            )
             return self.store.save(job)
 
         # 承認済みの場合は最終版を Word 出力し、完了状態へ遷移する。
@@ -138,6 +153,11 @@ class WorkflowOrchestrator:
         )
         job.artifact_path = export["artifact_path"]
         job.status = JobStatus.COMPLETED
+        print(
+            "[WorkflowOrchestrator.review] approve applied: "
+            f"job_id={job_id}, artifact_path={job.artifact_path}",
+            flush=True,
+        )
         return self.store.save(job)
 
     def get(self, job_id: str) -> Job | None:
