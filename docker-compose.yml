@@ -8,8 +8,8 @@ services:
     environment:
       PROJECT_ROOT: /app
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
-      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
-      GEMINI_MODEL_CANDIDATES: ${GEMINI_MODEL_CANDIDATES:-gemini-2.0-flash,gemini-2.5-flash,gemini-1.5-flash}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash}
+      GEMINI_MODEL_CANDIDATES: ${GEMINI_MODEL_CANDIDATES:-gemini-2.5-flash,gemini-2.0-flash,gemini-1.5-flash}
       GEMINI_TIMEOUT_SECONDS: ${GEMINI_TIMEOUT_SECONDS:-20}
     ports:
       - "8000:8000"

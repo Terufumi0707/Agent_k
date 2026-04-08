@@ -11,10 +11,10 @@ class LlmClient:
 
     def __init__(self) -> None:
         self.api_key = os.getenv("GEMINI_API_KEY")
-        self.model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        self.model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         raw_candidates = os.getenv(
             "GEMINI_MODEL_CANDIDATES",
-            "gemini-2.0-flash,gemini-2.5-flash,gemini-1.5-flash",
+            "gemini-2.5-flash,gemini-2.0-flash,gemini-1.5-flash",
         )
         self.model_candidates = [candidate.strip() for candidate in raw_candidates.split(",") if candidate.strip()]
         if self.model not in self.model_candidates:
