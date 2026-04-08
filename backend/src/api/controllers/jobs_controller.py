@@ -1,4 +1,7 @@
-from fastapi import APIRouter, HTTPException
+from pathlib import Path
+from uuid import uuid4
+
+from fastapi import APIRouter, HTTPException, Request
 
 from src.api.schemas.request.job_requests import ReviewRequest, StartJobRequest
 from src.api.schemas.response.job_responses import JobResponse
@@ -6,6 +9,32 @@ from src.config.container import Container
 
 router = APIRouter(prefix="/minutes", tags=["minutes"])
 container = Container()
+SUPPORTED_AUDIO_EXTENSIONS = {".mp3", ".mp4"}
+
+
+@router.post("/uploads/audio")
+async def upload_audio(request: Request) -> dict[str, str]:
+    form = await request.form()
+    file = form.get("file")
+    if file is None or not hasattr(file, "filename"):
+        raise HTTPException(status_code=400, detail="file is required")
+
+    filename = file.filename or ""
+    suffix = Path(filename).suffix.lower()
+    if suffix not in SUPPORTED_AUDIO_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="unsupported audio format. only .mp3 and .mp4 are supported")
+
+    artifacts_dir = container.orchestrator.artifacts_dir
+    uploads_dir = artifacts_dir / "uploads"
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+
+    saved_path = uploads_dir / f"{uuid4().hex}{suffix}"
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="uploaded file is empty")
+
+    saved_path.write_bytes(content)
+    return {"audio_path": str(saved_path), "filename": filename}
 
 
 @router.post("/jobs", response_model=JobResponse)
