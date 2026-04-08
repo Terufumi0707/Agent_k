@@ -8,6 +8,12 @@ from pydantic import BaseModel, ConfigDict, RootModel, model_validator
 from src.domain.models import InputType, Job, JobStatus, MinuteCandidate
 
 
+class MinutesResponse(BaseModel):
+    minutes: str
+    summary: str
+    action_items: list[str]
+
+
 class MinuteCandidatePayload(BaseModel):
     sections: dict[str, Any] | None = None
     raw_content: str | None = None

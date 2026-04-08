@@ -12,6 +12,7 @@ from src.services.skills import (
     MinutesReviewSkill,
     MinutesTranscribeSkill,
 )
+from src.services.minutes_service import MinutesService
 from src.services.workflow_loader import WorkflowLoader
 
 
@@ -20,11 +21,13 @@ class Container:
         repo_root = Path(__file__).resolve().parents[3]
         loader = WorkflowLoader.from_default_paths()
         job_repository: JobRepository = InMemoryStore()
+        llm_client = LlmClient()
+        self.minutes_service = MinutesService(llm_client)
         self.orchestrator = WorkflowOrchestrator(
             store=job_repository,
             loader=loader,
             transcribe_skill=MinutesTranscribeSkill(),
-            draft_skill=MinutesDraftSkill(LlmClient()),
+            draft_skill=MinutesDraftSkill(llm_client),
             review_skill=MinutesReviewSkill(),
             export_skill=MinutesExportWordSkill(),
             artifacts_dir=repo_root / "artifacts",
