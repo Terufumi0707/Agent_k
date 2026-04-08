@@ -1,21 +1,24 @@
 from fastapi import APIRouter, HTTPException
 
 from src.api.schemas.request.job_requests import ReviewRequest, StartJobRequest
-from src.api.schemas.response.job_responses import JobResponse, MinutesResponse
+from src.api.schemas.response.job_responses import JobResponse
 from src.config.container import Container
 
 router = APIRouter(prefix="/minutes", tags=["minutes"])
 container = Container()
 
 
-@router.post("/jobs", response_model=MinutesResponse)
-def start_job(req: StartJobRequest) -> MinutesResponse:
-    transcript = (req.transcript or "").strip()
-    if not transcript:
-        raise HTTPException(status_code=400, detail="transcript is required")
-
-    minutes = container.minutes_service.create_minutes(transcript)
-    return MinutesResponse(**minutes)
+@router.post("/jobs", response_model=JobResponse)
+def start_job(req: StartJobRequest) -> JobResponse:
+    try:
+        job = container.orchestrator.start(
+            input_type=req.input_type,
+            transcript=req.transcript,
+            audio_path=req.audio_path,
+        )
+        return JobResponse.from_domain(job)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
 @router.post("/jobs/{job_id}/review", response_model=JobResponse)

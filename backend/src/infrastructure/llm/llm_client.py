@@ -47,15 +47,18 @@ class LlmClient:
                 body = json.loads(res.read().decode("utf-8"))
         except (error.URLError, TimeoutError, json.JSONDecodeError):
             return None
+        print(f"[LlmClient] raw response: {json.dumps(body, ensure_ascii=False)}")
 
         text = self._extract_text(body)
         if not text:
             return None
+        print(f"[LlmClient] extracted text: {text}")
 
         try:
             parsed = json.loads(text)
         except json.JSONDecodeError:
             return None
+        print(f"[LlmClient] parsed json: {json.dumps(parsed, ensure_ascii=False)}")
 
         return parsed if isinstance(parsed, dict) else None
 
