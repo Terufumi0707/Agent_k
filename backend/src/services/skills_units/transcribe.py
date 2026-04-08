@@ -64,7 +64,9 @@ class FasterWhisperTranscriptionService:
             from faster_whisper import WhisperModel
         except ImportError as exc:
             raise RuntimeError(
-                "faster-whisper is not installed. Run `pip install -r backend/requirements.txt`."
+                "failed to import faster_whisper. "
+                "Run `pip install -r backend/requirements.txt` and verify ctranslate2 is available. "
+                f"detail: {exc}"
             ) from exc
 
         self._model = WhisperModel(
