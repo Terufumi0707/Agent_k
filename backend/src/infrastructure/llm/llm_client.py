@@ -11,7 +11,7 @@ class LlmClient:
 
     def __init__(self) -> None:
         self.api_key = os.getenv("GEMINI_API_KEY")
-        self.model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        self.model = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
         self.timeout = float(os.getenv("GEMINI_TIMEOUT_SECONDS", "20"))
 
     def generate_json(self, prompt: str) -> dict[str, Any] | None:
