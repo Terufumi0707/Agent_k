@@ -54,20 +54,20 @@ import MinutesWorkflowPanel from "./MinutesWorkflowPanel.vue";
 import ProgressPanel from "./ProgressPanel.vue";
 import TopHeader from "./TopHeader.vue";
 import {
+  createAudioJob,
   createJob,
   getJob,
   JOB_STATUS,
   normalizeJobForUi,
   REVIEW_ACTION,
-  reviewJob,
-  uploadAudio
+  reviewJob
 } from "../services/minutesClient";
 
 const reviewFooterRef = ref(null);
 const inputText = ref("");
 const sourceText = ref("");
 const audioFileName = ref("");
-const uploadedAudioPath = ref("");
+const selectedAudioFile = ref(null);
 const isSending = ref(false);
 const progressLogs = ref([]);
 const currentPhase = ref("");
@@ -82,7 +82,7 @@ const minuteCandidates = ref([]);
 const placeholderText = "指示してください";
 
 const canSend = computed(() => inputText.value.trim().length > 0);
-const canGenerate = computed(() => sourceText.value.trim().length > 0 || Boolean(uploadedAudioPath.value));
+const canGenerate = computed(() => sourceText.value.trim().length > 0 || Boolean(selectedAudioFile.value));
 const displayedMinutes = computed(() => adoptedMinutes.value || minuteCandidates.value[0]?.text || "議事録はまだ生成されていません。");
 
 const resetProgressState = () => {
@@ -141,22 +141,10 @@ const syncJobState = async (jobId) => {
   applyUiJob(latestJob);
 };
 
-const handleAudioChange = async (event) => {
-  const file = event.target.files?.[0];
+const handleAudioChange = (event) => {
+  const file = event.target.files?.[0] ?? null;
+  selectedAudioFile.value = file;
   audioFileName.value = file ? file.name : "";
-  uploadedAudioPath.value = "";
-
-  if (!file) {
-    return;
-  }
-
-  try {
-    const uploaded = await uploadAudio(file);
-    uploadedAudioPath.value = uploaded.audio_path;
-  } catch (error) {
-    console.error("audio upload failed:", error);
-    streamError.value = "音声ファイルのアップロードに失敗しました。mp3/mp4を確認してください。";
-  }
 };
 
 const adoptCandidate = (candidate) => {
@@ -185,10 +173,9 @@ const generateMinutes = async () => {
     if (!currentJobId.value) {
       appendProgressLog("ジョブ作成", "議事録作成ジョブを開始します。");
       currentPhase.value = "議事録ジョブを作成しています...";
-      const payload = uploadedAudioPath.value
-        ? { input_type: "audio", audio_path: uploadedAudioPath.value }
-        : { input_type: "transcript", transcript: sourceText.value.trim() };
-      const createdJob = await createJob(payload);
+      const createdJob = selectedAudioFile.value
+        ? await createAudioJob(selectedAudioFile.value)
+        : await createJob({ input_type: "transcript", transcript: sourceText.value.trim() });
       currentJobId.value = createdJob.id;
       await syncJobState(createdJob.id);
       sourceText.value = "";

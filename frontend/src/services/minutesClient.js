@@ -115,6 +115,16 @@ export const createJob = (payload) => fetchJson("/minutes/jobs", {
 
 export const getJob = (jobId) => fetchJson(`/minutes/jobs/${jobId}`);
 
+export const createAudioJob = async (file) => {
+  const formData = new FormData();
+  formData.append("file", file);
+
+  return fetchJson("/minutes/jobs/audio", {
+    method: "POST",
+    body: formData
+  });
+};
+
 
 export const uploadAudio = async (file) => {
   const formData = new FormData();
