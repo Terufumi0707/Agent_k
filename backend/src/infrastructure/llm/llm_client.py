@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 from typing import Any
 from urllib import error, request
 
@@ -47,12 +48,35 @@ class LlmClient:
             headers={"Content-Type": "application/json"},
             data=json.dumps(payload).encode("utf-8"),
         )
+        print(
+            "[LlmClient] sending request: "
+            f"model={self.model}, timeout={self.timeout}s, prompt_length={len(prompt)}"
+        )
 
         try:
             with request.urlopen(req, timeout=self.timeout) as res:
                 body = json.loads(res.read().decode("utf-8"))
-        except (error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-            print(f"[LlmClient] request failed: {exc}")
+        except error.HTTPError as exc:
+            response_body = exc.read().decode("utf-8", errors="replace")
+            print(
+                "[LlmClient] request failed: "
+                f"HTTPError status={exc.code}, reason={exc.reason}, body={response_body}"
+            )
+            return None
+        except error.URLError as exc:
+            print(
+                "[LlmClient] request failed: "
+                f"URLError reason={exc.reason}, type={type(exc.reason).__name__}"
+            )
+            return None
+        except (TimeoutError, socket.timeout) as exc:
+            print(f"[LlmClient] request failed: timeout after {self.timeout}s ({exc})")
+            return None
+        except json.JSONDecodeError as exc:
+            print(f"[LlmClient] response decode failed: {exc}")
+            return None
+        except Exception as exc:
+            print(f"[LlmClient] request failed: unexpected {type(exc).__name__}: {exc}")
             return None
         print(f"[LlmClient] raw response: {json.dumps(body, ensure_ascii=False)}")
 
