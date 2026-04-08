@@ -15,7 +15,11 @@ class LlmClient:
         self.timeout = float(os.getenv("GEMINI_TIMEOUT_SECONDS", "20"))
 
     def generate_json(self, prompt: str) -> dict[str, Any] | None:
-        if not prompt.strip() or not self.api_key:
+        if not prompt.strip():
+            print("[LlmClient] skipped generate_json: prompt is empty")
+            return None
+        if not self.api_key:
+            print("[LlmClient] skipped generate_json: GEMINI_API_KEY is not set")
             return None
 
         endpoint = (
@@ -45,18 +49,21 @@ class LlmClient:
         try:
             with request.urlopen(req, timeout=self.timeout) as res:
                 body = json.loads(res.read().decode("utf-8"))
-        except (error.URLError, TimeoutError, json.JSONDecodeError):
+        except (error.URLError, TimeoutError, json.JSONDecodeError) as exc:
+            print(f"[LlmClient] request failed: {exc}")
             return None
         print(f"[LlmClient] raw response: {json.dumps(body, ensure_ascii=False)}")
 
         text = self._extract_text(body)
         if not text:
+            print("[LlmClient] extracted text is empty")
             return None
         print(f"[LlmClient] extracted text: {text}")
 
         try:
             parsed = json.loads(text)
-        except json.JSONDecodeError:
+        except json.JSONDecodeError as exc:
+            print(f"[LlmClient] failed to parse extracted text as JSON: {exc}")
             return None
         print(f"[LlmClient] parsed json: {json.dumps(parsed, ensure_ascii=False)}")
 

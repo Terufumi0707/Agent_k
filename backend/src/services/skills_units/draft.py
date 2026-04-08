@@ -14,6 +14,7 @@ class MinutesDraftSkill:
         transcript = payload["transcript"]
         if not transcript.strip():
             raise ValueError("transcript is empty")
+        print(f"[MinutesDraftSkill] start drafting: transcript_length={len(transcript)}")
 
         prompt = self._build_prompt(
             transcript=transcript,
@@ -21,6 +22,7 @@ class MinutesDraftSkill:
         )
 
         parsed = self.llm_client.generate_json(prompt)
+        print(f"[MinutesDraftSkill] llm result: {parsed}")
         return parsed if isinstance(parsed, dict) else {"candidates": []}
 
     def _build_prompt(self, transcript: str, num_candidates: int) -> str:

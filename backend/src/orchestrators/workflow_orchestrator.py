@@ -80,6 +80,10 @@ class WorkflowOrchestrator:
                 continue
             if not handler(context):
                 break
+        print(
+            "[WorkflowOrchestrator] draft completed: "
+            f"input_type={input_type.value}, candidates_count={len(context.get('candidates', []))}"
+        )
 
         # 初回作成時点ではレビュー待ち状態で Job を保存する。
         now = datetime.utcnow()
