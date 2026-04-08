@@ -38,3 +38,15 @@ def test_transcription_service_rejects_non_mp3_mp4():
 
     with pytest.raises(ValueError, match="only .mp3 and .mp4"):
         service.transcribe_audio("/tmp/meeting.wav")
+
+
+def test_transcription_service_resolves_filename_from_project_artifacts(tmp_path, monkeypatch):
+    service = FasterWhisperTranscriptionService()
+    audio_file = tmp_path / "artifacts" / "meeting.mp3"
+    audio_file.parent.mkdir(parents=True, exist_ok=True)
+    audio_file.write_bytes(b"dummy")
+    monkeypatch.setenv("PROJECT_ROOT", str(tmp_path))
+
+    resolved = service._resolve_audio_path("meeting.mp3")
+
+    assert resolved == audio_file

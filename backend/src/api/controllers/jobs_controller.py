@@ -17,7 +17,7 @@ def start_job(req: StartJobRequest) -> JobResponse:
             audio_path=req.audio_path,
         )
         return JobResponse.from_domain(job)
-    except ValueError as exc:
+    except (ValueError, FileNotFoundError, RuntimeError) as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 

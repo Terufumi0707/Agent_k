@@ -65,6 +65,7 @@ docker compose up --build
 - ブラウザからは `/api` 経由で backend にアクセスします。
 - 生成物（docx 等）は `./artifacts` に出力されます。
 - backend Docker イメージには音声デコード用に `ffmpeg` を同梱しています（faster-whisper 用）。
+- ブラウザ選択したファイルは自動アップロードされません。`audio_path` は backend コンテナから参照できるサーバー内パスが必要です（例: `/app/artifacts/meeting.mp3`）。
 
 ### 停止
 

@@ -19,11 +19,14 @@ class FasterWhisperTranscriptionService:
         self._model = None
 
     def transcribe_audio(self, audio_path: str) -> str:
-        target = Path(audio_path)
+        target = self._resolve_audio_path(audio_path)
         if target.suffix.lower() not in self.SUPPORTED_EXTENSIONS:
             raise ValueError("unsupported audio format. only .mp3 and .mp4 are supported")
         if not target.exists() or not target.is_file():
-            raise FileNotFoundError(f"audio file not found: {audio_path}")
+            raise FileNotFoundError(
+                "audio file not found: "
+                f"{audio_path} (tried: {target}). place the file under server path, e.g. /app/artifacts/*.mp3"
+            )
 
         model = self._get_model()
         try:
@@ -35,6 +38,23 @@ class FasterWhisperTranscriptionService:
         if not transcript:
             raise RuntimeError(f"transcription result is empty: {audio_path}")
         return transcript
+
+
+    def _resolve_audio_path(self, audio_path: str) -> Path:
+        target = Path(audio_path)
+        if target.is_absolute() or target.exists():
+            return target
+
+        project_root = os.getenv("PROJECT_ROOT", "")
+        candidates = [Path.cwd() / target]
+        if project_root:
+            candidates.append(Path(project_root) / "artifacts" / target.name)
+
+        for candidate in candidates:
+            if candidate.exists():
+                return candidate
+
+        return target
 
     def _get_model(self):
         if self._model is not None:
