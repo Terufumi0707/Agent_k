@@ -153,7 +153,6 @@ class WorkflowOrchestrator:
                 "job_id": job.id,
                 "final_minutes": job.selected_candidate.to_dict(),
                 "output_dir": str(self.artifacts_dir),
-                "transcript": job.transcript,
             }
         )
         job.artifact_path = export["artifact_path"]
