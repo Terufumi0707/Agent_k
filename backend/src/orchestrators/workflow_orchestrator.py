@@ -122,6 +122,8 @@ class WorkflowOrchestrator:
                 "selected_index": selected_index,
                 "action": action.value,
                 "instruction": normalized_instruction or None,
+                "transcript": job.transcript,
+                "review_comments": list(job.review_comments),
             }
         )
         print(
