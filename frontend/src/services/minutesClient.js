@@ -64,12 +64,7 @@ const formatCandidateText = (candidate) => {
     .map(([key, value]) => `${key}\n${stringifyCandidateValue(value)}`)
     .join("\n\n")
     .trim();
-
-  if (!candidate.raw_content) {
-    return formattedSections;
-  }
-
-  return `${formattedSections}\n\n原文\n${candidate.raw_content}`.trim();
+  return formattedSections;
 };
 
 export const normalizeJobForUi = (job) => {
