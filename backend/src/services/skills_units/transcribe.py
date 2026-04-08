@@ -33,7 +33,7 @@ class FasterWhisperTranscriptionService:
             segments, _ = model.transcribe(str(target), beam_size=5)
             transcript = " ".join(segment.text.strip() for segment in segments if segment.text.strip()).strip()
         except Exception as exc:
-            raise RuntimeError(f"failed to transcribe audio: {audio_path}") from exc
+            raise RuntimeError(f"failed to transcribe audio: {audio_path}: {exc}") from exc
 
         if not transcript:
             raise RuntimeError(f"transcription result is empty: {audio_path}")

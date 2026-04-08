@@ -13,7 +13,7 @@ container = Container()
 SUPPORTED_AUDIO_EXTENSIONS = {".mp3", ".mp4"}
 
 
-def _save_uploaded_audio(file, artifacts_dir: Path) -> tuple[Path, str]:
+async def _save_uploaded_audio(file, artifacts_dir: Path) -> tuple[Path, str]:
     filename = getattr(file, "filename", "") or ""
     suffix = Path(filename).suffix.lower()
     if suffix not in SUPPORTED_AUDIO_EXTENSIONS:
@@ -23,7 +23,7 @@ def _save_uploaded_audio(file, artifacts_dir: Path) -> tuple[Path, str]:
     uploads_dir.mkdir(parents=True, exist_ok=True)
 
     saved_path = uploads_dir / f"{uuid4().hex}{suffix}"
-    content = file.file.read()
+    content = await file.read()
     if not content:
         raise HTTPException(status_code=400, detail="uploaded file is empty")
 
@@ -38,7 +38,7 @@ async def upload_audio(request: Request) -> dict[str, str]:
     if file is None or not hasattr(file, "filename"):
         raise HTTPException(status_code=400, detail="file is required")
 
-    saved_path, filename = _save_uploaded_audio(file, container.orchestrator.artifacts_dir)
+    saved_path, filename = await _save_uploaded_audio(file, container.orchestrator.artifacts_dir)
     return {"audio_path": str(saved_path), "filename": filename}
 
 
@@ -49,7 +49,7 @@ async def start_audio_job(request: Request) -> JobResponse:
     if file is None or not hasattr(file, "filename"):
         raise HTTPException(status_code=400, detail="file is required")
 
-    saved_path, _ = _save_uploaded_audio(file, container.orchestrator.artifacts_dir)
+    saved_path, _ = await _save_uploaded_audio(file, container.orchestrator.artifacts_dir)
 
     try:
         job = container.orchestrator.start(
@@ -59,6 +59,7 @@ async def start_audio_job(request: Request) -> JobResponse:
         )
         return JobResponse.from_domain(job)
     except (ValueError, FileNotFoundError, RuntimeError) as exc:
+        print(f"[jobs_controller.start_audio_job] request rejected: {exc}", flush=True)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
@@ -72,6 +73,7 @@ def start_job(req: StartJobRequest) -> JobResponse:
         )
         return JobResponse.from_domain(job)
     except (ValueError, FileNotFoundError, RuntimeError) as exc:
+        print(f"[jobs_controller.start_audio_job] request rejected: {exc}", flush=True)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
