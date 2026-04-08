@@ -5,7 +5,7 @@ from unittest.mock import Mock
 from src.services.skills_units.draft import MinutesDraftSkill
 
 
-def test_draft_skill_returns_llm_response_as_is():
+def test_draft_skill_returns_only_first_candidate():
     llm_client = Mock()
     llm_client.generate_json.return_value = {
         "candidates": [
@@ -20,11 +20,10 @@ def test_draft_skill_returns_llm_response_as_is():
         {
             "transcript": "会議内容",
             "company_format": {"sections": [{"name": "会議概要", "required": True}]},
-            "candidate_count": 3,
         }
     )
 
-    assert result == llm_client.generate_json.return_value
+    assert result == {"candidates": [llm_client.generate_json.return_value["candidates"][0]]}
 
 
 def test_draft_skill_returns_empty_candidates_when_llm_returns_none():
@@ -36,7 +35,6 @@ def test_draft_skill_returns_empty_candidates_when_llm_returns_none():
         {
             "transcript": "保田 啓輔: 来週までに要件を整理しましょう。",
             "company_format": {"sections": [{"name": "ToDo", "required": True}]},
-            "candidate_count": 2,
         }
     )
 

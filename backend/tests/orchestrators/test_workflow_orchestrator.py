@@ -11,7 +11,6 @@ from src.repositories.in_memory_store import InMemoryStore
 class DummyLoader:
     def __init__(self):
         self.workflow = {
-            "candidate_count": 2,
             "steps": [
                 {"id": "transcribe"},
                 {"id": "transcript_input"},
@@ -32,7 +31,7 @@ def _build_orchestrator(tmp_path: Path):
     transcribe.run.return_value = {"transcript": "文字起こし結果"}
 
     draft = Mock()
-    draft.run.return_value = {"candidates": [{"会議概要": "案1"}, {"会議概要": "案2"}]}
+    draft.run.return_value = {"candidates": [{"会議概要": "案1"}]}
 
     review = Mock()
     review.run.return_value = {"approved": True, "final_minutes": {"会議概要": "案1"}}
@@ -101,7 +100,7 @@ def test_candidates_are_saved_after_draft(tmp_path):
 
     job = orchestrator.start(InputType.TRANSCRIPT, transcript="入力", audio_path=None)
 
-    assert len(job.candidates) == 2
+    assert len(job.candidates) == 1
     assert job.candidates[0].sections["会議概要"] == "案1"
 
 

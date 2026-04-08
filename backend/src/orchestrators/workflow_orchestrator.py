@@ -65,7 +65,6 @@ class WorkflowOrchestrator:
             "transcript": (transcript or "").strip(),
             "audio_path": audio_path,
             "company_format": company_format,
-            "candidate_count": workflow.get("candidate_count", 3),
         }
 
         # 入力種別に応じて実行対象ステップを絞り込みつつ、スキル実行結果を context に統合する。
