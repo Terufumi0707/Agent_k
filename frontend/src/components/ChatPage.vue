@@ -48,7 +48,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import AgentSidebar from "./AgentSidebar.vue";
 import MinutesReviewFooter from "./MinutesReviewFooter.vue";
 import MinutesWorkflowPanel from "./MinutesWorkflowPanel.vue";
@@ -74,6 +74,7 @@ const streamError = ref("");
 const currentJobId = ref(null);
 const selectedCandidateIndex = ref(0);
 const isSidebarCollapsed = ref(false);
+const pollTimerId = ref(null);
 const STATUS = JOB_STATUS;
 const workflowStatus = ref(STATUS.CREATED);
 const adoptedMinutes = ref("");
@@ -138,6 +139,36 @@ const applyUiJob = (job) => {
 const syncJobState = async (jobId) => {
   const latestJob = await getJob(jobId);
   applyUiJob(latestJob);
+  return latestJob;
+};
+
+const clearPollTimer = () => {
+  if (!pollTimerId.value) {
+    return;
+  }
+  clearTimeout(pollTimerId.value);
+  pollTimerId.value = null;
+};
+
+const wait = (ms) => new Promise((resolve) => {
+  pollTimerId.value = setTimeout(resolve, ms);
+});
+
+const syncJobStateUntilSettled = async (jobId, maxAttempts = 20, intervalMs = 800) => {
+  clearPollTimer();
+  let latestJob = null;
+
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    latestJob = await syncJobState(jobId);
+    if (latestJob?.status !== STATUS.DRAFTING) {
+      clearPollTimer();
+      return latestJob;
+    }
+    await wait(intervalMs);
+  }
+
+  clearPollTimer();
+  throw new Error("Timed out while waiting for job status update.");
 };
 
 const handleAudioChange = (event) => {
@@ -182,7 +213,7 @@ const generateMinutes = async () => {
         : { input_type: "transcript", transcript: sourceText.value.trim() };
       const createdJob = await createJob(payload);
       currentJobId.value = createdJob.id;
-      await syncJobState(createdJob.id);
+      await syncJobStateUntilSettled(createdJob.id);
       sourceText.value = "";
     }
   } catch (error) {
@@ -223,7 +254,7 @@ const submitReview = async (action) => {
       action,
       ...(instruction ? { instruction } : {})
     });
-    await syncJobState(currentJobId.value);
+    await syncJobStateUntilSettled(currentJobId.value);
     inputText.value = "";
   } catch (error) {
     console.error("minutes request failed:", error);
@@ -241,9 +272,19 @@ onMounted(() => {
   resizeTextarea();
 });
 
+onUnmounted(() => {
+  clearPollTimer();
+});
+
 watch(inputText, () => {
   nextTick(() => {
     resizeTextarea();
   });
+});
+
+watch(currentJobId, () => {
+  if (!currentJobId.value) {
+    clearPollTimer();
+  }
 });
 </script>

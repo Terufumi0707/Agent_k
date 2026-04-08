@@ -57,6 +57,11 @@ class WorkflowOrchestrator:
         }
 
     def start(self, input_type: InputType, transcript: str | None, audio_path: str | None) -> Job:
+        print(
+            f"[workflow] start requested input_type={input_type.value} "
+            f"transcript_len={len((transcript or '').strip())} audio_path={audio_path}",
+            flush=True,
+        )
         # ワークフロー定義と社内フォーマットを読み込み、各スキルに渡す共通コンテキストを組み立てる。
         workflow = self.loader.load_workflow()
         company_format = self.loader.load_company_format()
@@ -71,15 +76,21 @@ class WorkflowOrchestrator:
         # 入力種別に応じて実行対象ステップを絞り込みつつ、スキル実行結果を context に統合する。
         for step in workflow["steps"]:
             step_id = step["id"]
+            print(f"[workflow] evaluating step={step_id}", flush=True)
             dispatch = self._step_dispatch_table.get(step_id)
             if not dispatch:
+                print(f"[workflow] skipping step={step_id} reason=no_dispatch", flush=True)
                 continue
 
             can_run, handler = dispatch
             if not can_run(input_type):
+                print(f"[workflow] skipping step={step_id} reason=not_eligible", flush=True)
                 continue
+            print(f"[workflow] running step={step_id}", flush=True)
             if not handler(context):
+                print(f"[workflow] step={step_id} requested stop", flush=True)
                 break
+            print(f"[workflow] completed step={step_id}", flush=True)
 
         # 初回作成時点ではレビュー待ち状態で Job を保存する。
         now = datetime.utcnow()
@@ -92,19 +103,36 @@ class WorkflowOrchestrator:
             transcript=context["transcript"],
             candidates=to_minute_candidates(context["candidates"]),
         )
+        print(
+            f"[workflow] job created id={job.id} status={job.status.value} "
+            f"candidates={len(job.candidates)}",
+            flush=True,
+        )
         return self.store.save(job)
 
     def review(
         self, job_id: str, selected_index: int, action: ReviewAction, instruction: str | None
     ) -> Job:
+        print(
+            f"[workflow] review requested job_id={job_id} selected_index={selected_index} "
+            f"action={action.value}",
+            flush=True,
+        )
         # 対象 Job を取得し、存在しない場合は明示的にエラーとする。
         job = self.store.get(job_id)
         if not job:
+            print(f"[workflow] review failed job_id={job_id} reason=not_found", flush=True)
             raise ValueError("job not found")
         if selected_index < 0 or selected_index >= len(job.candidates):
+            print(
+                f"[workflow] review failed job_id={job_id} reason=index_out_of_range "
+                f"candidates={len(job.candidates)}",
+                flush=True,
+            )
             raise ValueError("selected_index is out of range")
         normalized_instruction = (instruction or "").strip()
         if action == ReviewAction.REVISE and not normalized_instruction:
+            print(f"[workflow] review failed job_id={job_id} reason=missing_instruction", flush=True)
             raise ValueError("instruction is required when action is revise")
 
         # 選択候補とユーザー指示をレビュー用スキルへ渡す。
@@ -122,6 +150,10 @@ class WorkflowOrchestrator:
         if action == ReviewAction.REVISE:
             job.review_comments.append(normalized_instruction)
             job.candidates.append(MinuteCandidate.from_dict(result["revised_candidate"]))
+            print(
+                f"[workflow] review revised job_id={job.id} candidates={len(job.candidates)}",
+                flush=True,
+            )
             return self.store.save(job)
 
         # 承認済みの場合は最終版を Word 出力し、完了状態へ遷移する。
@@ -135,6 +167,11 @@ class WorkflowOrchestrator:
         )
         job.artifact_path = export["artifact_path"]
         job.status = JobStatus.COMPLETED
+        print(
+            f"[workflow] review approved job_id={job.id} status={job.status.value} "
+            f"artifact_path={job.artifact_path}",
+            flush=True,
+        )
         return self.store.save(job)
 
     def get(self, job_id: str) -> Job | None:

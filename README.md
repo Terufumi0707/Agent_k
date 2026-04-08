@@ -41,7 +41,7 @@ $env:GEMINI_API_KEY="your_api_key_here"
 
 > 補足: 必要に応じて以下も設定可能です。
 >
-> - `GEMINI_MODEL`（default: `gemini-2.0-flash`）
+> - `GEMINI_MODEL`（default: `gemini-2.5-flash`）
 > - `GEMINI_TIMEOUT_SECONDS`（default: `20`）
 
 ---
