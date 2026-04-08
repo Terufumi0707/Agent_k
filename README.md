@@ -186,3 +186,4 @@ curl -X POST http://localhost:8000/minutes/jobs \
 - `audio_path` のファイルが存在しない場合はエラーになります。
 - 対応する音声形式は `.mp3` / `.mp4` のみです。
 - `failed to import faster_whisper` が出る場合は、`docker compose build --no-cache backend && docker compose up` で backend イメージを再作成してください（依存の再解決が必要です）。
+- 依存不整合で `No module named 'requests'` が出る場合に備えて、backend 依存へ `requests` を明示追加しています。
