@@ -8,3 +8,7 @@ GEMINI_API_KEY = ""
 # ↑ ここに API キーを直接設定してください（例: "AIza..."）。
 GEMINI_MODEL = "gemini-2.5-flash"
 GEMINI_TIMEOUT_SECONDS = "120"
+
+WHISPER_MODEL_SIZE = "small"
+WHISPER_DEVICE = "cpu"
+WHISPER_COMPUTE_TYPE = "int8"
