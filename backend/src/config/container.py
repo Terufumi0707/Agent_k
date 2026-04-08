@@ -28,7 +28,7 @@ class Container:
             loader=loader,
             transcribe_skill=MinutesTranscribeSkill(),
             draft_skill=MinutesDraftSkill(llm_client),
-            review_skill=MinutesReviewSkill(),
+            review_skill=MinutesReviewSkill(llm_client),
             export_skill=MinutesExportWordSkill(),
             artifacts_dir=repo_root / "artifacts",
         )
