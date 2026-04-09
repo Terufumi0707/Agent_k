@@ -41,16 +41,12 @@ async def upload_audio(file: UploadFile = File(...)) -> dict[str, str]:
 async def start_audio_job(file: UploadFile = File(...)) -> JobResponse:
     saved_path, _ = await _save_uploaded_audio(file, container.orchestrator.artifacts_dir)
 
-    try:
-        job = container.orchestrator.start(
-            input_type=InputType.AUDIO,
-            transcript=None,
-            audio_path=str(saved_path),
-        )
-        return JobResponse.from_domain(job)
-    except (ValueError, FileNotFoundError, RuntimeError) as exc:
-        print(f"[jobs_controller.start_audio_job] request rejected: {exc}", flush=True)
-        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    request_model = StartJobRequest(
+        input_type=InputType.AUDIO,
+        transcript=None,
+        audio_path=str(saved_path),
+    )
+    return start_job(request_model)
 
 
 @router.post("/jobs", response_model=JobResponse)
@@ -63,7 +59,7 @@ def start_job(req: StartJobRequest) -> JobResponse:
         )
         return JobResponse.from_domain(job)
     except (ValueError, FileNotFoundError, RuntimeError) as exc:
-        print(f"[jobs_controller.start_audio_job] request rejected: {exc}", flush=True)
+        print(f"[jobs_controller.start_job] request rejected: {exc}", flush=True)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 
