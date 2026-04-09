@@ -10,7 +10,7 @@
       @input="$emit('update:source-text', $event.target.value)"
     ></textarea>
     <label class="minutes-input-label" for="minutes-audio-file">音声アップロード</label>
-    <input id="minutes-audio-file" type="file" accept="audio/*" class="minutes-audio-input" @change="$emit('audio-change', $event)" />
+    <input id="minutes-audio-file" type="file" accept=".mp3,.mp4,audio/mp3,audio/mp4" class="minutes-audio-input" @change="$emit('audio-change', $event)" />
     <p v-if="audioFileName" class="minutes-audio-filename">{{ audioFileName }}</p>
     <button type="button" class="send-button minutes-generate-button" :disabled="!canGenerate || isSending" @click="$emit('generate')">
       議事録を生成する

@@ -1,11 +1,52 @@
-from fastapi import APIRouter, HTTPException
+from pathlib import Path
+from uuid import uuid4
+
+from fastapi import APIRouter, File, HTTPException, UploadFile
 
 from src.api.schemas.request.job_requests import ReviewRequest, StartJobRequest
 from src.api.schemas.response.job_responses import JobResponse
 from src.config.container import Container
+from src.domain.models import InputType
 
 router = APIRouter(prefix="/minutes", tags=["minutes"])
 container = Container()
+SUPPORTED_AUDIO_EXTENSIONS = {".mp3", ".mp4"}
+
+
+async def _save_uploaded_audio(file: UploadFile, artifacts_dir: Path) -> tuple[Path, str]:
+    filename = file.filename or ""
+    suffix = Path(filename).suffix.lower()
+    if suffix not in SUPPORTED_AUDIO_EXTENSIONS:
+        raise HTTPException(status_code=400, detail="unsupported audio format. only .mp3 and .mp4 are supported")
+
+    uploads_dir = artifacts_dir / "uploads"
+    uploads_dir.mkdir(parents=True, exist_ok=True)
+
+    saved_path = uploads_dir / f"{uuid4().hex}{suffix}"
+    content = await file.read()
+    if not content:
+        raise HTTPException(status_code=400, detail="uploaded file is empty")
+
+    saved_path.write_bytes(content)
+    return saved_path, filename
+
+
+@router.post("/uploads/audio")
+async def upload_audio(file: UploadFile = File(...)) -> dict[str, str]:
+    saved_path, filename = await _save_uploaded_audio(file, container.orchestrator.artifacts_dir)
+    return {"audio_path": str(saved_path), "filename": filename}
+
+
+@router.post("/jobs/audio", response_model=JobResponse)
+async def start_audio_job(file: UploadFile = File(...)) -> JobResponse:
+    saved_path, _ = await _save_uploaded_audio(file, container.orchestrator.artifacts_dir)
+
+    request_model = StartJobRequest(
+        input_type=InputType.AUDIO,
+        transcript=None,
+        audio_path=str(saved_path),
+    )
+    return start_job(request_model)
 
 
 @router.post("/jobs", response_model=JobResponse)
@@ -17,7 +58,8 @@ def start_job(req: StartJobRequest) -> JobResponse:
             audio_path=req.audio_path,
         )
         return JobResponse.from_domain(job)
-    except ValueError as exc:
+    except (ValueError, FileNotFoundError, RuntimeError) as exc:
+        print(f"[jobs_controller.start_job] request rejected: {exc}", flush=True)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
 

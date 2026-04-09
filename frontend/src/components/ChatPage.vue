@@ -54,6 +54,7 @@ import MinutesWorkflowPanel from "./MinutesWorkflowPanel.vue";
 import ProgressPanel from "./ProgressPanel.vue";
 import TopHeader from "./TopHeader.vue";
 import {
+  createAudioJob,
   createJob,
   getJob,
   JOB_STATUS,
@@ -66,6 +67,7 @@ const reviewFooterRef = ref(null);
 const inputText = ref("");
 const sourceText = ref("");
 const audioFileName = ref("");
+const selectedAudioFile = ref(null);
 const isSending = ref(false);
 const progressLogs = ref([]);
 const currentPhase = ref("");
@@ -80,7 +82,7 @@ const minuteCandidates = ref([]);
 const placeholderText = "指示してください";
 
 const canSend = computed(() => inputText.value.trim().length > 0);
-const canGenerate = computed(() => sourceText.value.trim().length > 0 || Boolean(audioFileName.value));
+const canGenerate = computed(() => sourceText.value.trim().length > 0 || Boolean(selectedAudioFile.value));
 const displayedMinutes = computed(() => adoptedMinutes.value || minuteCandidates.value[0]?.text || "議事録はまだ生成されていません。");
 
 const resetProgressState = () => {
@@ -140,7 +142,8 @@ const syncJobState = async (jobId) => {
 };
 
 const handleAudioChange = (event) => {
-  const file = event.target.files?.[0];
+  const file = event.target.files?.[0] ?? null;
+  selectedAudioFile.value = file;
   audioFileName.value = file ? file.name : "";
 };
 
@@ -170,10 +173,9 @@ const generateMinutes = async () => {
     if (!currentJobId.value) {
       appendProgressLog("ジョブ作成", "議事録作成ジョブを開始します。");
       currentPhase.value = "議事録ジョブを作成しています...";
-      const payload = audioFileName.value
-        ? { input_type: "audio", audio_path: audioFileName.value }
-        : { input_type: "transcript", transcript: sourceText.value.trim() };
-      const createdJob = await createJob(payload);
+      const createdJob = selectedAudioFile.value
+        ? await createAudioJob(selectedAudioFile.value)
+        : await createJob({ input_type: "transcript", transcript: sourceText.value.trim() });
       currentJobId.value = createdJob.id;
       await syncJobState(createdJob.id);
       sourceText.value = "";
